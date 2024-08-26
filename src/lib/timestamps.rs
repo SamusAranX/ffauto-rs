@@ -3,11 +3,17 @@ use std::time::Duration;
 use regex::{Captures, Regex};
 
 /// Takes an ffmpeg-esque timestamp and parses it into a Duration.
-pub fn parse_ffmpeg_timestamp(timestamp: &str) -> Duration {
+/// Invalid input will return [Duration::ZERO].
+pub fn parse_ffmpeg_timestamp(timestamp: &str) -> Option<Duration> {
+	match timestamp.parse::<f64>() {
+		Ok(f) => { return Some(Duration::from_secs_f64(f)) }
+		_ => {}
+	}
+
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
 	let groups: Captures = match re.captures(timestamp) {
-		None => { return Duration::ZERO; }
+		None => { return None; }
 		Some(captures) => captures
 	};
 
@@ -29,7 +35,7 @@ pub fn parse_ffmpeg_timestamp(timestamp: &str) -> Duration {
 		duration += Duration::from_millis(millis_str.parse::<u64>().unwrap_or_default());
 	}
 
-	duration
+	Some(duration)
 }
 
 /// Takes a Duration and formats it like a timestamp ffmpeg would use. Mainly for display purposes.

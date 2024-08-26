@@ -23,10 +23,18 @@ fn timestamp_parsing() {
 		let timestamp_str = test_datum.0;
 		let timestamp_float = test_datum.1;
 
+		print!("parsing string \"{timestamp_str}\", expecting duration {timestamp_float:?}… ");
 		let dur = parse_ffmpeg_timestamp(&timestamp_str);
-		assert_eq!(dur.as_secs_f64(), timestamp_float);
+		assert!(dur.is_some());
+		let dur_float = dur.unwrap().as_secs_f64();
+		println!("got {dur_float:?}");
+		assert_eq!(dur_float, timestamp_float);
 
-		let ts = format_ffmpeg_timestamp(dur);
+		print!("formatting duration {dur_float:?}, expecting string \"{timestamp_str}\"… ");
+		let ts = format_ffmpeg_timestamp(dur.unwrap());
+		println!("got \"{ts}\"");
 		assert_eq!(ts, timestamp_str);
+
+		println!("---");
 	}
 }

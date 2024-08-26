@@ -31,7 +31,6 @@ pub enum VideoCodec {
 	#[default] H264,
 	H265,
 	H265_10,
-	GIF,
 }
 
 #[derive(Clone, Default, Debug)]

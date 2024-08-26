@@ -41,33 +41,29 @@ impl fmt::Display for VideoCodec {
 		match self {
 			VideoCodec::H264 => write!(f, "h264"),
 			VideoCodec::H265 | VideoCodec::H265_10 => write!(f, "h265"),
-			VideoCodec::GIF => write!(f, "gif"),
 		}
 	}
 }
 
 impl VideoCodec {
-	pub fn video_codec(&self) -> *const str {
+	pub fn video_codec(&self) -> &str {
 		match self {
 			VideoCodec::H264 => "libx264",
 			VideoCodec::H265 | VideoCodec::H265_10 => "libx265",
-			_ => "",
 		}
 	}
 
-	pub fn audio_codec(&self) -> *const str {
+	pub fn audio_codec(&self) -> &str {
 		match self {
 			VideoCodec::H264 => "aac",
 			VideoCodec::H265 | VideoCodec::H265_10 => "aac",
-			_ => "",
 		}
 	}
 
-	pub fn pix_fmt(&self) -> *const str {
+	pub fn pix_fmt(&self) -> &str {
 		match self {
 			VideoCodec::H264 | VideoCodec::H265 => "yuv420p",
 			VideoCodec::H265_10 => "yuv420p10le",
-			_ => "",
 		}
 	}
 
@@ -75,7 +71,6 @@ impl VideoCodec {
 		match self {
 			VideoCodec::H264 => 23,
 			VideoCodec::H265 | VideoCodec::H265_10 => 28,
-			_ => 0,
 		}
 	}
 
@@ -87,13 +82,13 @@ impl VideoCodec {
 }
 
 impl Crop {
-	fn new(crop_str: &str) -> Self {
+	pub fn new(crop_str: &str) -> Option<Self> {
 		let re = Regex::new(r"^(?P<W>\d+)\D(?P<H>\d+)(?:\D?(?P<X>\d+)\D(?P<Y>\d+))?$").unwrap();
 
 		let mut crop = Self::default();
 
 		let groups: Captures = match re.captures(crop_str) {
-			None => { return crop; }
+			None => { return None; }
 			Some(captures) => captures
 		};
 
@@ -107,7 +102,7 @@ impl Crop {
 			crop.y = y.as_str().parse::<u64>().unwrap_or_default();
 		}
 
-		crop
+		Some(crop)
 	}
 }
 
