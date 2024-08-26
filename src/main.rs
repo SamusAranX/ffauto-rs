@@ -10,7 +10,6 @@ mod vec_push_ext;
 
 fn main() -> ExitCode {
     let args = ProgramArgs::parse();
-    println!("{:?}", &args);
 
     match ffmpeg(&args) {
         Ok(_) => { ExitCode::SUCCESS }

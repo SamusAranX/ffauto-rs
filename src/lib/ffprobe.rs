@@ -4,13 +4,20 @@ use std::process::{Command, Stdio};
 
 use crate::ffprobe_struct::{FFProbeOutput, Stream};
 
-pub fn ffprobe(input: &Path) -> Result<Vec<Stream>, Error> {
+pub fn ffprobe(input: &Path, count_frames: bool) -> Result<Vec<Stream>, Error> {
+	let mut ffprobe_args: Vec<String> = vec![
+		"-i".to_string(), input.to_str().unwrap().to_string(),
+		"-hide_banner".to_string(),
+		"-loglevel".to_string(), "quiet".to_string(),
+		"-print_format".to_string(), "json".to_string(),
+		"-show_streams".to_string()
+	];
+	if count_frames {
+		ffprobe_args.push("-count_frames".to_string());
+	}
+
 	let ffprobe = Command::new("ffprobe")
-		.arg("-i").arg(input.to_str().unwrap())
-		.arg("-hide_banner")
-		.arg("-loglevel").arg("quiet")
-		.arg("-print_format").arg("json")
-		.arg("-show_streams")
+		.args(ffprobe_args)
 		.stdout(Stdio::piped())
 		.spawn().expect("failed to run ffprobe");
 

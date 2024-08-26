@@ -1,3 +1,5 @@
+use std::io;
+use std::io::Write;
 use std::process::Command;
 use std::time::Instant;
 
@@ -13,7 +15,7 @@ use ffauto_rs::timestamps::parse_ffmpeg_timestamp;
 pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 	let start = Instant::now();
 
-	let probe = ffprobe(&args.input).expect("welp");
+	let probe = ffprobe(&args.input, false).expect("welp");
 	// println!("ffprobe: {:?}", probe);
 
 	let first_audio_stream = probe.iter().find(|s| s.codec_type == Audio);
@@ -24,7 +26,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 	}
 
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
-	let video_stream_duration = video_stream.duration.expect("Can't read video stream duration").parse::<f64>().unwrap();
+	let video_stream_duration = video_stream.duration.clone().expect("Can't read video stream duration").parse::<f64>().unwrap();
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -92,9 +94,6 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 					audio_filter.push(format!("volume={:.3}", args.audio_volume));
 				}
 
-				// 	filter_afadein = f"afade=t=in:st={fadein_start}:d={args.fadein}:curve=losi" if args.fadein else None
-				// 	filter_afadeout = f"afade=t=out:st={fadeout_start}:d={args.fadeout}:curve=losi" if args.fadeout else None
-
 				if fade_in > 0.0 {
 					audio_filter.push(format!("afade=t=in:st=0:d={fade_in:.3}:curve=losi"));
 				}
@@ -102,7 +101,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 					audio_filter.push(format!("afade=t=out:st={fade_out_start:.3}:d={fade_out:.3}:curve=losi"));
 				}
 
-				let audio_filter_str = audio_filter.join(":");
+				let audio_filter_str = audio_filter.join(",");
 				ffmpeg_args.push_str("-af");
 				ffmpeg_args.push(audio_filter_str);
 			}
@@ -139,6 +138,9 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 		let mut video_filter: Vec<String> = vec![];
 
 		if let Some(fps) = args.framerate {
+			// let video_fps = video_stream.frame_rate().unwrap();
+			// let frames = (video_fps / fps).round() as i64;
+			// video_filter.push(format!("tmix=frames={frames}"));
 			video_filter.push(format!("fps=fps={:.3}", fps));
 		}
 
@@ -160,13 +162,13 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 		}
 
 		if fade_in > 0.0 {
-			video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}:curve=losi"));
+			video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
 		}
 		if fade_out > 0.0 {
-			video_filter.push(format!("fade=t=out:st={fade_out_start:.3}:d={fade_out:.3}:curve=losi"));
+			video_filter.push(format!("fade=t=out:st={fade_out_start:.3}:d={fade_out:.3}"));
 		}
 
-		let video_filter_str = video_filter.join(":");
+		let video_filter_str = video_filter.join(",");
 		ffmpeg_args.push_str("-vf");
 		ffmpeg_args.push(video_filter_str);
 	}
@@ -175,7 +177,17 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	println!("ffmpeg args: {}", ffmpeg_args.join(" "));
+	if args.debug {
+		println!("{:#^40}", " DEBUG MODE ");
+		println!("ffmpeg args: {:?}", args);
+		println!("ffmpeg args: {}", ffmpeg_args.join(" "));
+		let mut stdout = io::stdout();
+		let stdin = io::stdin();
+		write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();
+		stdout.flush().unwrap();
+		let _ = stdin.read_line(&mut "".to_string()).unwrap();
+		writeln!(stdout, "Continuing…").unwrap();
+	}
 
 	let mut ffmpeg = Command::new("ffmpeg")
 		.args(ffmpeg_args)
@@ -187,10 +199,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 	}
 
 	let execution_time = start.elapsed();
-
 	println!("Encoding took {:.2}s!", execution_time.as_secs_f64());
-
-	// let output: FFProbeOutput = serde_json::from_str(stdout.as_str()).expect("failed to deserialize ffprobe output");
 
 	Ok(())
 }

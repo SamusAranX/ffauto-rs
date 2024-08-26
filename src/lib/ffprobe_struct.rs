@@ -32,4 +32,26 @@ pub struct Stream {
 	pub channels: Option<u64>,
 	pub bit_rate: Option<String>,
 	pub duration: Option<String>,
+	pub nb_read_frames: Option<u64>,
+}
+
+impl Stream {
+	pub fn frame_rate(&self) -> Option<f64> {
+		match &self.r_frame_rate {
+			None => { return None; }
+			Some(fps) => {
+				if fps.contains("/") {
+					if let Some(split) = fps.split_once("/") {
+						let left = split.0.parse::<f64>().unwrap();
+						let right = split.1.parse::<f64>().unwrap();
+						return Some(left/right);
+					}
+				} else {
+					return fps.parse::<f64>().ok();
+				}
+			}
+		}
+
+		None
+	}
 }
