@@ -26,7 +26,7 @@ where I: IntoIterator<Item=S>, S: AsRef<OsStr> {
 		}
 	}
 
-	return string;
+	string
 }
 
 fn main() {

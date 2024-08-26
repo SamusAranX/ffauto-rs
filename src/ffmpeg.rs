@@ -24,11 +24,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 	}
 
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
-
-	// TODO: ffmpeg args builder
-
-	let start_time = parse_ffmpeg_timestamp(&args.seek.clone().unwrap_or_default()).unwrap();
-	let video_stream_duration = &video_stream.duration.expect("Can't read video stream duration").parse::<f64>().unwrap();
+	let video_stream_duration = video_stream.duration.expect("Can't read video stream duration").parse::<f64>().unwrap();
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -119,11 +115,11 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 
 	let crf = format!("{}", &args.video_codec.crf_with_garbage(args.garbage));
 	ffmpeg_args.push_str("-c:v");
-	ffmpeg_args.push_str(&args.video_codec.video_codec());
+	ffmpeg_args.push_str(args.video_codec.video_codec());
 	ffmpeg_args.push_str("-crf");
 	ffmpeg_args.push_str(&crf);
 	ffmpeg_args.push_str("-pix_fmt");
-	ffmpeg_args.push_str(&args.video_codec.pix_fmt());
+	ffmpeg_args.push_str(args.video_codec.pix_fmt());
 	ffmpeg_args.push_str("-tune");
 	match args.video_codec {
 		VideoCodec::H264 => { ffmpeg_args.push_str("film"); }

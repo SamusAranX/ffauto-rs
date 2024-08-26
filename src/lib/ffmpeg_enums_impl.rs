@@ -75,9 +75,7 @@ impl VideoCodec {
 	}
 
 	pub fn crf_with_garbage(&self, garbage: u8) -> u8 {
-		match self {
-			_ => (self.default_crf() + (garbage * 3)).clamp(0, 51),
-		}
+		(self.default_crf() + (garbage * 3)).clamp(0, 51)
 	}
 }
 

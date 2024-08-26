@@ -1,10 +1,10 @@
 use std::io::Error;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::ffprobe_struct::{FFProbeOutput, Stream};
 
-pub fn ffprobe(input: &PathBuf) -> Result<Vec<Stream>, Error> {
+pub fn ffprobe(input: &Path) -> Result<Vec<Stream>, Error> {
 	let ffprobe = Command::new("ffprobe")
 		.arg("-i").arg(input.to_str().unwrap())
 		.arg("-hide_banner")

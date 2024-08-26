@@ -5,10 +5,7 @@ use regex::{Captures, Regex};
 /// Takes an ffmpeg-esque timestamp and parses it into a Duration.
 /// Invalid input will return [Duration::ZERO].
 pub fn parse_ffmpeg_timestamp(timestamp: &str) -> Option<Duration> {
-	match timestamp.parse::<f64>() {
-		Ok(f) => { return Some(Duration::from_secs_f64(f)) }
-		_ => {}
-	}
+	if let Ok(f) = timestamp.parse::<f64>() { return Some(Duration::from_secs_f64(f)) }
 
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
