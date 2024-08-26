@@ -121,3 +121,29 @@ impl fmt::Display for Crop {
 		write!(f, "{crop_str}")
 	}
 }
+
+impl fmt::Display for StatsMode {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			StatsMode::Full => write!(f, "full"),
+			StatsMode::Diff => write!(f, "diff"),
+			StatsMode::Single => write!(f, "single"),
+		}
+	}
+}
+
+impl fmt::Display for DitherMode {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self {
+			DitherMode::Bayer => write!(f, "bayer"),
+			DitherMode::Heckbert => write!(f, "heckbert"),
+			DitherMode::FloydSteinberg => write!(f, "floyd_steinberg"),
+			DitherMode::Sierra2 => write!(f, "sierra2"),
+			DitherMode::Sierra2_4a => write!(f, "sierra2-4a"),
+			DitherMode::Sierra3 => write!(f, "sierra3"),
+			DitherMode::Burkes => write!(f, "burkes"),
+			DitherMode::Atkinson => write!(f, "atkinson"),
+			DitherMode::None => write!(f, "none"),
+		}
+	}
+}

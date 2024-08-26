@@ -1,12 +1,16 @@
 [package]
 name = "ffauto-rs"
-version = "1.0.0"
+version = "1.1.0"
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2021"
 rust-version = "1.80"
 
 [lib]
 path = "src/lib/mod.rs"
+
+[[bin]]
+name = "ff"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.86"

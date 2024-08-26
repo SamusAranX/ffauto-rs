@@ -44,7 +44,7 @@ impl Stream {
 					if let Some(split) = fps.split_once("/") {
 						let left = split.0.parse::<f64>().unwrap();
 						let right = split.1.parse::<f64>().unwrap();
-						return Some(left/right);
+						return Some(left / right);
 					}
 				} else {
 					return fps.parse::<f64>().ok();

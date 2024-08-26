@@ -1,18 +1,17 @@
-use std::io;
-use std::io::Write;
-use std::process::Command;
-use std::time::Instant;
-
-use crate::args::ProgramArgs;
+use crate::cmd::handle_seek_and_duration;
+use crate::commands::{AutoArgs, Cli};
 use crate::vec_push_ext::PushStrExt;
 use anyhow::anyhow;
 use anyhow::Result;
 use ffauto_rs::ffmpeg_enums::{Crop, VideoCodec};
 use ffauto_rs::ffprobe::ffprobe;
-use ffauto_rs::ffprobe_struct::StreamType::*;
-use ffauto_rs::timestamps::parse_ffmpeg_timestamp;
+use ffauto_rs::ffprobe_struct::StreamType::{Audio, Video};
+use std::io;
+use std::io::Write;
+use std::process::Command;
+use std::time::Instant;
 
-pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
+pub fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	let start = Instant::now();
 
 	let probe = ffprobe(&args.input, false).expect("welp");
@@ -34,31 +33,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	if let Some(ss) = &args.seek {
-		ffmpeg_args.push_str("-ss");
-		ffmpeg_args.push(format!("{}", parse_ffmpeg_timestamp(ss).unwrap_or_default().as_secs_f64()));
-	}
-
-	ffmpeg_args.push_str("-i");
-	ffmpeg_args.push(args.input.to_str().unwrap().to_string());
-
-	if let Some(t) = &args.duration {
-		match parse_ffmpeg_timestamp(t) {
-			Some(t) => {
-				ffmpeg_args.push_str("-t");
-				ffmpeg_args.push(format!("{}", t.as_secs_f64()));
-			}
-			None => { eprintln!("invalid duration string: {t}") }
-		}
-	} else if let Some(to) = &args.duration_to {
-		match parse_ffmpeg_timestamp(to) {
-			Some(to) => {
-				ffmpeg_args.push_str("-to");
-				ffmpeg_args.push(format!("{}", to.as_secs_f64()));
-			}
-			None => { eprintln!("invalid duration string: {to}") }
-		}
-	}
+	handle_seek_and_duration(&mut ffmpeg_args, &args.input, &cli.seek, &args.duration, &args.duration_to);
 
 	ffmpeg_args.push_str("-preset");
 	ffmpeg_args.push(args.preset.to_string());
@@ -134,7 +109,7 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 		ffmpeg_args.push_str("faststart");
 	}
 
-	if args.needs_video_filter() {
+	if args.needs_video_filter(cli) {
 		let mut video_filter: Vec<String> = vec![];
 
 		if let Some(fps) = args.framerate {
@@ -144,14 +119,14 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 			video_filter.push(format!("fps=fps={:.3}", fps));
 		}
 
-		if let Some(crop) = Crop::new(&args.crop.clone().unwrap_or_default()) {
+		if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
 			video_filter.push(format!("crop={crop}"));
 		}
 
-		if let Some(width) = args.width {
-			video_filter.push(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", args.scale_mode));
-		} else if let Some(height) = args.height {
-			video_filter.push(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", args.scale_mode));
+		if let Some(width) = cli.width {
+			video_filter.push(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
+		} else if let Some(height) = cli.height {
+			video_filter.push(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
 		}
 
 		let color_transfer = video_stream.color_transfer.unwrap_or_default();
@@ -177,9 +152,9 @@ pub fn ffmpeg(args: &ProgramArgs) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	if args.debug {
+	if cli.debug {
 		println!("{:#^40}", " DEBUG MODE ");
-		println!("ffmpeg args: {:?}", args);
+		println!("program args: {:?}", args);
 		println!("ffmpeg args: {}", ffmpeg_args.join(" "));
 		let mut stdout = io::stdout();
 		let stdin = io::stdin();
