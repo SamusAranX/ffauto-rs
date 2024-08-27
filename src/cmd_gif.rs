@@ -22,7 +22,7 @@ pub fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
-		"-loglevel".to_string(), "warning".to_string(),
+		"-loglevel".to_string(), "error".to_string(),
 		"-y".to_string(),
 	];
 
@@ -58,6 +58,16 @@ pub fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
 	}
 
+	// TODO: why are these not working properly
+	// convert frames to srgb
+	// video_filter.push_str("colorspace=all=bt709:trc=iec61966-2-1:primaries=bt709:range=pc:format=yuv444p");
+	// if video_stream.color_range == Some("tv".to_string()) {
+	// 	video_filter.push_str("scale=in_range=tv:out_range=pc");
+	// }
+
+	video_filter.push(format!("eq=brightness={}:saturation={}:contrast={}", args.brightness, args.saturation, args.contrast));
+	video_filter.push(format!("unsharp=la={0}:ca={0}", args.sharpness));
+
 	if fade_in > 0.0 {
 		video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
 	}
@@ -80,6 +90,16 @@ pub fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	ffmpeg_args.push(filter_complex);
 
 	// endregion
+
+	// TODO: see TODO above
+	// ffmpeg_args.push_str("-color_primaries");
+	// ffmpeg_args.push_str("bt709");
+	// ffmpeg_args.push_str("-color_trc");
+	// ffmpeg_args.push_str("iec61966_2_1");
+	// ffmpeg_args.push_str("-colorspace");
+	// ffmpeg_args.push_str("rgb");
+	// ffmpeg_args.push_str("-color_range");
+	// ffmpeg_args.push_str("pc");
 
 	ffmpeg_args.push_str("-f");
 	ffmpeg_args.push_str("gif");
