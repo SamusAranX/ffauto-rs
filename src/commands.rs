@@ -137,11 +137,20 @@ pub struct GIFArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct QuantizeArgs {
+pub struct QuantArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
 	#[arg(help = "The output file")]
 	pub output: PathBuf,
+
+	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", default_value_t = 0.0)]
+	pub brightness: f64,
+	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", default_value_t = 1.0)]
+	pub contrast: f64,
+	#[arg(long, help = "Affects the output saturation, range [0.0;3.0]", default_value_t = 1.0)]
+	pub saturation: f64,
+	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", default_value_t = 0.0)]
+	pub sharpness: f64,
 
 	#[arg(short = 'n', help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
 	pub num_colors: u16,
@@ -161,5 +170,5 @@ pub enum Commands {
 	Gif(GIFArgs),
 
 	#[command(about = "Uses ffmpeg to quantize still images")]
-	Quantize(QuantizeArgs),
+	Quant(QuantArgs),
 }

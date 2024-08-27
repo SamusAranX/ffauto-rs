@@ -1,4 +1,4 @@
-use crate::cmd::handle_seek_and_duration;
+use crate::cmd::{handle_duration, handle_seek};
 use crate::commands::{AutoArgs, Cli};
 use crate::vec_push_ext::PushStrExt;
 use anyhow::anyhow;
@@ -33,7 +33,8 @@ pub fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	handle_seek_and_duration(&mut ffmpeg_args, &args.input, &cli.seek, &args.duration, &args.duration_to);
+	handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
+	handle_duration(&mut ffmpeg_args, &cli.seek, &args.duration, &args.duration_to);
 
 	ffmpeg_args.push_str("-preset");
 	ffmpeg_args.push(args.preset.to_string());
