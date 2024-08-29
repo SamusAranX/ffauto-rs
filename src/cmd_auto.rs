@@ -11,7 +11,7 @@ use std::io::Write;
 use std::process::Command;
 use std::time::Instant;
 
-pub fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
+pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	let start = Instant::now();
 
 	let probe = ffprobe(&args.input, false).expect("welp");

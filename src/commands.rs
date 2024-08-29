@@ -14,7 +14,7 @@ const CLAP_VERSION: &str = formatcp!("{GIT_VERSION} [{GIT_BRANCH}, {GIT_HASH}, {
 
 #[derive(Parser, Debug)]
 #[command(version = CLAP_VERSION, about = "Wraps common ffmpeg workflows")]
-pub struct Cli {
+pub(crate) struct Cli {
 	#[command(subcommand)]
 	pub command: Option<Commands>,
 
@@ -36,7 +36,7 @@ pub struct Cli {
 }
 
 #[derive(Parser, Debug)]
-pub struct AutoArgs {
+pub(crate) struct AutoArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
 	#[arg(help = "The output file")]
@@ -77,23 +77,23 @@ pub struct AutoArgs {
 }
 
 impl AutoArgs {
-	pub fn audio_copy_possible(&self, input_codec_name: Option<String>) -> bool {
+	pub(crate) fn audio_copy_possible(&self, input_codec_name: Option<String>) -> bool {
 		!self.mute && input_codec_name == Some("aac".parse().unwrap()) && self.audio_volume == 1.0 &&
 			self.fade == 0.0 && self.fade_in == 0.0 && self.fade_out == 0.0
 	}
 
-	pub fn needs_audio_filter(&self) -> bool {
+	pub(crate) fn needs_audio_filter(&self) -> bool {
 		self.audio_volume != 1.0 || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0
 	}
 
-	pub fn needs_video_filter(&self, cli: &Cli) -> bool {
+	pub(crate) fn needs_video_filter(&self, cli: &Cli) -> bool {
 		cli.width.is_some() || cli.height.is_some() || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0 ||
 			cli.crop.is_some() || self.framerate.is_some() || self.tonemap
 	}
 }
 
 #[derive(Parser, Debug)]
-pub struct GIFArgs {
+pub(crate) struct GIFArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
 	#[arg(help = "The output file")]
@@ -114,11 +114,6 @@ pub struct GIFArgs {
 	#[arg(short = 'r', long, help = "Sets the output video frame rate.")]
 	pub framerate: Option<f64>,
 
-	#[arg(short = 'n', help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
-	pub num_colors: u16,
-	#[arg(long, help = "The statistics mode (palettegen)", default_value_t = StatsMode::default())]
-	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
-
 	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
 	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", allow_negative_numbers = true, default_value_t = 1.0)]
@@ -127,6 +122,14 @@ pub struct GIFArgs {
 	pub saturation: f64,
 	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
+
+	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
+	pub palette_file: Option<PathBuf>,
+	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
+	pub num_colors: u16,
+
+	#[arg(long, help = "The statistics mode (palettegen)", default_value_t = StatsMode::default())]
+	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
 
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
@@ -137,7 +140,7 @@ pub struct GIFArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct QuantArgs {
+pub(crate) struct QuantArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
 	#[arg(help = "The output file")]
@@ -152,7 +155,9 @@ pub struct QuantArgs {
 	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short = 'n', help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
+	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
+	pub palette_file: Option<PathBuf>,
+	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
 	pub num_colors: u16,
 
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
@@ -162,7 +167,7 @@ pub struct QuantArgs {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum Commands {
+pub(crate) enum Commands {
 	#[command(about = "Common ffmpeg wrapper")]
 	Auto(AutoArgs),
 

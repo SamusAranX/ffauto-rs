@@ -1,4 +1,4 @@
-use crate::cmd::handle_seek;
+use crate::cmd::{handle_seek, palette_to_ffmpeg};
 use crate::commands::{Cli, QuantArgs};
 use crate::vec_push_ext::PushStrExt;
 use anyhow::anyhow;
@@ -6,12 +6,13 @@ use anyhow::Result;
 use ffauto_rs::ffmpeg_enums::Crop;
 use ffauto_rs::ffprobe::ffprobe;
 use ffauto_rs::ffprobe_struct::StreamType::Video;
+use ffauto_rs::palettes::palette::Palette;
 use std::io;
 use std::io::Write;
 use std::process::Command;
 use std::time::Instant;
 
-pub fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
+pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let start = Instant::now();
 
 	let probe = ffprobe(&args.input, false).expect("welp");
@@ -49,13 +50,6 @@ pub fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
 	}
 
-	// TODO: why are these not working properly
-	// convert frames to srgb
-	// video_filter.push_str("colorspace=all=bt709:trc=iec61966-2-1:primaries=bt709:range=pc:format=yuv444p");
-	// if video_stream.color_range == Some("tv".to_string()) {
-	// 	video_filter.push_str("scale=in_range=tv:out_range=pc");
-	// }
-
 	video_filter.push(format!("eq=brightness={}:saturation={}:contrast={}", args.brightness, args.saturation, args.contrast));
 	video_filter.push(format!("unsharp=la={0}:ca={0}", args.sharpness));
 
@@ -63,25 +57,27 @@ pub fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 
 	ffmpeg_args.push_str("-filter_complex");
 
-	let filter_complex = [
-		format!("[0:v] {video_filter_str},split [a][b]"),
-		format!("[a] palettegen=max_colors={}:reserve_transparent=0 [pal]", args.num_colors),
-		format!("[b][pal] paletteuse=dither={}:bayer_scale={}", args.dither, args.bayer_scale),
-	].join(";");
+	let filter_complex = {
+		if let Some(palette_file) = &args.palette_file {
+			let pal = Palette::load_from_file(palette_file).map_err(|e| anyhow!(e))?;
+			let pal_string = palette_to_ffmpeg(pal);
+
+			[
+				format!("{pal_string} [pal]"),
+				format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={}:bayer_scale={}", args.dither, args.bayer_scale),
+			].join(";")
+		} else {
+			[
+				format!("[0:v] {video_filter_str},split [a][b]"),
+				format!("[a] palettegen=max_colors={}:reserve_transparent=0 [pal]", args.num_colors),
+				format!("[b][pal] paletteuse=dither={}:bayer_scale={}", args.dither, args.bayer_scale),
+			].join(";")
+		}
+	};
 
 	ffmpeg_args.push(filter_complex);
 
 	// endregion
-
-	// TODO: see TODO above
-	// ffmpeg_args.push_str("-color_primaries");
-	// ffmpeg_args.push_str("bt709");
-	// ffmpeg_args.push_str("-color_trc");
-	// ffmpeg_args.push_str("iec61966_2_1");
-	// ffmpeg_args.push_str("-colorspace");
-	// ffmpeg_args.push_str("rgb");
-	// ffmpeg_args.push_str("-color_range");
-	// ffmpeg_args.push_str("pc");
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
