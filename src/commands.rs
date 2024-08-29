@@ -119,13 +119,13 @@ pub struct GIFArgs {
 	#[arg(long, help = "The statistics mode (palettegen)", default_value_t = StatsMode::default())]
 	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
 
-	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", default_value_t = 0.0)]
+	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
-	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", default_value_t = 1.0)]
+	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", allow_negative_numbers = true, default_value_t = 1.0)]
 	pub contrast: f64,
 	#[arg(long, help = "Affects the output saturation, range [0.0;3.0]", default_value_t = 1.0)]
 	pub saturation: f64,
-	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", default_value_t = 0.0)]
+	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
@@ -143,13 +143,13 @@ pub struct QuantArgs {
 	#[arg(help = "The output file")]
 	pub output: PathBuf,
 
-	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", default_value_t = 0.0)]
+	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
-	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", default_value_t = 1.0)]
+	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", allow_negative_numbers = true, default_value_t = 1.0)]
 	pub contrast: f64,
 	#[arg(long, help = "Affects the output saturation, range [0.0;3.0]", default_value_t = 1.0)]
 	pub saturation: f64,
-	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", default_value_t = 0.0)]
+	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
 	#[arg(short = 'n', help = "The number of colors in the palette (palettegen)", default_value_t = 256)]

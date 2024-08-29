@@ -1,7 +1,7 @@
 [package]
 name = "ffauto-rs"
-version = "1.3.0"
-repository = "https://github.com/SamusAranX/ffauto-rs"
+version = "1.3.1"
+repository = "https://git.emmalyx.dev/emma/ffauto-rs"
 edition = "2021"
 rust-version = "1.80"
 
@@ -11,6 +11,9 @@ path = "src/lib/mod.rs"
 [[bin]]
 name = "ff"
 path = "src/main.rs"
+
+[profile.release]
+debug = "line-tables-only"
 
 [dependencies]
 anyhow = "1.0.86"
