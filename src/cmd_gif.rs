@@ -10,7 +10,7 @@ use std::process::Command;
 use std::time::Instant;
 
 pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
-	let probe = ffprobe(&args.input, false).expect("welp");
+	let probe = ffprobe(&args.input, false)?;
 
 	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
@@ -37,7 +37,7 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	let mut video_filter: Vec<String> = vec![];
 
 	if let Some(fps) = args.framerate {
-		video_filter.push(format!("fps=fps={:.3}", fps));
+		video_filter.push(format!("fps=fps={fps:.3}"));
 	}
 
 	if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {

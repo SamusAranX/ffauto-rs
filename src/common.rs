@@ -59,7 +59,7 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	let mut all_sources = (0..color_sources.len()).map(|i| format!("[p{}]", i + 1)).collect::<Vec<String>>().join("");
 	if color_sources.len() < 256 {
 		let num_dummies = 256 - color_sources.len();
-		let all_dummies = (0..num_dummies).map(|i| format!("[dummy{}]", i + 1)).collect::<Vec<String>>().join("");
+		let all_dummies = (0..num_dummies).map(|i| format!("[d{}]", i + 1)).collect::<Vec<String>>().join("");
 		let source = format!("color=c={dummy_color}:r=1:s=1x1,format=rgb24,split={num_dummies} {all_dummies}");
 		color_sources.push(source);
 

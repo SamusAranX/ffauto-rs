@@ -10,7 +10,7 @@ use std::process::Command;
 use std::time::Instant;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
-	let probe = ffprobe(&args.input, false).expect("welp");
+	let probe = ffprobe(&args.input, false)?;
 
 	let first_audio_stream = probe.iter().find(|s| s.codec_type == Audio);
 	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
