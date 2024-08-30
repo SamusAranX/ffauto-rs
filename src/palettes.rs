@@ -107,7 +107,7 @@ pub enum BuiltInPalette {
 
 	// by Zughy
 	// https://twitter.com/_Zughy
-	Zughy32
+	Zughy32,
 }
 
 pub fn get_builtin_palette(pal: &BuiltInPalette) -> Palette {

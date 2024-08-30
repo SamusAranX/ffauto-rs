@@ -138,7 +138,7 @@ pub(crate) struct GIFArgs {
 	pub dither: DitherMode,
 	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
 	pub bayer_scale: u16,
-	#[arg(long, help = "Only reprocess the changed rectangle (Helps with noise and compression)")]
+	#[arg(long, help = "Only reprocess the changed rectangle (Helps with noise and compression) (paletteuse)")]
 	pub diff_rect: bool,
 }
 
