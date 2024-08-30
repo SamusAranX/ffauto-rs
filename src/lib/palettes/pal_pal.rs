@@ -2,7 +2,7 @@ use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
 use regex::{Captures, Regex};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
 // https://github.com/aseprite/aseprite/blob/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/src/doc/file/pal_file.cpp
@@ -11,11 +11,9 @@ const PAL_MAGIC: &str = "JASC-PAL";
 const PAL_VERSION: &str = "0100";
 
 impl Palette {
-	pub(crate) fn from_pal_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
+	fn from_pal_internal<R: Read + BufRead>(reader: &mut R) -> Result<Palette, PaletteError> {
 		let re = Regex::new(r"^(?P<r>\d+)\s+(?P<g>\d+)\s+(?P<b>\d+)$").unwrap();
 
-		let f = File::open(path)?;
-		let mut reader = BufReader::new(f);
 		let mut pal = Palette::default();
 
 		let mut magic = String::new();
@@ -72,5 +70,17 @@ impl Palette {
 		}
 
 		Ok(pal)
+	}
+
+	pub(crate) fn from_pal_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
+		let f = File::open(path)?;
+		let mut reader = BufReader::new(f);
+		Self::from_pal_internal(&mut reader)
+	}
+
+	pub fn from_pal_string<S: Into<String>>(s: S) -> Result<Palette, PaletteError> {
+		let s = s.into();
+		let mut reader = BufReader::new(s.as_bytes());
+		Self::from_pal_internal(&mut reader)
 	}
 }

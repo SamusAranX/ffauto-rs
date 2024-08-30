@@ -1,15 +1,13 @@
 use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
 // https://github.com/aseprite/aseprite/blob/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/src/doc/file/hex_file.cpp
 
 impl Palette {
-	pub(crate) fn from_hex_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
-		let f = File::open(path)?;
-		let reader = BufReader::new(f);
+	fn from_hex_internal<R: Read + BufRead>(reader: R) -> Result<Palette, PaletteError> {
 		let mut pal = Palette::default();
 
 		for (i, line) in reader.lines().enumerate() {
@@ -33,5 +31,17 @@ impl Palette {
 		}
 
 		Ok(pal)
+	}
+
+	pub(crate) fn from_hex_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
+		let f = File::open(path)?;
+		let reader = BufReader::new(f);
+		Self::from_hex_internal(reader)
+	}
+
+	pub fn from_hex_string<S: Into<String>>(s: S) -> Result<Palette, PaletteError> {
+		let s = s.into();
+		let mut reader = BufReader::new(s.as_bytes());
+		Self::from_hex_internal(&mut reader)
 	}
 }

@@ -1,8 +1,9 @@
+use crate::palettes::BuiltInPalette;
 use clap::ArgAction;
 use clap::Parser;
 use clap::Subcommand;
 use const_format::formatcp;
-use ffauto_rs::ffmpeg_enums::{DitherMode, Preset, ScaleMode, StatsMode, VideoCodec};
+use ffauto_rs::ffmpeg::enums::{DitherMode, Preset, ScaleMode, StatsMode, VideoCodec};
 use std::path::PathBuf;
 
 const GIT_HASH: &str = env!("GIT_HASH");
@@ -125,6 +126,8 @@ pub(crate) struct GIFArgs {
 
 	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
 	pub palette_file: Option<PathBuf>,
+	#[arg(short = 'P', long, group = "palette", help = "A built-in palette")]
+	pub palette_name: Option<BuiltInPalette>,
 	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
 	pub num_colors: u16,
 
@@ -157,6 +160,8 @@ pub(crate) struct QuantArgs {
 
 	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
 	pub palette_file: Option<PathBuf>,
+	#[arg(short = 'P', long, group = "palette", help = "A built-in palette")]
+	pub palette_name: Option<BuiltInPalette>,
 	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
 	pub num_colors: u16,
 

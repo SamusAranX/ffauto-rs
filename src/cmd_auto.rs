@@ -1,21 +1,16 @@
-use crate::cmd::{handle_duration, handle_seek};
 use crate::commands::{AutoArgs, Cli};
+use crate::common::{debug_pause, generate_scale_filter, handle_duration, handle_seek};
 use crate::vec_push_ext::PushStrExt;
 use anyhow::anyhow;
 use anyhow::Result;
-use ffauto_rs::ffmpeg_enums::{Crop, VideoCodec};
-use ffauto_rs::ffprobe::ffprobe;
-use ffauto_rs::ffprobe_struct::StreamType::{Audio, Video};
-use std::io;
-use std::io::Write;
+use ffauto_rs::ffmpeg::enums::{Crop, VideoCodec};
+use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::{Audio, Video};
 use std::process::Command;
 use std::time::Instant;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
-	let start = Instant::now();
-
 	let probe = ffprobe(&args.input, false).expect("welp");
-	// println!("ffprobe: {:?}", probe);
 
 	let first_audio_stream = probe.iter().find(|s| s.codec_type == Audio);
 	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
@@ -124,10 +119,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			video_filter.push(format!("crop={crop}"));
 		}
 
-		if let Some(width) = cli.width {
-			video_filter.push(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
-		} else if let Some(height) = cli.height {
-			video_filter.push(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
+		if let Some(scale) = generate_scale_filter(cli) {
+			video_filter.push(scale);
 		}
 
 		let color_transfer = video_stream.color_transfer.unwrap_or_default();
@@ -154,16 +147,10 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
 	if cli.debug {
-		println!("{:#^40}", " DEBUG MODE ");
-		println!("program args: {:?}", args);
-		println!("ffmpeg args: {}", ffmpeg_args.join(" "));
-		let mut stdout = io::stdout();
-		let stdin = io::stdin();
-		write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();
-		stdout.flush().unwrap();
-		let _ = stdin.read_line(&mut "".to_string()).unwrap();
-		writeln!(stdout, "Continuing…").unwrap();
+		debug_pause(args, &ffmpeg_args);
 	}
+
+	let start = Instant::now();
 
 	let mut ffmpeg = Command::new("ffmpeg")
 		.args(ffmpeg_args)

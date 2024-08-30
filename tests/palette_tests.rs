@@ -1,6 +1,7 @@
 use anyhow::Result;
 use ffauto_rs::palettes::palette::PaletteError::{InvalidBinaryData, InvalidTextData};
 use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
+use std::fs;
 use std::path::PathBuf;
 
 #[test]
@@ -21,6 +22,34 @@ fn palette_parsing() -> Result<()> {
 		} else {
 			assert_eq!(pal.len(), 64);
 		}
+
+		if palette_type == PaletteFormat::Gpl {
+			// the .gpl format supports names
+			let names = pal.colors.iter().cloned().map(|c| c.name).collect::<Vec<String>>();
+			assert!(names.iter().all(|n| n == "Untitled"));
+		}
+
+		assert_eq!(pal.colors[0].color.to_string(), "#1E3D54");
+		assert_eq!(pal.colors[63].color.to_string(), "#E2EDF5");
+	}
+
+	Ok(())
+}
+
+#[test]
+fn palette_parsing_from_string() -> Result<()> {
+	for palette_type in PaletteFormat::TEXT {
+		let mut test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+		test_file.push("tests");
+		test_file.push("palettes");
+		test_file.push(format!("palette.{palette_type}"));
+
+		println!("Testing {} from String…", palette_type.to_string().to_uppercase());
+
+		let pal_contents = fs::read_to_string(test_file).unwrap();
+		let pal = Palette::load_from_string(pal_contents, palette_type).unwrap();
+
+		assert_eq!(pal.len(), 64);
 
 		if palette_type == PaletteFormat::Gpl {
 			// the .gpl format supports names

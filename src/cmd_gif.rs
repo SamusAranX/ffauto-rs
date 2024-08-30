@@ -1,20 +1,15 @@
-use crate::cmd::{handle_duration, handle_seek, palette_to_ffmpeg};
 use crate::commands::{Cli, GIFArgs};
+use crate::common::{debug_pause, generate_full_filtergraph, generate_scale_filter, handle_duration, handle_seek};
 use crate::vec_push_ext::PushStrExt;
 use anyhow::anyhow;
 use anyhow::Result;
-use ffauto_rs::ffmpeg_enums::{Crop, StatsMode};
-use ffauto_rs::ffprobe::ffprobe;
-use ffauto_rs::ffprobe_struct::StreamType::Video;
-use ffauto_rs::palettes::palette::Palette;
-use std::io;
-use std::io::Write;
+use ffauto_rs::ffmpeg::enums::Crop;
+use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 use std::process::Command;
 use std::time::Instant;
 
 pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
-	let start = Instant::now();
-
 	let probe = ffprobe(&args.input, false).expect("welp");
 
 	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
@@ -49,10 +44,8 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push(format!("crop={crop}"));
 	}
 
-	if let Some(width) = cli.width {
-		video_filter.push(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
-	} else if let Some(height) = cli.height {
-		video_filter.push(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
+	if let Some(scale) = generate_scale_filter(cli) {
+		video_filter.push(scale);
 	}
 
 	let color_transfer = video_stream.color_transfer.unwrap_or_default();
@@ -71,30 +64,14 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	}
 
 	let video_filter_str = video_filter.join(",");
+	let filter_complex = generate_full_filtergraph(
+		true, video_filter_str,
+		&args.palette_file, &args.palette_name,
+		args.num_colors, &args.stats_mode, args.diff_rect,
+		&args.dither, args.bayer_scale,
+	)?;
 
 	ffmpeg_args.push_str("-filter_complex");
-
-	let diff_mode = if args.diff_rect { "rectangle" } else { "none" };
-	let new_palette = if args.stats_mode == StatsMode::Single { 1 } else { 0 };
-
-	let filter_complex = {
-		if let Some(palette_file) = &args.palette_file {
-			let pal = Palette::load_from_file(palette_file).map_err(|e| anyhow!(e))?;
-			let pal_string = palette_to_ffmpeg(pal);
-
-			[
-				format!("{pal_string} [pal]"),
-				format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", args.dither, args.bayer_scale),
-			].join(";")
-		} else {
-			[
-				format!("[0:v] {video_filter_str},split [a][b]"),
-				format!("[a] palettegen=max_colors={}:reserve_transparent=0:stats_mode={} [pal]", args.num_colors, args.stats_mode),
-				format!("[b][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", args.dither, args.bayer_scale),
-			].join(";")
-		}
-	};
-
 	ffmpeg_args.push(filter_complex);
 
 	// endregion
@@ -107,16 +84,10 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
 	if cli.debug {
-		println!("{:#^40}", " DEBUG MODE ");
-		println!("program args: {:?}", args);
-		println!("ffmpeg args: {}", ffmpeg_args.join(" "));
-		let mut stdout = io::stdout();
-		let stdin = io::stdin();
-		write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();
-		stdout.flush().unwrap();
-		let _ = stdin.read_line(&mut "".to_string()).unwrap();
-		writeln!(stdout, "Continuing…").unwrap();
+		debug_pause(args, &ffmpeg_args);
 	}
+
+	let start = Instant::now();
 
 	let mut ffmpeg = Command::new("ffmpeg")
 		.args(ffmpeg_args)

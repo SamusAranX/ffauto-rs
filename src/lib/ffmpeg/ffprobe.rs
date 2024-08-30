@@ -2,7 +2,7 @@ use std::io::Error;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::ffprobe_struct::{FFProbeOutput, Stream};
+use crate::ffmpeg::ffprobe_struct::{FFProbeOutput, Stream};
 
 pub fn ffprobe(input: &Path, count_frames: bool) -> Result<Vec<Stream>, Error> {
 	let mut ffprobe_args: Vec<String> = vec![

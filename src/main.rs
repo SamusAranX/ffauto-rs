@@ -9,8 +9,9 @@ mod cmd_auto;
 mod cmd_gif;
 mod cmd_quant;
 mod commands;
+mod common;
+mod palettes;
 mod vec_push_ext;
-mod cmd;
 
 fn main() -> ExitCode {
 	let cli = Cli::parse();

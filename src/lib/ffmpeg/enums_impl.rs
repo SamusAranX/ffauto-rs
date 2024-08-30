@@ -1,4 +1,4 @@
-use crate::ffmpeg_enums::*;
+use crate::ffmpeg::enums::*;
 use regex::{Captures, Regex};
 use std::fmt;
 

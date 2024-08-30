@@ -107,12 +107,32 @@ impl Palette {
 			_ => Err(PaletteError::InvalidFile),
 		}
 	}
+
+	pub fn load_from_string<S: Into<String>>(s: S, format: PaletteFormat) -> Result<Palette, PaletteError> {
+		match format {
+			PaletteFormat::Gpl => Self::from_gpl_string(s.into()),
+			PaletteFormat::Hex => Self::from_hex_string(s.into()),
+			PaletteFormat::Pal => Self::from_pal_string(s.into()),
+			_ => Err(PaletteError::UnsupportedFormat),
+		}
+	}
+}
+
+impl From<Vec<u32>> for Palette {
+	fn from(v: Vec<u32>) -> Self {
+		let mut pal = Palette::default();
+		for c in v {
+			pal.push_color(Color::from(c));
+		}
+		pal
+	}
 }
 
 #[derive(Debug)]
 pub enum PaletteError {
 	Empty,
 	TooManyColors,
+	UnsupportedFormat,
 	InvalidFile,
 	InvalidBinaryData { position: usize, msg: String },
 	InvalidTextData { line: usize, msg: String },
@@ -124,6 +144,7 @@ impl Display for PaletteError {
 		match self {
 			PaletteError::Empty => write!(f, "The loaded palette is empty"),
 			PaletteError::TooManyColors => write!(f, "The palette file contains more than 256 colors"),
+			PaletteError::UnsupportedFormat => write!(f, "Tried reading a binary format as text or vice versa, which is not supported"),
 			PaletteError::InvalidFile => write!(f, "Invalid file"),
 			PaletteError::InvalidBinaryData { position, msg } => write!(f, "Invalid data at byte {position:#X}: {msg}"),
 			PaletteError::InvalidTextData { line, msg } => write!(f, "Invalid data in line {line}: \"{msg}\""),
@@ -138,7 +159,7 @@ impl From<std::io::Error> for PaletteError {
 	}
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PaletteFormat {
 	AdobeAct, // .act
 	AnimatorProCol, // .col
@@ -149,6 +170,8 @@ pub enum PaletteFormat {
 
 impl PaletteFormat {
 	pub const VALUES: [Self; 5] = [Self::AdobeAct, Self::AnimatorProCol, Self::Gpl, Self::Hex, Self::Pal];
+	pub const BINARY: [Self; 2] = [Self::AdobeAct, Self::AnimatorProCol];
+	pub const TEXT: [Self; 3] = [Self::Gpl, Self::Hex, Self::Pal];
 }
 
 impl Display for PaletteFormat {
