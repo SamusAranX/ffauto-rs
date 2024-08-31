@@ -14,7 +14,6 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
-	let video_stream_duration = video_stream.duration.clone().expect("Can't read video stream duration").parse::<f64>().unwrap();
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -22,15 +21,15 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
-	handle_duration(&mut ffmpeg_args, &cli.seek, &args.duration, &args.duration_to);
+	let seek = handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
+	let duration = handle_duration(&mut ffmpeg_args, seek, &args.duration, &args.duration_to);
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
 	if args.fade != 0.0 {
 		fade_in = args.fade;
 		fade_out = args.fade;
 	}
-	let fade_out_start = video_stream_duration - fade_out;
+	let fade_out_start = duration - fade_out;
 
 	// region Video Filtering
 

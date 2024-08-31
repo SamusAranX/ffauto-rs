@@ -10,45 +10,52 @@ use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub(crate) fn handle_seek<P: AsRef<Path>>(ffmpeg_args: &mut Vec<String>, input: P, seek: &Option<String>) {
+/// Parses the seek option, then inserts the seek and input parameters into the ffmpeg_args vector.
+/// Returns the parsed seek value.
+pub(crate) fn handle_seek<P: AsRef<Path>>(ffmpeg_args: &mut Vec<String>, input: P, seek: &Option<String>) -> f64 {
+	let mut s = 0_f64;
 	if let Some(ss) = seek {
 		ffmpeg_args.push_str("-ss");
-		let s = parse_ffmpeg_timestamp(ss).unwrap_or_default().as_secs_f64();
+		s = parse_ffmpeg_timestamp(ss).unwrap_or_default().as_secs_f64();
 		ffmpeg_args.push(format!("{s}"));
 	}
 
 	ffmpeg_args.push_str("-i");
 	ffmpeg_args.push(input.as_ref().to_str().unwrap().to_string());
+
+	s
 }
 
-pub(crate) fn handle_duration(ffmpeg_args: &mut Vec<String>, seek: &Option<String>, duration: &Option<String>, duration_to: &Option<String>) {
-	let mut s = 0_f64;
-	if let Some(ss) = seek {
-		s = parse_ffmpeg_timestamp(ss).unwrap_or_default().as_secs_f64();
-	}
+/// Parses the duration, then inserts an appropriate -t <value> into the ffmpeg_args vector.
+/// Returns the parsed duration value.
+pub(crate) fn handle_duration(ffmpeg_args: &mut Vec<String>, seek: f64, duration: &Option<String>, duration_to: &Option<String>) -> f64 {
+	let mut dur = 0_f64;
 
 	if let Some(t) = duration {
 		match parse_ffmpeg_timestamp(t) {
 			Some(t) => {
+				dur = t.as_secs_f64();
 				ffmpeg_args.push_str("-t");
-				ffmpeg_args.push(format!("{}", t.as_secs_f64()));
+				ffmpeg_args.push(format!("{}", dur));
 			}
 			None => { eprintln!("invalid duration string: {t}") }
 		}
 	} else if let Some(to) = duration_to {
 		match parse_ffmpeg_timestamp(to) {
 			Some(to) => {
+				dur = to.as_secs_f64() - seek;
 				ffmpeg_args.push_str("-t");
-				ffmpeg_args.push(format!("{}", to.as_secs_f64() - s));
+				ffmpeg_args.push(format!("{}", dur));
 			}
 			None => { eprintln!("invalid duration string: {to}") }
 		}
 	}
+
+	dur
 }
 
 pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	let colors = pal.colors.iter().map(|e| e.color).collect::<Vec<Color>>();
-	let dummy_color = colors.last().unwrap().to_string();
 
 	let mut color_sources: Vec<String> = Vec::new();
 	for (color_idx, color) in colors.iter().enumerate() {
@@ -60,6 +67,7 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	if color_sources.len() < 256 {
 		let num_dummies = 256 - color_sources.len();
 		let all_dummies = (0..num_dummies).map(|i| format!("[d{}]", i + 1)).collect::<Vec<String>>().join("");
+		let dummy_color = colors.last().unwrap().to_string();
 		let source = format!("color=c={dummy_color}:r=1:s=1x1,format=rgb24,split={num_dummies} {all_dummies}");
 		color_sources.push(source);
 

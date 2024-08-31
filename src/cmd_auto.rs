@@ -20,7 +20,6 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	}
 
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
-	let video_stream_duration = video_stream.duration.clone().expect("Can't read video stream duration").parse::<f64>().unwrap();
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -28,8 +27,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
-	handle_duration(&mut ffmpeg_args, &cli.seek, &args.duration, &args.duration_to);
+	let seek = handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
+	let duration = handle_duration(&mut ffmpeg_args, seek, &args.duration, &args.duration_to);
 
 	ffmpeg_args.push_str("-preset");
 	ffmpeg_args.push(args.preset.to_string());
@@ -39,7 +38,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		fade_in = args.fade;
 		fade_out = args.fade;
 	}
-	let fade_out_start = video_stream_duration - fade_out;
+	let fade_out_start = duration - fade_out;
 
 	// region Audio Filtering
 
