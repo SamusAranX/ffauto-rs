@@ -133,7 +133,7 @@ pub(crate) fn generate_palette_filtergraph(
 			let mpdecimate = if dedup { ",mpdecimate" } else { "" };
 			Ok(
 				[
-					format!("[0:v] {video_filter_str}{mpdecimate},split [a][b]"),
+					format!("[0:v] {video_filter_str},setsar=1{mpdecimate},split [a][b]"),
 					format!("[a] palettegen=max_colors={}:reserve_transparent=0:stats_mode={} [pal]", num_colors, stats_mode),
 					format!("[b][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", dither, bayer_scale),
 				].join(";")
@@ -141,7 +141,7 @@ pub(crate) fn generate_palette_filtergraph(
 		} else {
 			Ok(
 				[
-					format!("[0:v] {video_filter_str},split [a][b]"),
+					format!("[0:v] {video_filter_str},setsar=1,split [a][b]"),
 					format!("[a] palettegen=max_colors={}:reserve_transparent=0 [pal]", num_colors),
 					format!("[b][pal] paletteuse=dither={}:bayer_scale={}", dither, bayer_scale),
 				].join(";")
