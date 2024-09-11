@@ -1,6 +1,8 @@
-use crate::ffmpeg::enums::*;
-use regex::{Captures, Regex};
 use std::fmt;
+
+use regex::{Captures, Regex};
+
+use crate::ffmpeg::enums::*;
 
 impl fmt::Display for ScaleMode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

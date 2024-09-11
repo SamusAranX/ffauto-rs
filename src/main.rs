@@ -1,12 +1,14 @@
+use std::fs;
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+use clap::Parser;
+use humansize::DECIMAL;
+
 use crate::cmd_auto::ffmpeg_auto;
 use crate::cmd_gif::ffmpeg_gif;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
-use clap::Parser;
-use humansize::DECIMAL;
-use std::fs;
-use std::path::PathBuf;
-use std::process::ExitCode;
 
 mod cmd_auto;
 mod cmd_gif;

@@ -1,13 +1,16 @@
-use crate::commands::{AutoArgs, Cli};
-use crate::common::{debug_pause, generate_scale_filter, handle_duration, handle_seek};
-use crate::vec_push_ext::PushStrExt;
+use std::process::Command;
+use std::time::Instant;
+
 use anyhow::anyhow;
 use anyhow::Result;
+
 use ffauto_rs::ffmpeg::enums::{Crop, VideoCodec};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::{Audio, Video};
-use std::process::Command;
-use std::time::Instant;
+
+use crate::commands::{AutoArgs, Cli};
+use crate::common::{debug_pause, generate_scale_filter, handle_duration, handle_seek};
+use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;

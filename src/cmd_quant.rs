@@ -1,13 +1,16 @@
-use crate::commands::{Cli, QuantArgs};
-use crate::common::{debug_pause, generate_full_filtergraph, generate_scale_filter, handle_seek};
-use crate::vec_push_ext::PushStrExt;
-use anyhow::anyhow;
-use anyhow::Result;
-use ffauto_rs::ffmpeg::enums::{Crop, StatsMode};
-use ffauto_rs::ffmpeg::ffprobe::ffprobe;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 use std::process::Command;
 use std::time::Instant;
+
+use anyhow::anyhow;
+use anyhow::Result;
+
+use ffauto_rs::ffmpeg::enums::StatsMode;
+use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
+
+use crate::commands::{Cli, QuantArgs};
+use crate::common::{add_basic_filters, add_palette_filters, debug_pause, generate_palette_filtergraph, handle_seek};
+use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
@@ -30,25 +33,14 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 
 	let mut video_filter: Vec<String> = vec![];
 
-	if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
-		video_filter.push(format!("crop={crop}"));
-	}
+	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default());
 
-	if let Some(scale) = generate_scale_filter(cli) {
-		video_filter.push(scale);
-	}
-
-	let color_transfer = video_stream.color_transfer.unwrap_or_default();
-	if color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67") {
-		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
-	}
-
-	video_filter.push(format!("eq=brightness={}:saturation={}:contrast={}", args.brightness, args.saturation, args.contrast));
-	video_filter.push(format!("unsharp=la={0}:ca={0}", args.sharpness));
+	add_palette_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	let video_filter_str = video_filter.join(",");
-	let filter_complex = generate_full_filtergraph(
-		true, video_filter_str,
+	let filter_complex = generate_palette_filtergraph(
+		true, false,
+		video_filter_str,
 		&args.palette_file, &args.palette_name,
 		args.num_colors, &StatsMode::default(), false,
 		&args.dither, args.bayer_scale,

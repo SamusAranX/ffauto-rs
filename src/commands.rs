@@ -1,10 +1,13 @@
-use crate::palettes::BuiltInPalette;
+use std::path::PathBuf;
+
 use clap::ArgAction;
 use clap::Parser;
 use clap::Subcommand;
 use const_format::formatcp;
+
 use ffauto_rs::ffmpeg::enums::{DitherMode, Preset, ScaleMode, StatsMode, VideoCodec};
-use std::path::PathBuf;
+
+use crate::palettes::BuiltInPalette;
 
 const GIT_HASH: &str = env!("GIT_HASH");
 const GIT_BRANCH: &str = env!("GIT_BRANCH");
@@ -19,7 +22,7 @@ pub(crate) struct Cli {
 	#[command(subcommand)]
 	pub command: Option<Commands>,
 
-	#[arg(long = "ss", global = true, help = "The start time offset")]
+	#[arg(short = 's', long, global = true, help = "The start time offset")]
 	pub seek: Option<String>,
 
 	#[arg(short, long, global = true, help = "Crops the output video. Format WxH or WxH,X;Y. (applied before scaling)")]
@@ -114,6 +117,8 @@ pub(crate) struct GIFArgs {
 
 	#[arg(short = 'r', long, help = "Sets the output video frame rate.")]
 	pub framerate: Option<f64>,
+	#[arg(short = 'd', long, help = "Attempts to deduplicate frames.")]
+	pub dedup: bool,
 
 	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,

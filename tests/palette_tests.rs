@@ -1,8 +1,10 @@
-use anyhow::Result;
-use ffauto_rs::palettes::palette::PaletteError::{InvalidBinaryData, InvalidTextData};
-use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
 use std::fs;
 use std::path::PathBuf;
+
+use anyhow::Result;
+
+use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
+use ffauto_rs::palettes::palette::PaletteError::{InvalidBinaryData, InvalidTextData};
 
 #[test]
 fn palette_parsing() -> Result<()> {

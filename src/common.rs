@@ -1,14 +1,17 @@
-use crate::commands::Cli;
-use crate::palettes::{get_builtin_palette, BuiltInPalette};
-use crate::vec_push_ext::PushStrExt;
-use anyhow::{anyhow, Result};
-use ffauto_rs::ffmpeg::enums::{DitherMode, StatsMode};
-use ffauto_rs::palettes::palette::{Color, Palette};
-use ffauto_rs::timestamps::parse_ffmpeg_timestamp;
 use std::fmt::Debug;
 use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
+
+use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
+use ffauto_rs::palettes::palette::{Color, Palette};
+use ffauto_rs::timestamps::parse_ffmpeg_timestamp;
+
+use crate::commands::Cli;
+use crate::palettes::{BuiltInPalette, get_builtin_palette};
+use crate::vec_push_ext::PushStrExt;
 
 /// Parses the seek option, then inserts the seek and input parameters into the ffmpeg_args vector.
 /// Returns the parsed seek value.
@@ -78,9 +81,45 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	color_sources.join(";")
 }
 
+pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) {
+	if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
+		video_filter.push(format!("crop={crop}"));
+	}
+
+	if let Some(scale) = generate_scale_filter(cli) {
+		video_filter.push(scale);
+	}
+
+	if color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67") {
+		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
+	}
+}
+
+pub(crate) fn add_palette_filters(video_filter: &mut Vec<String>, brightness: f64, contrast: f64, saturation: f64, sharpness: f64) {
+	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
+		let mut eq_args: Vec<String> = vec![];
+
+		if brightness != 0.0 {
+			eq_args.push(format!("brightness={}", brightness))
+		}
+		if contrast != 1.0 {
+			eq_args.push(format!("contrast={}", contrast))
+		}
+		if saturation != 1.0 {
+			eq_args.push(format!("saturation={}", saturation))
+		}
+
+		video_filter.push(format!("eq={}", eq_args.join(":")));
+	}
+
+	if sharpness != 0.0 {
+		video_filter.push(format!("unsharp=la={0}:ca={0}", sharpness));
+	}
+}
+
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn generate_full_filtergraph(
-	gif: bool,
+pub(crate) fn generate_palette_filtergraph(
+	gif: bool, dedup: bool,
 	video_filter_str: String,
 	palette_file: &Option<PathBuf>, palette_name: &Option<BuiltInPalette>,
 	num_colors: u16, stats_mode: &StatsMode, diff_rect: bool,
@@ -91,9 +130,10 @@ pub(crate) fn generate_full_filtergraph(
 
 	if palette_file.is_none() && palette_name.is_none() {
 		if gif {
+			let mpdecimate = if dedup { ",mpdecimate" } else { "" };
 			Ok(
 				[
-					format!("[0:v] {video_filter_str},split [a][b]"),
+					format!("[0:v] {video_filter_str}{mpdecimate},split [a][b]"),
 					format!("[a] palettegen=max_colors={}:reserve_transparent=0:stats_mode={} [pal]", num_colors, stats_mode),
 					format!("[b][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", dither, bayer_scale),
 				].join(";")
