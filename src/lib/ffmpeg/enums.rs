@@ -34,6 +34,12 @@ pub enum VideoCodec {
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
+pub struct Size {
+	pub width: u64,
+	pub height: u64,
+}
+
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Crop {
 	pub width: u64,
 	pub height: u64,

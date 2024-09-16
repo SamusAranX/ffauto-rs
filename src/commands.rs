@@ -32,6 +32,8 @@ pub(crate) struct Cli {
 	pub width: Option<u64>,
 	#[arg(long = "vh", group = "resize", global = true, help = "Sets the output video height, preserving aspect ratio.")]
 	pub height: Option<u64>,
+	#[arg(long = "vs", group = "resize", global = true, help = "Sets the output video size. Format WxH or an ffmpeg size name.")]
+	pub size: Option<String>,
 	#[arg(short = 'S', long, global = true, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
@@ -91,7 +93,7 @@ impl AutoArgs {
 	}
 
 	pub(crate) fn needs_video_filter(&self, cli: &Cli) -> bool {
-		cli.width.is_some() || cli.height.is_some() || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0 ||
+		cli.width.is_some() || cli.height.is_some() || cli.size.is_some() || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0 ||
 			cli.crop.is_some() || self.framerate.is_some() || self.tonemap
 	}
 }

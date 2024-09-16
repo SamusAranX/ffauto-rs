@@ -121,7 +121,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			video_filter.push(format!("crop={crop}"));
 		}
 
-		if let Some(scale) = generate_scale_filter(cli) {
+		let scale = generate_scale_filter(cli)?;
+		if !scale.is_empty() {
 			video_filter.push(scale);
 		}
 

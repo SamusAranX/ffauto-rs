@@ -33,7 +33,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 
 	let mut video_filter: Vec<String> = vec![];
 
-	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default());
+	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
 
 	add_palette_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 

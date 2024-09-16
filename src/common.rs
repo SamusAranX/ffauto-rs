@@ -4,10 +4,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
-
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
+use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
 use ffauto_rs::palettes::palette::{Color, Palette};
-use ffauto_rs::timestamps::parse_ffmpeg_timestamp;
+use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_timestamp;
 
 use crate::commands::Cli;
 use crate::palettes::{BuiltInPalette, get_builtin_palette};
@@ -81,18 +81,37 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	color_sources.join(";")
 }
 
-pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) {
+pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
+	if let Some(width) = cli.width {
+		return Ok(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
+	} else if let Some(height) = cli.height {
+		return Ok(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
+	} else if let Some(size) = &cli.size {
+		let size = parse_ffmpeg_size(size)?;
+		return Ok(
+			format!("scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp",
+			        size.width, size.height, cli.scale_mode)
+		)
+	}
+
+	Ok("".parse().unwrap())
+}
+
+pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) -> Result<()> {
 	if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
 		video_filter.push(format!("crop={crop}"));
 	}
 
-	if let Some(scale) = generate_scale_filter(cli) {
+	let scale = generate_scale_filter(cli)?;
+	if !scale.is_empty() {
 		video_filter.push(scale);
 	}
 
 	if color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67") {
 		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
 	}
+
+	Ok(())
 }
 
 pub(crate) fn add_palette_filters(video_filter: &mut Vec<String>, brightness: f64, contrast: f64, saturation: f64, sharpness: f64) {
@@ -183,16 +202,6 @@ pub(crate) fn generate_palette_filtergraph(
 			)
 		}
 	}
-}
-
-pub(crate) fn generate_scale_filter(cli: &Cli) -> Option<String> {
-	if let Some(width) = cli.width {
-		return Some(format!("scale=w={width}:h=-2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
-	} else if let Some(height) = cli.height {
-		return Some(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
-	}
-
-	None
 }
 
 pub(crate) fn debug_pause<D: Debug>(args: D, ffmpeg_args: &[String]) {

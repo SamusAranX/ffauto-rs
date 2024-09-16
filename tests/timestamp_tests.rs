@@ -1,4 +1,4 @@
-use ffauto_rs::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_timestamp};
+use ffauto_rs::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_timestamp};
 
 fn timestamp_data() -> Vec<(String, f64)> {
 	vec![

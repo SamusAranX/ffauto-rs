@@ -41,7 +41,7 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push(format!("fps=fps={fps:.3}"));
 	}
 
-	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default());
+	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
 
 	add_palette_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 

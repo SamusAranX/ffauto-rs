@@ -81,6 +81,12 @@ impl VideoCodec {
 	}
 }
 
+impl Size {
+	pub(crate) fn new(width: u64, height: u64) -> Self {
+		Size { width, height }
+	}
+}
+
 impl Crop {
 	pub fn new(crop_str: &str) -> Option<Self> {
 		let re = Regex::new(r"^(?P<W>\d+)\D(?P<H>\d+)(?:\D?(?P<X>\d+)\D(?P<Y>\d+))?$").unwrap();

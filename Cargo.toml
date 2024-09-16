@@ -1,6 +1,6 @@
 [package]
 name = "ffauto-rs"
-version = "1.4.5"
+version = "1.5.0"
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2021"
 rust-version = "1.80"
@@ -16,7 +16,7 @@ path = "src/main.rs"
 debug = "line-tables-only"
 
 [dependencies]
-anyhow = "1.0.87"
+anyhow = "1.0.89"
 byteorder = "1.5.0"
 clap = { version = "4.5.17", features = ["derive"] }
 const_format = "0.2.33"
