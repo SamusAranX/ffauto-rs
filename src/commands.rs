@@ -32,7 +32,7 @@ pub(crate) struct Cli {
 	pub width: Option<u64>,
 	#[arg(long = "vh", group = "resize", global = true, help = "Sets the output video height, preserving aspect ratio.")]
 	pub height: Option<u64>,
-	#[arg(long = "vs", group = "resize", global = true, help = "Sets the output video size. Format WxH or an ffmpeg size name.")]
+	#[arg(long = "vs", group = "resize", global = true, help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
 	pub size: Option<String>,
 	#[arg(short = 'S', long, global = true, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
