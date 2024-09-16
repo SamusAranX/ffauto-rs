@@ -6,11 +6,11 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Result};
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
 use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
-use ffauto_rs::palettes::palette::{Color, Palette};
 use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_timestamp;
+use ffauto_rs::palettes::palette::{Color, Palette};
 
 use crate::commands::Cli;
-use crate::palettes::{BuiltInPalette, get_builtin_palette};
+use crate::palettes::{get_builtin_palette, BuiltInPalette};
 use crate::vec_push_ext::PushStrExt;
 
 /// Parses the seek option, then inserts the seek and input parameters into the ffmpeg_args vector.
@@ -91,7 +91,7 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 		return Ok(
 			format!("scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp",
 			        size.width, size.height, cli.scale_mode)
-		)
+		);
 	}
 
 	Ok("".parse().unwrap())
@@ -144,63 +144,40 @@ pub(crate) fn generate_palette_filtergraph(
 	num_colors: u16, stats_mode: &StatsMode, diff_rect: bool,
 	dither: &DitherMode, bayer_scale: u16,
 ) -> Result<String> {
-	let diff_mode = if diff_rect { "rectangle" } else { "none" };
-	let new_palette = if stats_mode == &StatsMode::Single { 1 } else { 0 };
+	let mpdecimate = if gif && dedup { ",mpdecimate" } else { "" };
+	let bayer_scale = if dither == &DitherMode::Bayer { format!(":bayer_scale={bayer_scale}") } else { String::new() };
+	let diff_mode = if gif && diff_rect { ":diff_mode=rectangle" } else { "" };
+	let new = if gif && stats_mode == &StatsMode::Single { ":new=1" } else { "" };
 
-	if palette_file.is_none() && palette_name.is_none() {
-		if gif {
-			let mpdecimate = if dedup { ",mpdecimate" } else { "" };
-			Ok(
-				[
-					format!("[0:v] {video_filter_str},setsar=1{mpdecimate},split [a][b]"),
-					format!("[a] palettegen=max_colors={}:reserve_transparent=0:stats_mode={} [pal]", num_colors, stats_mode),
-					if *dither == DitherMode::Bayer {
-						format!("[b][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", dither, bayer_scale)
-					} else {
-						format!("[b][pal] paletteuse=dither={}:diff_mode={diff_mode}:new={new_palette}", dither)
-					}
-				].join(";")
-			)
-		} else {
-			Ok(
-				[
-					format!("[0:v] {video_filter_str},setsar=1,split [a][b]"),
-					format!("[a] palettegen=max_colors={}:reserve_transparent=0 [pal]", num_colors),
-					if *dither == DitherMode::Bayer {
-						format!("[b][pal] paletteuse=dither={}:bayer_scale={}", dither, bayer_scale)
-					} else {
-						format!("[b][pal] paletteuse=dither={}", dither)
-					}
-				].join(";")
-			)
-		}
-	} else {
-		let pal: Palette;
+	if palette_file.is_some() || palette_name.is_some() {
+		let pal_string: String;
 		if let Some(palette_file) = palette_file {
-			pal = Palette::load_from_file(palette_file).map_err(|e| anyhow!(e))?;
+			let pal = Palette::load_from_file(palette_file).map_err(|e| anyhow!(e))?;
+			pal_string = palette_to_ffmpeg(pal);
 		} else if let Some(palette_name) = palette_name {
-			pal = get_builtin_palette(palette_name);
+			let pal = get_builtin_palette(palette_name);
+			pal_string = palette_to_ffmpeg(pal);
 		} else {
 			return Err(anyhow!("This wasn't supposed to happen!"));
 		}
 
-		let pal_string = palette_to_ffmpeg(pal);
+		Ok(
+			[
+				format!("{pal_string} [pal]"),
+				format!("[0:v] {video_filter_str}{mpdecimate},setsar=1 [filtered];[filtered][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}"),
+			].join(";")
+		)
+	} else {
+		// no palette was given, so we'll use palettegen to create one
+		let stats_mode = if gif { format!(":stats_mode={stats_mode}") } else { String::new() };
 
-		if gif {
-			Ok(
-				[
-					format!("{pal_string} [pal]"),
-					format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={}:bayer_scale={}:diff_mode={diff_mode}:new={new_palette}", dither, bayer_scale),
-				].join(";")
-			)
-		} else {
-			Ok(
-				[
-					format!("{pal_string} [pal]"),
-					format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={}:bayer_scale={}", dither, bayer_scale),
-				].join(";")
-			)
-		}
+		Ok(
+			[
+				format!("[0:v] {video_filter_str}{mpdecimate},setsar=1,split [a][b]"),
+				format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0{stats_mode} [pal]"),
+				format!("[b][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}{new}"),
+			].join(";")
+		)
 	}
 }
 

@@ -3,9 +3,19 @@ use std::path::PathBuf;
 
 use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
 
+const FILE_FORMATS: [PaletteFormat; 6] = [
+	PaletteFormat::AdobeAct,
+	PaletteFormat::AnimatorProCol,
+	PaletteFormat::Gpl,
+	PaletteFormat::Hex,
+	PaletteFormat::Json,
+	PaletteFormat::Pal
+];
+const TEXT_FORMATS: [PaletteFormat; 4] = [PaletteFormat::Gpl, PaletteFormat::Hex, PaletteFormat::Json, PaletteFormat::Pal];
+
 #[test]
 fn palette_parsing() {
-	for palette_type in PaletteFormat::VALUES {
+	for palette_type in FILE_FORMATS {
 		let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 			.join(format!("tests/palettes/palette.{palette_type}"));
 
@@ -33,7 +43,7 @@ fn palette_parsing() {
 
 #[test]
 fn palette_parsing_from_string() {
-	for palette_type in PaletteFormat::TEXT {
+	for palette_type in TEXT_FORMATS {
 		let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 			.join(format!("tests/palettes/palette.{palette_type}"));
 

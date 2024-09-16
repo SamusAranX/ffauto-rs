@@ -70,8 +70,10 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "fo", help = "Sets the fade out duration.", default_value_t = 0.0)]
 	pub fade_out: f64,
 
-	#[arg(short = 'r', long, help = "Sets the output video frame rate.")]
+	#[arg(short = 'r', long, group = "framerates", help = "Sets the output video frame rate.")]
 	pub framerate: Option<f64>,
+	#[arg(short = 'R', long, group = "framerates", help = "Sets the output video frame rate to a factor of the input video frame rate.")]
+	pub framerate_mult: Option<f64>,
 
 	#[arg(short = 'C', long = "codec", help = "The video codec", default_value_t = VideoCodec::default())]
 	pub video_codec: VideoCodec,
@@ -117,9 +119,12 @@ pub(crate) struct GIFArgs {
 	#[arg(long = "fo", help = "Sets the fade out duration.", default_value_t = 0.0)]
 	pub fade_out: f64,
 
-	#[arg(short = 'r', long, help = "Sets the output video frame rate.")]
+	#[arg(short = 'r', long, group = "framerates", help = "Sets the output video frame rate.")]
 	pub framerate: Option<f64>,
-	#[arg(short = 'd', long, help = "Attempts to deduplicate frames.")]
+	#[arg(short = 'R', long, group = "framerates", help = "Sets the output video frame rate to a factor of the input video frame rate.")]
+	pub framerate_mult: Option<f64>,
+
+	#[arg(long, help = "Attempts to deduplicate frames.")]
 	pub dedup: bool,
 
 	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
@@ -165,7 +170,7 @@ pub(crate) struct QuantArgs {
 	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
+	#[arg(short, long, group = "palette", help = "A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format")]
 	pub palette_file: Option<PathBuf>,
 	#[arg(short = 'P', long, group = "palette", help = "A built-in palette")]
 	pub palette_name: Option<BuiltInPalette>,

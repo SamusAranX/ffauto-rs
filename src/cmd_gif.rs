@@ -39,6 +39,8 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	if let Some(fps) = args.framerate {
 		video_filter.push(format!("fps=fps={fps:.3}"));
+	} else if let (Some(fps_mult), Some(fps)) = (args.framerate_mult, video_stream.frame_rate()) {
+		video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
 	}
 
 	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
@@ -67,8 +69,8 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	// endregion
 
 	if args.dedup {
-		ffmpeg_args.push_str("-vsync");
-		ffmpeg_args.push_str("0");
+		ffmpeg_args.push_str("-fps_mode");
+		ffmpeg_args.push_str("vfr");
 	}
 	ffmpeg_args.push_str("-f");
 	ffmpeg_args.push_str("gif");

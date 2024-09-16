@@ -183,12 +183,6 @@ pub enum PaletteFormat {
 	Pal, // .pal
 }
 
-impl PaletteFormat {
-	pub const VALUES: [Self; 6] = [Self::AdobeAct, Self::AnimatorProCol, Self::Gpl, Self::Hex, Self::Json, Self::Pal];
-	pub const BINARY: [Self; 2] = [Self::AdobeAct, Self::AnimatorProCol];
-	pub const TEXT: [Self; 4] = [Self::Gpl, Self::Hex, Self::Json, Self::Pal];
-}
-
 impl Display for PaletteFormat {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {

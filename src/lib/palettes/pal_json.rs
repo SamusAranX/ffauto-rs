@@ -8,7 +8,7 @@ use crate::palettes::MAX_PALETTE_COLORS;
 impl Palette {
 	fn from_json_internal<R: Read + BufRead>(reader: R) -> Result<Palette, PaletteError> {
 		let colors: Vec<String> = serde_json::from_reader(reader)
-			.map_err(|_| { return PaletteError::InvalidFile; })?;
+			.map_err(|_| { PaletteError::InvalidFile })?;
 
 		if colors.len() > MAX_PALETTE_COLORS {
 			return Err(PaletteError::TooManyColors);
@@ -16,13 +16,13 @@ impl Palette {
 
 		let colors = colors.iter().enumerate().map(|(i, c)| {
 			let trimmed = c.trim();
-			let stripped = trimmed.strip_prefix("0x").unwrap_or(&trimmed);
-			let stripped = stripped.strip_prefix("#").unwrap_or(&stripped);
+			let stripped = trimmed.strip_prefix("0x").unwrap_or(trimmed);
+			let stripped = stripped.strip_prefix("#").unwrap_or(stripped);
 
 			let parsed_int = u32::from_str_radix(stripped, 16)
 				.map_err(|_| PaletteError::InvalidJsonEntry {
 					index: i,
-					msg: format!("\"{stripped}\" is not a valid hexadecimal color value")
+					msg: format!("\"{stripped}\" is not a valid hexadecimal color value"),
 				})?;
 
 			Ok(Color::from(parsed_int))

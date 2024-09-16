@@ -1,6 +1,6 @@
 use crate::ffmpeg::enums::Size;
-use regex::{Captures, Regex};
 use anyhow::{anyhow, Result};
+use regex::{Captures, Regex};
 
 pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 	let size: String = size.into();
@@ -65,7 +65,7 @@ pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 
 		_ => {
 			let re = Regex::new(r"^(?P<W>\d+)x(?P<H>\d+)$").unwrap();
-			let groups: Captures = match re.captures(&*size) {
+			let groups: Captures = match re.captures(&size) {
 				None => { return Err(anyhow!("Invalid size string \"{size}\" provided")) }
 				Some(captures) => captures
 			};

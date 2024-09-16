@@ -111,10 +111,9 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		let mut video_filter: Vec<String> = vec![];
 
 		if let Some(fps) = args.framerate {
-			// let video_fps = video_stream.frame_rate().unwrap();
-			// let frames = (video_fps / fps).round() as i64;
-			// video_filter.push(format!("tmix=frames={frames}"));
-			video_filter.push(format!("fps=fps={:.3}", fps));
+			video_filter.push(format!("fps=fps={fps:.3}"));
+		} else if let (Some(fps_mult), Some(fps)) = (args.framerate_mult, video_stream.frame_rate()) {
+			video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
 		}
 
 		if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
