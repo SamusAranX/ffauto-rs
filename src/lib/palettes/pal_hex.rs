@@ -22,7 +22,7 @@ impl Palette {
 			let trimmed_line = trimmed_line.strip_prefix("#").unwrap_or(trimmed_line);
 
 			let parsed_int = u32::from_str_radix(trimmed_line, 16)
-				.map_err(|_| PaletteError::InvalidTextData { line: i, msg: "Not a hexadecimal color value".to_string() })?;
+				.map_err(|_| PaletteError::InvalidTextLine { line: i, msg: "Not a hexadecimal color value".to_string() })?;
 
 			pal.push_color(Color::from(parsed_int));
 
@@ -34,7 +34,7 @@ impl Palette {
 		Ok(pal)
 	}
 
-	pub(crate) fn from_hex_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
+	pub fn from_hex_file<P: AsRef<Path>>(path: P) -> Result<Palette, PaletteError> {
 		let f = File::open(path)?;
 		let reader = BufReader::new(f);
 		Self::from_hex_internal(reader)

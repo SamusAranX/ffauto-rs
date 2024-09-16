@@ -82,16 +82,16 @@ impl Palette {
 
 	fn guess_format<P: AsRef<Path>>(path: P) -> Option<PaletteFormat> {
 		let p = path.as_ref();
-		let ext = p.extension();
-		ext?;
+		let ext = p.extension()?
+			.to_str().unwrap()
+			.to_lowercase();
 
-		let ext = ext.unwrap().to_str().unwrap().to_lowercase();
-		let ext = ext.as_str();
-		match ext {
+		match ext.as_str() {
 			"act" => Some(PaletteFormat::AdobeAct),
 			"col" => Some(PaletteFormat::AnimatorProCol),
 			"gpl" => Some(PaletteFormat::Gpl),
 			"hex" => Some(PaletteFormat::Hex),
+			"json" => Some(PaletteFormat::Json),
 			"pal" => Some(PaletteFormat::Pal),
 			_ => None
 		}
@@ -103,6 +103,7 @@ impl Palette {
 			Some(PaletteFormat::AnimatorProCol) => Self::from_col_file(&path),
 			Some(PaletteFormat::Gpl) => Self::from_gpl_file(&path),
 			Some(PaletteFormat::Hex) => Self::from_hex_file(&path),
+			Some(PaletteFormat::Json) => Self::from_json_file(&path),
 			Some(PaletteFormat::Pal) => Self::from_pal_file(&path),
 			_ => Err(PaletteError::InvalidFile),
 		}
@@ -112,6 +113,7 @@ impl Palette {
 		match format {
 			PaletteFormat::Gpl => Self::from_gpl_string(s.into()),
 			PaletteFormat::Hex => Self::from_hex_string(s.into()),
+			PaletteFormat::Json => Self::from_json_string(s.into()),
 			PaletteFormat::Pal => Self::from_pal_string(s.into()),
 			_ => Err(PaletteError::UnsupportedFormat),
 		}
@@ -128,6 +130,16 @@ impl From<Vec<u32>> for Palette {
 	}
 }
 
+impl From<Vec<Color>> for Palette {
+	fn from(v: Vec<Color>) -> Self {
+		let mut pal = Palette::default();
+		for c in v {
+			pal.push_color(c);
+		}
+		pal
+	}
+}
+
 #[derive(Debug)]
 pub enum PaletteError {
 	Empty,
@@ -135,7 +147,8 @@ pub enum PaletteError {
 	UnsupportedFormat,
 	InvalidFile,
 	InvalidBinaryData { position: usize, msg: String },
-	InvalidTextData { line: usize, msg: String },
+	InvalidTextLine { line: usize, msg: String },
+	InvalidJsonEntry { index: usize, msg: String },
 	IoErr(std::io::Error),
 }
 
@@ -147,7 +160,8 @@ impl Display for PaletteError {
 			PaletteError::UnsupportedFormat => write!(f, "Tried reading a binary format as text or vice versa, which is not supported"),
 			PaletteError::InvalidFile => write!(f, "Invalid file"),
 			PaletteError::InvalidBinaryData { position, msg } => write!(f, "Invalid data at byte {position:#X}: {msg}"),
-			PaletteError::InvalidTextData { line, msg } => write!(f, "Invalid data in line {line}: \"{msg}\""),
+			PaletteError::InvalidTextLine { line, msg } => write!(f, "Invalid data in line {line}: {msg}"),
+			PaletteError::InvalidJsonEntry { index, msg } => write!(f, "Invalid JSON array item at index {index}: {msg}"),
 			PaletteError::IoErr(e) => write!(f, "io error: {e}"),
 		}
 	}
@@ -165,13 +179,14 @@ pub enum PaletteFormat {
 	AnimatorProCol, // .col
 	Gpl, // .gpl
 	Hex, // .hex
+	Json, // .json
 	Pal, // .pal
 }
 
 impl PaletteFormat {
-	pub const VALUES: [Self; 5] = [Self::AdobeAct, Self::AnimatorProCol, Self::Gpl, Self::Hex, Self::Pal];
+	pub const VALUES: [Self; 6] = [Self::AdobeAct, Self::AnimatorProCol, Self::Gpl, Self::Hex, Self::Json, Self::Pal];
 	pub const BINARY: [Self; 2] = [Self::AdobeAct, Self::AnimatorProCol];
-	pub const TEXT: [Self; 3] = [Self::Gpl, Self::Hex, Self::Pal];
+	pub const TEXT: [Self; 4] = [Self::Gpl, Self::Hex, Self::Json, Self::Pal];
 }
 
 impl Display for PaletteFormat {
@@ -181,6 +196,7 @@ impl Display for PaletteFormat {
 			PaletteFormat::AnimatorProCol => write!(f, "col"),
 			PaletteFormat::Gpl => write!(f, "gpl"),
 			PaletteFormat::Hex => write!(f, "hex"),
+			PaletteFormat::Json => write!(f, "json"),
 			PaletteFormat::Pal => write!(f, "pal"),
 		}
 	}
