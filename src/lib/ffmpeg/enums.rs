@@ -33,13 +33,13 @@ pub enum VideoCodec {
 	H265_10,
 }
 
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Size {
 	pub width: u64,
 	pub height: u64,
 }
 
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Crop {
 	pub width: u64,
 	pub height: u64,

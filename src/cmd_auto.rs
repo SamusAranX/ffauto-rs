@@ -116,7 +116,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
 		}
 
-		if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
+		if let Some(crop_str) = &cli.crop {
+			let crop = Crop::new(crop_str)?;
 			video_filter.push(format!("crop={crop}"));
 		}
 

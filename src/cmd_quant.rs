@@ -24,14 +24,30 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
+	// add input -t argument to ensure ffmpeg only reads one frame
+	ffmpeg_args.push_str("-t");
+	if let Some(fps) = video_stream.frame_rate() {
+		// if we know the input video's frame rate, we can accurately limit the number of read frames to just one
+		ffmpeg_args.push(format!("{}", 1.0/fps));
+	} else {
+		// else we just say "take the first second's worth of frames" and hope for the best
+		ffmpeg_args.push_str("1");
+	}
+
 	handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
 
-	ffmpeg_args.push_str("-frames");
+	ffmpeg_args.push_str("-an");
+	ffmpeg_args.push_str("-dn");
+	ffmpeg_args.push_str("-sn");
+	ffmpeg_args.push_str("-frames:v");
+	ffmpeg_args.push_str("1");
+	ffmpeg_args.push_str("-update");
 	ffmpeg_args.push_str("1");
 
 	// region Video Filtering
 
 	let mut video_filter: Vec<String> = vec![];
+	video_filter.push_str("select=eq(n\\,0)");
 
 	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
 

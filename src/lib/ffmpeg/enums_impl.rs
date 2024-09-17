@@ -1,6 +1,6 @@
+use anyhow::{anyhow, Result};
+use regex::Regex;
 use std::fmt;
-
-use regex::{Captures, Regex};
 
 use crate::ffmpeg::enums::*;
 
@@ -88,36 +88,53 @@ impl Size {
 }
 
 impl Crop {
-	pub fn new(crop_str: &str) -> Option<Self> {
-		let re = Regex::new(r"^(?P<W>\d+)\D(?P<H>\d+)(?:\D?(?P<X>\d+)\D(?P<Y>\d+))?$").unwrap();
+	pub fn new<S: Into<String>>(crop_str: S) -> Result<Self> {
+		let crop_str = crop_str.into();
+		let re = Regex::new(r"(-?\d+)").unwrap();
 
-		let mut crop = Self::default();
+		let numbers = re.find_iter(crop_str.as_str()).map(|s| {
+			s.as_str().parse::<u64>()
+				.map_err(|_| anyhow!("\"{crop_str}\" is not a valid crop value"))
+		}).collect::<Result<Vec<u64>, anyhow::Error>>()?;
 
-		let groups: Captures = match re.captures(crop_str) {
-			None => { return None; }
-			Some(captures) => captures
-		};
-
-		if let (Some(w), Some(h)) = (groups.name("W"), groups.name("H")) {
-			crop.width = w.as_str().parse::<u64>().unwrap_or_default();
-			crop.height = h.as_str().parse::<u64>().unwrap_or_default();
+		match numbers.as_slice() {
+			[h]
+			if *h > 0 => {
+				Ok(Crop {
+					height: *h,
+					..Crop::default()
+				})
+			}
+			[w, h]
+			if *w > 0 && *h > 0 => {
+				Ok(Crop {
+					width: *w,
+					height: *h,
+					..Crop::default()
+				})
+			}
+			[w, h, x, y]
+			if *w > 0 && *h > 0 => {
+				Ok(Crop {
+					width: *w,
+					height: *h,
+					x: *x,
+					y: *y,
+				})
+			}
+			_ => Err(anyhow!("\"{crop_str}\" is not a valid crop value"))
 		}
-
-		if let (Some(x), Some(y)) = (groups.name("X"), groups.name("Y")) {
-			crop.x = x.as_str().parse::<u64>().unwrap_or_default();
-			crop.y = y.as_str().parse::<u64>().unwrap_or_default();
-		}
-
-		Some(crop)
 	}
 }
 
 impl fmt::Display for Crop {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		// crop=w=100:h=100:x=12:y=34
-		let width = if self.width > 0 { self.width.to_string() } else { "iw".to_string() };
-		let height = if self.height > 0 { self.height.to_string() } else { "ih".to_string() };
-		let mut crop_str = format!("w={width}:h={height}");
+		let mut crop_str = match (self.width, self.height) {
+			(w, 0) => format!("w={w}"),
+			(0, h) => format!("h={h}"),
+			(w, h) => format!("w={w}:h={h}")
+		};
 
 		if self.x > 0 {
 			crop_str += format!(":x={}", self.x).as_str();

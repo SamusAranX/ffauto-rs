@@ -98,7 +98,8 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 }
 
 pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) -> Result<()> {
-	if let Some(crop) = Crop::new(&cli.crop.clone().unwrap_or_default()) {
+	if let Some(crop_str) = &cli.crop {
+		let crop = Crop::new(crop_str)?;
 		video_filter.push(format!("crop={crop}"));
 	}
 
@@ -184,7 +185,12 @@ pub(crate) fn generate_palette_filtergraph(
 pub(crate) fn debug_pause<D: Debug>(args: D, ffmpeg_args: &[String]) {
 	println!("{:#^40}", " DEBUG MODE ");
 	println!("program args: {:?}", args);
-	println!("ffmpeg args: {}", ffmpeg_args.join(" "));
+
+	let ffmpeg_args = ffmpeg_args
+		.iter().map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_owned() })
+		.collect::<Vec<String>>();
+
+	println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
 	let mut stdout = io::stdout();
 	let stdin = io::stdin();
 	write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();

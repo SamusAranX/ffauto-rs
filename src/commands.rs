@@ -25,7 +25,7 @@ pub(crate) struct Cli {
 	#[arg(short = 's', long, global = true, help = "The start time offset")]
 	pub seek: Option<String>,
 
-	#[arg(short, long, global = true, help = "Crops the output video. Format WxH or WxH,X;Y. (applied before scaling)")]
+	#[arg(short, long, global = true, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
 	pub crop: Option<String>,
 
 	#[arg(long = "vw", group = "resize", global = true, help = "Sets the output video width, preserving aspect ratio.")]
