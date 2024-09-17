@@ -33,12 +33,18 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
 	}
 
+	// input option to limit the amount of data read
 	if let Some(duration) = duration {
 		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
 	}
 
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
+
+	// repeat as output option to limit the amount of data written
+	if let Some(duration) = duration {
+		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
+	}
 
 	ffmpeg_args.add("-an");
 	ffmpeg_args.add("-dn");
