@@ -1,60 +1,39 @@
-use std::fmt::Debug;
-use std::io;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-
 use anyhow::{anyhow, Result};
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
 use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
-use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_timestamp;
+use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffauto_rs::palettes::palette::{Color, Palette};
+use std::fmt::Debug;
+use std::io;
+use std::io::Write;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::commands::Cli;
 use crate::palettes::{get_builtin_palette, BuiltInPalette};
 use crate::vec_push_ext::PushStrExt;
 
-/// Parses the seek option, then inserts the seek and input parameters into the ffmpeg_args vector.
-/// Returns the parsed seek value.
-pub(crate) fn handle_seek<P: AsRef<Path>>(ffmpeg_args: &mut Vec<String>, input: P, seek: &Option<String>) -> f64 {
-	let mut s = 0_f64;
-	if let Some(ss) = seek {
-		ffmpeg_args.push_str("-ss");
-		s = parse_ffmpeg_timestamp(ss).unwrap_or_default().as_secs_f64();
-		ffmpeg_args.push(format!("{s}"));
+/// Parses the seek string and returns it.
+pub(crate) fn parse_seek(seek: &Option<String>) -> Option<Duration> {
+	if let Some(seek_str) = seek {
+		return parse_ffmpeg_duration(seek_str);
 	}
 
-	ffmpeg_args.push_str("-i");
-	ffmpeg_args.push(input.as_ref().to_str().unwrap().to_string());
-
-	s
+	None
 }
 
-/// Parses the duration, then inserts an appropriate -t <value> into the ffmpeg_args vector.
-/// Returns the parsed duration value.
-pub(crate) fn handle_duration(ffmpeg_args: &mut Vec<String>, seek: f64, duration: &Option<String>, duration_to: &Option<String>) -> f64 {
-	let mut dur = 0_f64;
-
+/// Parses the duration strings and returns an appropriate [Duration].
+pub(crate) fn parse_duration(seek: Option<Duration>, duration: &Option<String>, duration_to: &Option<String>) -> Option<Duration> {
 	if let Some(t) = duration {
-		match parse_ffmpeg_timestamp(t) {
-			Some(t) => {
-				dur = t.as_secs_f64();
-				ffmpeg_args.push_str("-t");
-				ffmpeg_args.push(format!("{}", dur));
-			}
-			None => { eprintln!("invalid duration string: {t}") }
-		}
-	} else if let Some(to) = duration_to {
-		match parse_ffmpeg_timestamp(to) {
-			Some(to) => {
-				dur = to.as_secs_f64() - seek;
-				ffmpeg_args.push_str("-t");
-				ffmpeg_args.push(format!("{}", dur));
-			}
-			None => { eprintln!("invalid duration string: {to}") }
-		}
+		return parse_ffmpeg_duration(t);
 	}
 
-	dur
+	if let (Some(seek), Some(to)) = (seek, duration_to) {
+		return parse_ffmpeg_duration(to)
+			.and_then(|to| Some(to - seek));
+	}
+
+	None
 }
 
 pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
@@ -97,7 +76,7 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 	Ok("".parse().unwrap())
 }
 
-pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) -> Result<()> {
+pub(crate) fn add_crop_scale_tonemap_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) -> Result<()> {
 	if let Some(crop_str) = &cli.crop {
 		let crop = Crop::new(crop_str)?;
 		video_filter.push(format!("crop={crop}"));
@@ -109,13 +88,13 @@ pub(crate) fn add_basic_filters(video_filter: &mut Vec<String>, cli: &Cli, color
 	}
 
 	if color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67") {
-		video_filter.push_str("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
+		video_filter.add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
 	}
 
 	Ok(())
 }
 
-pub(crate) fn add_palette_filters(video_filter: &mut Vec<String>, brightness: f64, contrast: f64, saturation: f64, sharpness: f64) {
+pub(crate) fn add_color_sharpness_filters(video_filter: &mut Vec<String>, brightness: f64, contrast: f64, saturation: f64, sharpness: f64) {
 	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
 		let mut eq_args: Vec<String> = vec![];
 

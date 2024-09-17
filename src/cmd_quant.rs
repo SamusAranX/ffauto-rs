@@ -9,13 +9,13 @@ use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, QuantArgs};
-use crate::common::{add_basic_filters, add_palette_filters, debug_pause, generate_palette_filtergraph, handle_seek};
+use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, debug_pause, generate_palette_filtergraph, parse_seek};
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
 
-	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
+	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
 
 	let mut ffmpeg_args: Vec<String> = vec![
@@ -24,34 +24,37 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
+	let seek = parse_seek(&cli.seek);
+	if let Some(seek) = seek {
+		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
+	}
+
 	// add input -t argument to ensure ffmpeg only reads one frame
-	ffmpeg_args.push_str("-t");
+	ffmpeg_args.add("-t");
 	if let Some(fps) = video_stream.frame_rate() {
 		// if we know the input video's frame rate, we can accurately limit the number of read frames to just one
 		ffmpeg_args.push(format!("{}", 1.0/fps));
 	} else {
 		// else we just say "take the first second's worth of frames" and hope for the best
-		ffmpeg_args.push_str("1");
+		ffmpeg_args.add("1");
 	}
 
-	handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
+	let input = args.input.as_os_str().to_str().unwrap();
+	ffmpeg_args.add_two("-i", input);
 
-	ffmpeg_args.push_str("-an");
-	ffmpeg_args.push_str("-dn");
-	ffmpeg_args.push_str("-sn");
-	ffmpeg_args.push_str("-frames:v");
-	ffmpeg_args.push_str("1");
-	ffmpeg_args.push_str("-update");
-	ffmpeg_args.push_str("1");
+	ffmpeg_args.add("-an");
+	ffmpeg_args.add("-dn");
+	ffmpeg_args.add("-sn");
+	ffmpeg_args.add_two("-frames:v", "1");
+	ffmpeg_args.add_two("-update", "1");
 
 	// region Video Filtering
 
 	let mut video_filter: Vec<String> = vec![];
-	video_filter.push_str("select=eq(n\\,0)");
+	video_filter.add("select=eq(n\\,0)");
 
-	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
-
-	add_palette_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
+	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
+	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	let video_filter_str = video_filter.join(",");
 	let filter_complex = generate_palette_filtergraph(
@@ -62,8 +65,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 		&args.dither, args.bayer_scale,
 	)?;
 
-	ffmpeg_args.push_str("-filter_complex");
-	ffmpeg_args.push(filter_complex);
+	ffmpeg_args.add_two("-filter_complex", filter_complex);
 
 	// endregion
 

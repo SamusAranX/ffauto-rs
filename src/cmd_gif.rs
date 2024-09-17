@@ -1,5 +1,5 @@
 use std::process::Command;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 use anyhow::Result;
@@ -8,14 +8,17 @@ use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, GIFArgs};
-use crate::common::{add_basic_filters, add_palette_filters, debug_pause, generate_palette_filtergraph, handle_duration, handle_seek};
+use crate::common::{add_crop_scale_tonemap_filters, add_color_sharpness_filters, debug_pause, generate_palette_filtergraph, parse_duration, parse_seek};
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
 
-	let first_video_stream = probe.iter().find(|s| s.codec_type == Video);
+	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
+
+	let video_duration = probe.duration()
+		.inspect_err(|e| eprintln!("{e}"))?;
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -23,15 +26,32 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	let seek = handle_seek(&mut ffmpeg_args, &args.input, &cli.seek);
-	let duration = handle_duration(&mut ffmpeg_args, seek, &args.duration, &args.duration_to);
+	let seek = parse_seek(&cli.seek);
+	let duration = parse_duration(seek, &args.duration, &args.duration_to);
+
+	if let Some(seek) = seek {
+		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
+	}
+
+	if let Some(duration) = duration {
+		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
+	}
+
+	let input = args.input.as_os_str().to_str().unwrap();
+	ffmpeg_args.add_two("-i", input);
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
 	if args.fade != 0.0 {
 		fade_in = args.fade;
 		fade_out = args.fade;
 	}
-	let fade_out_start = duration - fade_out;
+	let fade_out_start = if let Some(duration) = duration {
+		// duration was given
+		duration.as_secs_f64() - fade_out
+	} else {
+		// duration wasn't given, use video duration
+		(video_duration - seek.unwrap_or(Duration::ZERO)).as_secs_f64() - fade_out
+	};
 
 	// region Video Filtering
 
@@ -43,9 +63,8 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
 	}
 
-	add_basic_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
-
-	add_palette_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
+	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
+	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	if fade_in > 0.0 {
 		video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
@@ -63,19 +82,15 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		&args.dither, args.bayer_scale,
 	)?;
 
-	ffmpeg_args.push_str("-filter_complex");
-	ffmpeg_args.push(filter_complex);
+	ffmpeg_args.add_two("-filter_complex", filter_complex);
 
 	// endregion
 
 	if args.dedup {
-		ffmpeg_args.push_str("-fps_mode");
-		ffmpeg_args.push_str("vfr");
+		ffmpeg_args.add_two("-fps_mode", "vfr");
 	}
-	ffmpeg_args.push_str("-f");
-	ffmpeg_args.push_str("gif");
-	ffmpeg_args.push_str("-loop");
-	ffmpeg_args.push_str("0");
+	ffmpeg_args.add_two("-f", "gif");
+	ffmpeg_args.add_two("-loop", "0");
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
