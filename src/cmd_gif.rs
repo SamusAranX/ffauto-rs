@@ -40,6 +40,10 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
 
+	ffmpeg_args.add("-an");
+	ffmpeg_args.add("-dn");
+	ffmpeg_args.add("-sn");
+
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
 	if args.fade != 0.0 {
 		fade_in = args.fade;
