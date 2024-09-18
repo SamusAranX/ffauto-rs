@@ -9,7 +9,7 @@ pub fn parse_ffmpeg_duration(timestamp: &String) -> Option<Duration> {
 
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
-	let groups: Captures = match re.captures(&*timestamp) {
+	let groups: Captures = match re.captures(timestamp) {
 		None => {
 			eprintln!("invalid duration string: {timestamp}");
 			return None;

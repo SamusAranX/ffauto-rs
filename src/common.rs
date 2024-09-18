@@ -29,8 +29,7 @@ pub(crate) fn parse_duration(seek: Option<Duration>, duration: &Option<String>, 
 	}
 
 	if let (Some(seek), Some(to)) = (seek, duration_to) {
-		return parse_ffmpeg_duration(to)
-			.and_then(|to| Some(to - seek));
+		return parse_ffmpeg_duration(to).map(|to| to - seek);
 	}
 
 	None

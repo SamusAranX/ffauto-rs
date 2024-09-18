@@ -24,7 +24,7 @@ fn timestamp_data() -> Vec<(String, f64)> {
 fn timestamp_parsing() {
 	for (i, (ts_str, ts_float)) in timestamp_data().iter().enumerate() {
 		// print!("parsing string \"{timestamp_str}\", expecting duration {timestamp_float:?}… ");
-		let dur = parse_ffmpeg_duration(&ts_str);
+		let dur = parse_ffmpeg_duration(ts_str);
 		assert!(dur.is_some(), "{i}: parsing failed!");
 		let dur_float = dur.unwrap().as_secs_f64();
 		// println!("got {dur_float:?}");
