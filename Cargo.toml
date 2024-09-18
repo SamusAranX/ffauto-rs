@@ -1,9 +1,9 @@
 [package]
 name = "ffauto-rs"
-version = "1.6.3"
+version = "9.0.0-test"
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.81"
 
 [lib]
 path = "src/lib/mod.rs"
@@ -14,6 +14,11 @@ path = "src/main.rs"
 
 [profile.release]
 debug = "line-tables-only"
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
 
 [dependencies]
 anyhow = "1.0.89"
@@ -27,3 +32,14 @@ serde_json = "1.0.128"
 
 [build-dependencies]
 chrono = "0.4.38"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.22.1"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app
+installers = []
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
