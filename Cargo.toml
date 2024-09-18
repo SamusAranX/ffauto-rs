@@ -1,6 +1,6 @@
 [package]
 name = "ffauto-rs"
-version = "9.0.1-test"
+version = "9.0.2-test"
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2021"
 rust-version = "1.81"
@@ -43,3 +43,8 @@ ci = "github"
 installers = []
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Use ZIP files
+unix-archive = ".zip"
+windows-archive = ".zip"
+# Don't upload a source tarball
+source-tarball = false
