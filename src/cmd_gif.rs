@@ -1,24 +1,31 @@
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use anyhow::anyhow;
 use anyhow::Result;
 
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, GIFArgs};
-use crate::common::{add_crop_scale_tonemap_filters, add_color_sharpness_filters, debug_pause, generate_palette_filtergraph, parse_duration, parse_seek};
+use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, debug_pause, generate_palette_filtergraph, parse_duration, parse_seek};
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
-	let probe = ffprobe(&args.input, false)?;
+	let probe = {
+		let p = ffprobe(&args.input, false)?;
+		match p.duration() {
+			Ok(_) => p,
+			Err(_) => {
+				eprintln!("Running ffprobe again and counting frames…");
+				ffprobe(&args.input, true)?
+			},
+		}
+	};
 
 	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
 
-	let video_duration = probe.duration()
-		.inspect_err(|e| eprintln!("{e}"))?;
+	let video_duration = probe.duration()?;
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
@@ -116,7 +123,7 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	let exit_status = ffmpeg.wait().expect("failed to wait for ffmpeg");
 	if !exit_status.success() {
-		return Err(anyhow!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1)));
+		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))
 	}
 
 	let execution_time = start.elapsed();

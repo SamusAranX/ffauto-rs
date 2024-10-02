@@ -137,7 +137,7 @@ pub(crate) fn generate_palette_filtergraph(
 			let pal = get_builtin_palette(palette_name);
 			pal_string = palette_to_ffmpeg(pal);
 		} else {
-			return Err(anyhow!("This wasn't supposed to happen!"));
+			anyhow::bail!("This wasn't supposed to happen!")
 		}
 
 		Ok(

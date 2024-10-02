@@ -1,8 +1,8 @@
 use crate::ffmpeg::ffprobe_struct::StreamType::Video;
+use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use std::time::Duration;
-use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FFProbeOutput {
@@ -15,11 +15,11 @@ impl FFProbeOutput {
 		// intentionally not dealing with FloatParseErrors here.
 		// if ffprobe ever feeds us bad data we've got bigger problems anyway
 
-		// unwrapping here because the caller should've already done a stream check
-		let video_stream = self.streams.iter().find(|s| s.codec_type == Video).unwrap();
+		let video_stream = self.streams.iter().find(|s| s.codec_type == Video)
+			.ok_or_else(|| anyhow!("The input file needs to contain a usable video stream"))?;
 
 		if let Some(stream_duration) = video_stream.duration.clone() {
-			// println!("stream duration: {stream_duration}");
+			// return first video stream duration
 			return Ok(Duration::from_secs_f64(
 				stream_duration.parse()
 					.map_err(|e| anyhow!("{e}: stream duration \"{stream_duration}\""))?
@@ -29,12 +29,23 @@ impl FFProbeOutput {
 		if let Some(tags_duration) = video_stream.tags.clone()
 			.and_then(|t| t.duration)
 			.and_then(|s| parse_ffmpeg_duration(&s)) {
-			// println!("tags duration: {tags_duration:?}");
+			// return first video stream tags duration
 			return Ok(tags_duration);
 		}
 
-		// println!("format duration: {}", self.format.duration);
-		Ok(Duration::from_secs_f64(self.format.duration.parse()?))
+		if let Some(format_duration) = &self.format.duration {
+			// return format duration
+			return Ok(Duration::from_secs_f64(format_duration.parse()?));
+		}
+
+		if let (Some(read_frames), Some(frame_rate)) = (&video_stream.nb_read_frames, video_stream.frame_rate()) {
+			// divide number of frames by frame rate and return the result
+
+			let read_frames = read_frames.parse::<f64>()?;
+			return Ok(Duration::from_secs_f64(read_frames / frame_rate));
+		}
+
+		anyhow::bail!("ffprobe could not find a duration for the input file")
 	}
 }
 
@@ -55,10 +66,11 @@ pub struct Tags {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Format {
-	pub duration: String,
+	pub duration: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Stream {
 	pub index: u64,
 	pub codec_name: Option<String>,
@@ -76,7 +88,7 @@ pub struct Stream {
 	pub channels: Option<u64>,
 	pub bit_rate: Option<String>,
 	pub duration: Option<String>,
-	pub nb_read_frames: Option<u64>,
+	pub nb_read_frames: Option<String>,
 	pub tags: Option<Tags>,
 }
 

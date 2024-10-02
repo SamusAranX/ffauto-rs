@@ -122,7 +122,7 @@ impl Crop {
 					y: *y,
 				})
 			}
-			_ => Err(anyhow!("\"{crop_str}\" is not a valid crop value"))
+			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value")
 		}
 	}
 }

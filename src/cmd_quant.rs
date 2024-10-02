@@ -1,7 +1,6 @@
 use std::process::Command;
 use std::time::Instant;
 
-use anyhow::anyhow;
 use anyhow::Result;
 
 use ffauto_rs::ffmpeg::enums::StatsMode;
@@ -33,7 +32,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	ffmpeg_args.add("-t");
 	if let Some(fps) = video_stream.frame_rate() {
 		// if we know the input video's frame rate, we can accurately limit the number of read frames to just one
-		ffmpeg_args.push(format!("{}", 1.0/fps));
+		ffmpeg_args.push(format!("{}", 1.0 / fps));
 	} else {
 		// else we just say "take the first second's worth of frames" and hope for the best
 		ffmpeg_args.add("1");
@@ -83,7 +82,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 
 	let exit_status = ffmpeg.wait().expect("failed to wait for ffmpeg");
 	if !exit_status.success() {
-		return Err(anyhow!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1)));
+		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))
 	}
 
 	let execution_time = start.elapsed();

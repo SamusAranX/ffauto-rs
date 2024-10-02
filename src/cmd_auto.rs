@@ -1,7 +1,6 @@
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use anyhow::anyhow;
 use anyhow::Result;
 
 use ffauto_rs::ffmpeg::enums::{Crop, VideoCodec};
@@ -13,13 +12,22 @@ use crate::common::{debug_pause, generate_scale_filter, parse_duration, parse_se
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
-	let probe = ffprobe(&args.input, false)?;
+	let probe = {
+		let p = ffprobe(&args.input, false)?;
+		match p.duration() {
+			Ok(_) => p,
+			Err(_) => {
+				eprintln!("Running ffprobe again and counting frames…");
+				ffprobe(&args.input, true)?
+			},
+		}
+	};
 
 	let first_audio_stream = probe.streams.iter().find(|s| s.codec_type == Audio);
 	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
 
 	if first_audio_stream.is_none() && first_video_stream.is_none() {
-		return Err(anyhow!("The input file contains no usable audio/video streams"));
+		anyhow::bail!("The input file contains no usable audio/video streams")
 	}
 
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
@@ -168,7 +176,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 
 	let exit_status = ffmpeg.wait().expect("failed to wait for ffmpeg");
 	if !exit_status.success() {
-		return Err(anyhow!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1)));
+		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))
 	}
 
 	let execution_time = start.elapsed();
