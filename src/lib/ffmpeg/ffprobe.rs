@@ -7,14 +7,14 @@ use crate::ffmpeg::ffprobe_struct::FFProbeOutput;
 
 
 // ffprobe -hide_banner -loglevel error -print_format json -show_streams -show_format Exclusion\ Zone/mariomovie.mkv
-pub fn ffprobe(input: &Path, count_frames: bool) -> Result<FFProbeOutput> {
+pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOutput> {
 	let mut ffprobe_args = vec![
 		"-hide_banner",
 		"-loglevel", "error",
 		"-print_format", "json",
 		"-show_streams",
 		"-show_format",
-		"-i", input.to_str().unwrap(),
+		"-i", input.as_ref().to_str().unwrap(),
 	];
 	if count_frames {
 		ffprobe_args.push("-count_frames");

@@ -4,12 +4,14 @@ use regex::{Captures, Regex};
 
 /// Takes an ffmpeg-esque duration string and parses it into a [Duration].
 /// Invalid input will return [None].
-pub fn parse_ffmpeg_duration(timestamp: &String) -> Option<Duration> {
+pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> {
+	let timestamp = timestamp.into();
+
 	if let Ok(f) = timestamp.parse::<f64>() { return Some(Duration::from_secs_f64(f)); }
 
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
-	let groups: Captures = match re.captures(timestamp) {
+	let groups: Captures = match re.captures(&timestamp) {
 		None => {
 			eprintln!("invalid duration string: {timestamp}");
 			return None;
@@ -49,7 +51,8 @@ pub fn parse_ffmpeg_duration(timestamp: &String) -> Option<Duration> {
 }
 
 /// Takes a [Duration] and formats it like a timestamp ffmpeg would use. Mainly for display purposes.
-pub fn format_ffmpeg_timestamp(duration: Duration) -> String {
+/// Specifying `full` will make this function always return a timestamp of format `HH:MM:SS.ffffff`.
+pub fn format_ffmpeg_timestamp(duration: Duration, full: bool) -> String {
 	let secs_total = duration.as_secs() as f64;
 	let hours = (secs_total / 3600.0).floor();
 	let minutes = (secs_total % 3600.0 / 60.0).floor();
@@ -59,14 +62,14 @@ pub fn format_ffmpeg_timestamp(duration: Duration) -> String {
 	let millis_str = format!(".{millis:0>3}");
 	let millis_str = millis_str.trim_end_matches("0").trim_end_matches(".");
 
-	let formatted: String;
-	if secs_total >= 3600.0 {
-		formatted = format!("{hours:0>2}:{minutes:0>2}:{secs:0>2}{millis_str}");
+	if full {
+		let micros = duration.subsec_micros();
+		format!("{:0>2}:{:0>2}:{secs:0>2}.{micros:0>6}", hours as u64, minutes as u64)
+	} else if secs_total >= 3600.0 {
+		format!("{:0>2}:{:0>2}:{secs:0>2}{millis_str}", hours as u64, minutes as u64)
 	} else if secs_total >= 60.0 {
-		formatted = format!("{minutes:0>2}:{secs:0>2}{millis_str}");
+		format!("{:0>2}:{secs:0>2}{millis_str}", minutes as u64)
 	} else {
-		formatted = format!("{secs}{millis_str}");
+		format!("{secs}{millis_str}")
 	}
-
-	formatted
 }

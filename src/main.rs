@@ -22,6 +22,8 @@ fn main() -> ExitCode {
 	let cli = Cli::parse();
 	let output: &PathBuf;
 
+	// println!("{cli:?}");
+
 	let result = match &cli.command {
 		Some(Commands::Auto(args)) => {
 			output = &args.output;

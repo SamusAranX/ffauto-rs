@@ -1,17 +1,15 @@
-use anyhow::{anyhow, Result};
-use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
-use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
-use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffauto_rs::palettes::palette::{Color, Palette};
-use std::fmt::Debug;
-use std::io;
-use std::io::Write;
-use std::path::PathBuf;
-use std::time::Duration;
-
 use crate::commands::Cli;
 use crate::palettes::{get_builtin_palette, BuiltInPalette};
 use crate::vec_push_ext::PushStrExt;
+use anyhow::{anyhow, Result};
+use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, StatsMode};
+use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffauto_rs::ffmpeg::ffprobe_struct::FFProbeOutput;
+use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
+use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
+use ffauto_rs::palettes::palette::{Color, Palette};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 /// Parses the seek string and returns it.
 pub(crate) fn parse_seek(seek: &Option<String>) -> Option<Duration> {
@@ -160,19 +158,13 @@ pub(crate) fn generate_palette_filtergraph(
 	}
 }
 
-pub(crate) fn debug_pause<D: Debug>(args: D, ffmpeg_args: &[String]) {
-	println!("{:#^40}", " DEBUG MODE ");
-	println!("program args: {:?}", args);
-
-	let ffmpeg_args = ffmpeg_args
-		.iter().map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_owned() })
-		.collect::<Vec<String>>();
-
-	println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
-	let mut stdout = io::stdout();
-	let stdin = io::stdin();
-	write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();
-	stdout.flush().unwrap();
-	let _ = stdin.read_line(&mut "".to_string()).unwrap();
-	writeln!(stdout, "Continuing…").unwrap();
+pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
+	let p = ffprobe(&input, false)?;
+	match p.duration() {
+		Ok(_) => Ok(p),
+		Err(_) => {
+			eprintln!("Running ffprobe again and counting frames…");
+			ffprobe(&input, true)
+		}
+	}
 }

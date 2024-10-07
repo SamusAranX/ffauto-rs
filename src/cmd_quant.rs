@@ -1,14 +1,12 @@
-use std::process::Command;
-use std::time::Instant;
-
 use anyhow::Result;
 
 use ffauto_rs::ffmpeg::enums::StatsMode;
+use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, QuantArgs};
-use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, debug_pause, generate_palette_filtergraph, parse_seek};
+use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, generate_palette_filtergraph, parse_seek};
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
@@ -70,23 +68,5 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	if cli.debug {
-		debug_pause(args, &ffmpeg_args);
-	}
-
-	let start = Instant::now();
-
-	let mut ffmpeg = Command::new("ffmpeg")
-		.args(ffmpeg_args)
-		.spawn().expect("failed to run ffmpeg");
-
-	let exit_status = ffmpeg.wait().expect("failed to wait for ffmpeg");
-	if !exit_status.success() {
-		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))
-	}
-
-	let execution_time = start.elapsed();
-	println!("Encoding took {:.2}s!", execution_time.as_secs_f64());
-
-	Ok(())
+	ffmpeg(&ffmpeg_args, false, cli.debug)
 }
