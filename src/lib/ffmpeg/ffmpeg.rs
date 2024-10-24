@@ -148,8 +148,6 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		}
 	}
 
-	println!("waiting for ffmpeg…");
-
 	let exit_status = process.wait().expect("failed to wait for ffmpeg");
 	if !exit_status.success() {
 		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))

@@ -76,7 +76,7 @@ pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 				return Ok(Size::new(width, height));
 			}
 
-			anyhow::bail!("wha happun")
+			anyhow::bail!("Couldn't parse size string \"{size}\"")
 		}
 	}
 }
