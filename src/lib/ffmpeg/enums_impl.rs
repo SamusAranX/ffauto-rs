@@ -1,8 +1,7 @@
+use crate::ffmpeg::enums::*;
 use anyhow::{anyhow, Result};
 use regex::Regex;
 use std::fmt;
-
-use crate::ffmpeg::enums::*;
 
 impl fmt::Display for ScaleMode {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -17,23 +16,6 @@ impl fmt::Display for ScaleMode {
 			ScaleMode::Sinc => write!(f, "sinc"),
 			ScaleMode::Lanczos => write!(f, "lanczos"),
 			ScaleMode::Spline => write!(f, "spline"),
-		}
-	}
-}
-
-impl fmt::Display for Preset {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		match self {
-			Preset::UltraFast => write!(f, "ultrafast"),
-			Preset::SuperFast => write!(f, "superfast"),
-			Preset::VeryFast => write!(f, "veryfast"),
-			Preset::Faster => write!(f, "faster"),
-			Preset::Fast => write!(f, "fast"),
-			Preset::Medium => write!(f, "medium"),
-			Preset::Slow => write!(f, "slow"),
-			Preset::Slower => write!(f, "slower"),
-			Preset::VerySlow => write!(f, "veryslow"),
-			Preset::Placebo => write!(f, "placebo"),
 		}
 	}
 }

@@ -73,7 +73,7 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 	Ok("".parse().unwrap())
 }
 
-pub(crate) fn add_crop_scale_tonemap_filters(video_filter: &mut Vec<String>, cli: &Cli, color_transfer: String) -> Result<()> {
+pub(crate) fn add_crop_scale_tonemap_filters(video_filter: &mut Vec<String>, cli: &Cli, is_hdr: bool) -> Result<()> {
 	if let Some(crop_str) = &cli.crop {
 		let crop = Crop::new(crop_str)?;
 		video_filter.push(format!("crop={crop}"));
@@ -84,7 +84,7 @@ pub(crate) fn add_crop_scale_tonemap_filters(video_filter: &mut Vec<String>, cli
 		video_filter.push(scale);
 	}
 
-	if color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67") {
+	if is_hdr {
 		video_filter.add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
 	}
 
@@ -158,6 +158,8 @@ pub(crate) fn generate_palette_filtergraph(
 	}
 }
 
+/// This is a small wrapper for [ffprobe] that repeats the invocation with frame counting
+/// enabled if ffprobe can't find a duration the first time.
 pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
 	let p = ffprobe(&input, false)?;
 	match p.duration() {

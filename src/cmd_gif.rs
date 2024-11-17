@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use anyhow::Result;
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, GIFArgs};
 use crate::common::*;
@@ -11,7 +10,7 @@ use crate::vec_push_ext::PushStrExt;
 pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
-	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
+	let first_video_stream = probe.get_first_video_stream();
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
 
 	let video_duration = probe.duration()?;
@@ -69,7 +68,7 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
 	}
 
-	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
+	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.is_hdr())?;
 	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	if fade_in > 0.0 {

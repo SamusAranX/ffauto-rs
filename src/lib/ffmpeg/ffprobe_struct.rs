@@ -1,4 +1,3 @@
-use crate::ffmpeg::ffprobe_struct::StreamType::Video;
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -15,7 +14,7 @@ impl FFProbeOutput {
 		// intentionally not dealing with FloatParseErrors here.
 		// if ffprobe ever feeds us bad data we've got bigger problems anyway
 
-		let video_stream = self.streams.iter().find(|s| s.codec_type == Video)
+		let video_stream = self.streams.iter().find(|s| s.codec_type == StreamType::Video)
 			.ok_or_else(|| anyhow!("The input file needs to contain a usable video stream"))?;
 
 		if let Some(stream_duration) = video_stream.duration.clone() {
@@ -46,6 +45,38 @@ impl FFProbeOutput {
 		}
 
 		anyhow::bail!("ffprobe could not find a duration for the input file")
+	}
+
+	pub fn get_stream(&self, index: usize) -> Option<&Stream> {
+		self.streams.iter().nth(index)
+	}
+
+	fn get_typed_stream(&self, index: usize, stream_type: StreamType) -> Option<&Stream> {
+		self.streams.iter().filter(|s| s.codec_type == stream_type).nth(index)
+	}
+
+	pub fn get_video_stream(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream(index, StreamType::Video)
+	}
+
+	pub fn get_audio_stream(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream(index, StreamType::Audio)
+	}
+
+	pub fn get_subtitle_stream(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream(index, StreamType::Subtitle)
+	}
+
+	pub fn get_first_video_stream(&self) -> Option<&Stream> {
+		self.streams.iter().find(|s| s.codec_type == StreamType::Video)
+	}
+
+	pub fn get_first_audio_stream(&self) -> Option<&Stream> {
+		self.streams.iter().find(|s| s.codec_type == StreamType::Audio)
+	}
+
+	pub fn get_first_subtitle_stream(&self) -> Option<&Stream> {
+		self.streams.iter().find(|s| s.codec_type == StreamType::Subtitle)
 	}
 }
 
@@ -86,6 +117,7 @@ pub struct Stream {
 	pub avg_frame_rate: Option<String>,
 	pub sample_rate: Option<String>,
 	pub channels: Option<u64>,
+	pub channel_layout: Option<String>,
 	pub bit_rate: Option<String>,
 	pub duration: Option<String>,
 	pub nb_read_frames: Option<String>,
@@ -110,5 +142,13 @@ impl Stream {
 		}
 
 		None
+	}
+
+	pub fn is_hdr(&self) -> bool {
+		if let Some(color_transfer) = &self.color_transfer {
+			return color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67");
+		}
+
+		false
 	}
 }

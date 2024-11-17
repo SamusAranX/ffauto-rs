@@ -13,20 +13,6 @@ pub enum ScaleMode {
 }
 
 #[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
-pub enum Preset {
-	UltraFast,
-	SuperFast,
-	VeryFast,
-	Faster,
-	Fast,
-	Medium,
-	#[default] Slow,
-	Slower,
-	VerySlow,
-	Placebo,
-}
-
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
 pub enum VideoCodec {
 	#[default] H264,
 	H265,

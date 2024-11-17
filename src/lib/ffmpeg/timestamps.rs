@@ -7,12 +7,17 @@ use regex::{Captures, Regex};
 pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> {
 	let timestamp = timestamp.into();
 
+	if timestamp == "N/A" {
+		return None;
+	}
+
 	if let Ok(f) = timestamp.parse::<f64>() { return Some(Duration::from_secs_f64(f)); }
 
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
 	let groups: Captures = match re.captures(&timestamp) {
 		None => {
+			#[cfg(debug_assertions)]
 			eprintln!("invalid duration string: {timestamp}");
 			return None;
 		}

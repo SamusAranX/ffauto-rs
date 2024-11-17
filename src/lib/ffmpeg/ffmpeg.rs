@@ -47,7 +47,6 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 	if show_progress {
 		let progress_file = File::open(temp_file.path())?;
 		let mut reader = BufReader::new(progress_file);
-		let mut line = String::new();
 
 		let mut pos = 0;
 		let mut last_progress = Instant::now();
@@ -55,9 +54,11 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		let mut frames_processed = None;
 		let mut frames_per_second = None;
 		let mut frame_time = None;
+		let mut encode_bitrate = None;
 		let mut encode_speed = None;
 
 		loop {
+			let mut line = String::new();
 			let res = reader.read_line(&mut line);
 			match res {
 				Ok(0) => {
@@ -104,6 +105,9 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 						("out_time", time) => {
 							frame_time = parse_ffmpeg_duration(time);
 						}
+						("bitrate", bitrate) => {
+							encode_bitrate = Some(bitrate.trim().to_owned());
+						}
 						("speed", speed) => {
 							encode_speed = Some(
 								speed
@@ -115,11 +119,13 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 						}
 						("progress", "continue") => (),
 						("progress", "end") => {
-							println!("PROCESSING HAS ENDED");
+							#[cfg(debug_assertions)]
+							eprintln!("PROCESSING HAS ENDED");
 							break;
 						}
-						("stream_0_0_q" | "bitrate" | "total_size" | "out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
+						("stream_0_0_q" | "total_size" | "out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
 						_ => {
+							#[cfg(debug_assertions)]
 							eprintln!("Unknown progress value: {key} = {value}");
 						}
 					}
@@ -134,17 +140,22 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				Some(frame),
 				Some(fps),
 				Some(time),
+				Some(bitrate),
 				Some(speed)
-			) = (frames_processed, frames_per_second, frame_time, encode_speed) {
-				println!("frame: {frame} - fps: {fps:.2} - time: {} - speed: {speed:.3}x", format_ffmpeg_timestamp(time, true));
+			) = (frames_processed, frames_per_second, frame_time, &encode_bitrate, encode_speed) {
+				println!(
+					"frame: {frame} - fps: {fps:.2} - time: {} - bitrate: {bitrate} - speed: {speed:.3}x",
+					format_ffmpeg_timestamp(time, true)
+				);
 
 				frames_processed = None;
 				frames_per_second = None;
 				frame_time = None;
+				encode_bitrate = None;
 				encode_speed = None;
 			}
 
-			line.clear();
+			// line.clear();
 		}
 	}
 
@@ -155,6 +166,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 	let execution_time = start.elapsed();
 	println!("Encoding took {:.2}s!", execution_time.as_secs_f64());
+
 
 	Ok(())
 }

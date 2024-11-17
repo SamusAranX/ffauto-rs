@@ -19,20 +19,22 @@ impl TimestampTest {
 
 fn timestamp_data() -> Vec<TimestampTest> {
 	vec![
-		TimestampTest::new("01:59:24.320000000", 7164.32, "01:59:24.320000"),
-		TimestampTest::new("01:59:24.32",        7164.32, "01:59:24.320000"),
-		TimestampTest::new("01:59:24"   ,        7164.0 , "01:59:24.000000"),
-		TimestampTest::new("01:59:02"   ,        7142.0 , "01:59:02.000000"),
-		TimestampTest::new(   "59:24.32",        3564.32, "00:59:24.320000"),
-		TimestampTest::new(   "59:24"   ,        3564.0 , "00:59:24.000000"),
-		TimestampTest::new(      "24.32",          24.32, "00:00:24.320000"),
-		TimestampTest::new(      "24"   ,          24.0 , "00:00:24.000000"),
-		TimestampTest::new(      "20.32",          20.32, "00:00:20.320000"),
-		TimestampTest::new(      "20"   ,          20.0 , "00:00:20.000000"),
-		TimestampTest::new(       "2.32",           2.32, "00:00:02.320000"),
-		TimestampTest::new(       "0.1" ,           0.1 , "00:00:00.100000"),
-		TimestampTest::new(       "0.01",           0.01, "00:00:00.010000"),
-		TimestampTest::new(       "0"   ,           0.0 , "00:00:00.000000"),
+		// rust does not have negative durations so negative timestamps can't be parsed currently
+		// TimestampTest::new("-01:59:24.320000000", -7164.32, "-01:59:24.320000"),
+		TimestampTest::new( "01:59:24.320000000",  7164.32,  "01:59:24.320000"),
+		TimestampTest::new( "01:59:24.32",         7164.32,  "01:59:24.320000"),
+		TimestampTest::new( "01:59:24"   ,         7164.0 ,  "01:59:24.000000"),
+		TimestampTest::new( "01:59:02"   ,         7142.0 ,  "01:59:02.000000"),
+		TimestampTest::new(    "59:24.32",         3564.32,  "00:59:24.320000"),
+		TimestampTest::new(    "59:24"   ,         3564.0 ,  "00:59:24.000000"),
+		TimestampTest::new(       "24.32",           24.32,  "00:00:24.320000"),
+		TimestampTest::new(       "24"   ,           24.0 ,  "00:00:24.000000"),
+		TimestampTest::new(       "20.32",           20.32,  "00:00:20.320000"),
+		TimestampTest::new(       "20"   ,           20.0 ,  "00:00:20.000000"),
+		TimestampTest::new(        "2.32",            2.32,  "00:00:02.320000"),
+		TimestampTest::new(        "0.1" ,            0.1 ,  "00:00:00.100000"),
+		TimestampTest::new(        "0.01",            0.01,  "00:00:00.010000"),
+		TimestampTest::new(        "0"   ,            0.0 ,  "00:00:00.000000"),
 	]
 }
 

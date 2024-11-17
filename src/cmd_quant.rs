@@ -3,7 +3,6 @@ use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::StatsMode;
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Video;
 
 use crate::commands::{Cli, QuantArgs};
 use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, generate_palette_filtergraph, parse_seek};
@@ -12,7 +11,7 @@ use crate::vec_push_ext::PushStrExt;
 pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
 
-	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
+	let first_video_stream = probe.get_first_video_stream();
 	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
 
 	let mut ffmpeg_args: Vec<String> = vec![
@@ -50,7 +49,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let mut video_filter: Vec<String> = vec![];
 	video_filter.add("select=eq(n\\,0)");
 
-	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.color_transfer.unwrap_or_default())?;
+	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.is_hdr())?;
 	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	let video_filter_str = video_filter.join(",");

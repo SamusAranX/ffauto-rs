@@ -4,7 +4,6 @@ use anyhow::Result;
 
 use ffauto_rs::ffmpeg::enums::{Crop, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::{Audio, Video};
 
 use crate::commands::{AutoArgs, Cli};
 use crate::common::{ffprobe_output, generate_scale_filter, parse_duration, parse_seek};
@@ -13,8 +12,8 @@ use crate::vec_push_ext::PushStrExt;
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
-	let first_audio_stream = probe.streams.iter().find(|s| s.codec_type == Audio);
-	let first_video_stream = probe.streams.iter().find(|s| s.codec_type == Video);
+	let first_audio_stream = probe.get_first_audio_stream();
+	let first_video_stream = probe.get_first_video_stream();
 
 	if first_audio_stream.is_none() && first_video_stream.is_none() {
 		anyhow::bail!("The input file contains no usable audio/video streams")
@@ -42,7 +41,33 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
 	}
 
-	ffmpeg_args.add_two("-preset", args.preset.to_string());
+	ffmpeg_args.add("-dn");
+
+	// select appropriate video stream, default to the first one if no language was specified
+	if let Some(video_language) = &args.video_language {
+		ffmpeg_args.add_two("-map", format!("0:V:m:language:{}", video_language));
+	} else {
+		ffmpeg_args.add_two("-map", format!("0:V:{}", &args.video_index));
+	}
+
+	// select appropriate audio stream, default to the first one if no language was specified
+	if let Some(audio_language) = &args.audio_language {
+		ffmpeg_args.add_two("-map", format!("0:a:m:language:{}", audio_language));
+	} else {
+		ffmpeg_args.add_two("-map", format!("0:a:{}", &args.audio_index));
+	}
+
+	// select appropriate subtitle stream, default to none if neither of language/index was specified
+	if let Some(sub_language) = &args.sub_language {
+		ffmpeg_args.add_two("-map", format!("0:s:m:language:{}:?", sub_language));
+	} else if let Some(sub_index) = &args.sub_index {
+		ffmpeg_args.add_two("-map", format!("0:s:{}:?", sub_index));
+	}
+
+	// ensure subtitles are converted to mov_text if output format is one of these three
+	if ["mp4", "mov", "m4v"].contains(&&*args.output.extension().unwrap_or_default().to_str().unwrap().to_lowercase()) {
+		ffmpeg_args.add_two("-c:s", "mov_text");
+	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
 	if args.fade != 0.0 {
@@ -67,9 +92,13 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			// input stream is already aac, copy stream
 			ffmpeg_args.add_two("-c:a", "copy");
 		} else {
-			// input stream is not aac or filtering was requested, do transcode
+			// input stream is not aac or transcoding is needed
 			ffmpeg_args.add_two("-c:a", args.video_codec.audio_codec());
 			ffmpeg_args.add_two("-b:a", "256k");
+
+			if let Some(audio_channels) = &args.audio_channels {
+				ffmpeg_args.add_two("-ac", format!("{audio_channels}"));
+			}
 
 			if args.needs_audio_filter() {
 				let mut audio_filter: Vec<String> = vec![];
@@ -99,6 +128,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	ffmpeg_args.add_two("-c:v", args.video_codec.video_codec());
 	ffmpeg_args.add_two("-crf", crf);
 	ffmpeg_args.add_two("-pix_fmt", args.video_codec.pix_fmt());
+	ffmpeg_args.add_two("-preset", "slow");
 	ffmpeg_args.add("-tune");
 	match args.video_codec {
 		VideoCodec::H264 => { ffmpeg_args.add("film"); }
@@ -132,10 +162,10 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			video_filter.push(scale);
 		}
 
-		let color_transfer = video_stream.color_transfer.unwrap_or_default();
-		if args.tonemap && (color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67")) {
+		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
+			eprintln!("Performing HDR-to-SDR tonemap because the target format doesn't support HDR");
 			video_filter.add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
-		} else if args.tonemap {
+		} else if args.tonemap && !video_stream.is_hdr() {
 			eprintln!("HDR-to-SDR tonemap requested but input video is already SDR");
 		}
 
