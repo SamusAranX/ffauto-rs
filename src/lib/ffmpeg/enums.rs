@@ -19,6 +19,11 @@ pub enum VideoCodec {
 	H265_10,
 }
 
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
+pub enum OptimizeTarget {
+	Ipod
+}
+
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Size {
 	pub width: u64,

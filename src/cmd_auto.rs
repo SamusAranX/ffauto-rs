@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use ffauto_rs::ffmpeg::enums::{Crop, VideoCodec};
+use ffauto_rs::ffmpeg::enums::{Crop, OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 
 use crate::commands::{AutoArgs, Cli};
@@ -94,7 +94,16 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		} else {
 			// input stream is not aac or transcoding is needed
 			ffmpeg_args.add_two("-c:a", args.video_codec.audio_codec());
-			ffmpeg_args.add_two("-b:a", "256k");
+
+			match args.optimize_target {
+				None => {
+					ffmpeg_args.add_two("-b:a", "256k");
+				},
+				Some(OptimizeTarget::Ipod) => {
+					// TODO: test this on an actual ipod
+					ffmpeg_args.add_two("-b:a", "160k");
+				}
+			}
 
 			if let Some(audio_channels) = &args.audio_channels {
 				ffmpeg_args.add_two("-ac", format!("{audio_channels}"));
@@ -124,11 +133,10 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 
 	// region Video Filtering
 
-	let crf = format!("{}", &args.video_codec.crf_with_garbage(args.garbage));
 	ffmpeg_args.add_two("-c:v", args.video_codec.video_codec());
-	ffmpeg_args.add_two("-crf", crf);
+	ffmpeg_args.add_two("-crf", format!("{}", &args.video_codec.crf_with_garbage(args.garbage)));
 	ffmpeg_args.add_two("-pix_fmt", args.video_codec.pix_fmt());
-	ffmpeg_args.add_two("-preset", "slow");
+	ffmpeg_args.add_two("-preset", "slower");
 	ffmpeg_args.add("-tune");
 	match args.video_codec {
 		VideoCodec::H264 => { ffmpeg_args.add("film"); }
@@ -136,6 +144,19 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			ffmpeg_args.add("grain");
 			ffmpeg_args.add("-tag:v");
 			ffmpeg_args.add("hvc1");
+		}
+	}
+
+	match args.optimize_target {
+		None => (),
+		Some(OptimizeTarget::Ipod) => {
+			// TODO: test this on an actual ipod
+			ffmpeg_args.add_two("-profile:v", "main"); // apple: baseline
+			ffmpeg_args.add_two("-level", "3.1"); // apple: 3.0
+			ffmpeg_args.add_two("-partitions", "all");
+			ffmpeg_args.add_two("-maxrate", "2.5M");
+			ffmpeg_args.add_two("-bufsize", "4M");
+			ffmpeg_args.add_two("-me_method", "tesa");
 		}
 	}
 

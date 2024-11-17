@@ -27,7 +27,18 @@ fn main() -> ExitCode {
 	let result = match &cli.command {
 		Some(Commands::Auto(args)) => {
 			output = &args.output;
-			ffmpeg_auto(&cli, args)
+
+			let (cli, args) = {
+				let mut optimized_cli = cli.clone();
+				optimized_cli.optimize_settings(&args.optimize_target);
+
+				let mut optimized_args = args.clone();
+				optimized_args.optimize_settings();
+
+				(optimized_cli, optimized_args)
+			};
+
+			ffmpeg_auto(&cli, &args)
 		}
 		Some(Commands::Gif(args)) => {
 			output = &args.output;

@@ -5,7 +5,7 @@ use clap::Parser;
 use clap::Subcommand;
 use const_format::formatcp;
 
-use ffauto_rs::ffmpeg::enums::{DitherMode, ScaleMode, StatsMode, VideoCodec};
+use ffauto_rs::ffmpeg::enums::{DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
 
 use crate::palettes::BuiltInPalette;
 
@@ -16,7 +16,7 @@ const BUILD_DATE: &str = env!("BUILD_DATE");
 
 const CLAP_VERSION: &str = formatcp!("{GIT_VERSION} [{GIT_BRANCH}, {GIT_HASH}, {BUILD_DATE}]");
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version = CLAP_VERSION, about = "Wraps common ffmpeg workflows")]
 pub(crate) struct Cli {
 	#[command(subcommand)]
@@ -41,7 +41,20 @@ pub(crate) struct Cli {
 	pub debug: bool,
 }
 
-#[derive(Parser, Debug)]
+impl Cli {
+	pub(crate) fn optimize_settings(&mut self, optimize_target: &Option<OptimizeTarget>) {
+		match optimize_target {
+			None => (),
+			Some(OptimizeTarget::Ipod) => {
+				self.width = None;
+				self.height = None;
+				self.size = Some("vga".parse().unwrap());
+			}
+		}
+	}
+}
+
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct AutoArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
@@ -63,20 +76,20 @@ pub(crate) struct AutoArgs {
 	#[arg(short = 'v', long = "volume", group = "volume", help = "Sets the output audio volume factor", default_value_t = 1.0)]
 	pub audio_volume: f64,
 
-	#[arg(long = "channels", long = "ac", help = "Sets the number of output audio channels")]
+	#[arg(long = "channels", help = "Sets the number of output audio channels")]
 	pub audio_channels: Option<String>,
 
 	#[arg(long, group = "video_select", help = "Selects a video stream by index", default_value_t = 0)]
 	pub video_index: u8,
-	#[arg(long, group = "video_select", help = "Selects a video stream by language (ISO 639-2)")]
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language (ISO 639-2)")]
 	pub video_language: Option<String>,
 	#[arg(long, group = "audio_select", help = "Selects an audio stream by index", default_value_t = 0)]
 	pub audio_index: u8,
-	#[arg(long, group = "audio_select", help = "Selects an audio stream by language (ISO 639-2)")]
+	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language (ISO 639-2)")]
 	pub audio_language: Option<String>,
 	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index")]
 	pub sub_index: Option<u8>,
-	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by language (ISO 639-2)")]
+	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language (ISO 639-2)")]
 	pub sub_language: Option<String>,
 
 	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over -fi/-fo.", default_value_t = 0.0)]
@@ -93,6 +106,9 @@ pub(crate) struct AutoArgs {
 
 	#[arg(short = 'C', long = "codec", help = "The video codec", default_value_t = VideoCodec::default())]
 	pub video_codec: VideoCodec,
+
+	#[arg(short = 'O', long = "optimize", help = "Optimize settings for certain devices")]
+	pub optimize_target: Option<OptimizeTarget>,
 
 	#[arg(short, help = "Reduces video quality depending on how often this was specified", action = ArgAction::Count)]
 	pub garbage: u8,
@@ -115,9 +131,21 @@ impl AutoArgs {
 		cli.width.is_some() || cli.height.is_some() || cli.size.is_some() || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0 ||
 			cli.crop.is_some() || self.framerate.is_some() || self.tonemap
 	}
+
+	pub(crate) fn optimize_settings(&mut self) {
+		match self.optimize_target {
+			None => (),
+			Some(OptimizeTarget::Ipod) => {
+				self.tonemap = true;
+				self.faststart = true;
+				self.audio_channels = Some("2".parse().unwrap());
+				self.video_codec = VideoCodec::H264;
+			}
+		}
+	}
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct GIFArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
@@ -171,7 +199,7 @@ pub(crate) struct GIFArgs {
 	pub diff_rect: bool,
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 pub(crate) struct QuantArgs {
 	#[arg(short, help = "The input file")]
 	pub input: PathBuf,
@@ -200,7 +228,7 @@ pub(crate) struct QuantArgs {
 	pub bayer_scale: u16,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub(crate) enum Commands {
 	#[command(about = "Common ffmpeg wrapper")]
 	Auto(AutoArgs),
