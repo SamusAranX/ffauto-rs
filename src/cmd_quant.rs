@@ -52,10 +52,9 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.is_hdr())?;
 	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
-	let video_filter_str = video_filter.join(",");
 	let filter_complex = generate_palette_filtergraph(
 		true, false,
-		video_filter_str,
+		video_filter,
 		&args.palette_file, &args.palette_name,
 		args.num_colors, &StatsMode::default(), false,
 		&args.dither, args.bayer_scale,

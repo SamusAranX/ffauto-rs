@@ -46,9 +46,19 @@ impl Cli {
 		match optimize_target {
 			None => (),
 			Some(OptimizeTarget::Ipod) => {
-				self.width = None;
-				self.height = None;
-				self.size = Some("vga".parse().unwrap());
+				self.width = Some(640);
+				self.height = Some(480);
+				self.size = None;
+			}
+			Some(OptimizeTarget::Psp) => {
+				self.width = Some(480);
+				self.height = Some(272);
+				self.size = None;
+			}
+			Some(OptimizeTarget::PsVita) => {
+				self.width = Some(960);
+				self.height = Some(540);
+				self.size = None;
 			}
 		}
 	}
@@ -135,7 +145,7 @@ impl AutoArgs {
 	pub(crate) fn optimize_settings(&mut self) {
 		match self.optimize_target {
 			None => (),
-			Some(OptimizeTarget::Ipod) => {
+			_ => {
 				self.tonemap = true;
 				self.faststart = true;
 				self.audio_channels = Some("2".parse().unwrap());

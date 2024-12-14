@@ -73,6 +73,14 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 	Ok("".parse().unwrap())
 }
 
+pub(crate) fn add_fps_filter(video_filter: &mut Vec<String>, fps_arg: Option<f64>, fps_mult_arg: Option<f64>, stream_fps: Option<f64>) {
+	if let Some(fps) = fps_arg {
+		video_filter.push(format!("fps=fps={fps:.3}"));
+	} else if let (Some(fps_mult), Some(fps)) = (fps_mult_arg, stream_fps) {
+		video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
+	}
+}
+
 pub(crate) fn add_crop_scale_tonemap_filters(video_filter: &mut Vec<String>, cli: &Cli, is_hdr: bool) -> Result<()> {
 	if let Some(crop_str) = &cli.crop {
 		let crop = Crop::new(crop_str)?;
@@ -116,15 +124,16 @@ pub(crate) fn add_color_sharpness_filters(video_filter: &mut Vec<String>, bright
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn generate_palette_filtergraph(
 	gif: bool, dedup: bool,
-	video_filter_str: String,
+	mut video_filter: Vec<String>,
 	palette_file: &Option<PathBuf>, palette_name: &Option<BuiltInPalette>,
 	num_colors: u16, stats_mode: &StatsMode, diff_rect: bool,
 	dither: &DitherMode, bayer_scale: u16,
 ) -> Result<String> {
-	let mpdecimate = if gif && dedup { ",mpdecimate" } else { "" };
+	if gif && dedup { video_filter.add("mpdecimate"); }
+	video_filter.add("setsar=1");
+
 	let bayer_scale = if dither == &DitherMode::Bayer { format!(":bayer_scale={bayer_scale}") } else { String::new() };
 	let diff_mode = if gif && diff_rect { ":diff_mode=rectangle" } else { "" };
-	let new = if gif && stats_mode == &StatsMode::Single { ":new=1" } else { "" };
 
 	if palette_file.is_some() || palette_name.is_some() {
 		let pal_string: String;
@@ -138,19 +147,23 @@ pub(crate) fn generate_palette_filtergraph(
 			anyhow::bail!("This wasn't supposed to happen!")
 		}
 
+		let video_filter_str = video_filter.join(",");
 		Ok(
 			[
 				format!("{pal_string} [pal]"),
-				format!("[0:v] {video_filter_str}{mpdecimate},setsar=1 [filtered];[filtered][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}"),
+				format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}"),
 			].join(";")
 		)
 	} else {
 		// no palette was given, so we'll use palettegen to create one
+		let new = if gif && stats_mode == &StatsMode::Single { ":new=1" } else { "" };
 		let stats_mode = if gif { format!(":stats_mode={stats_mode}") } else { String::new() };
 
+		video_filter.add("split");
+		let video_filter_str = video_filter.join(",");
 		Ok(
 			[
-				format!("[0:v] {video_filter_str}{mpdecimate},setsar=1,split [a][b]"),
+				format!("[0:v] {video_filter_str} [a][b]"),
 				format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0{stats_mode} [pal]"),
 				format!("[b][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}{new}"),
 			].join(";")
@@ -165,6 +178,7 @@ pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> 
 	match p.duration() {
 		Ok(_) => Ok(p),
 		Err(_) => {
+			#[cfg(debug_assertions)]
 			eprintln!("Running ffprobe again and counting frames…");
 			ffprobe(&input, true)
 		}

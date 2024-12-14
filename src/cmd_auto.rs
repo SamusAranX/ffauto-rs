@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use ffauto_rs::ffmpeg::enums::{Crop, OptimizeTarget, VideoCodec};
+use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 
 use crate::commands::{AutoArgs, Cli};
-use crate::common::{ffprobe_output, generate_scale_filter, parse_duration, parse_seek};
+use crate::common::{add_crop_scale_tonemap_filters, add_fps_filter, ffprobe_output, parse_duration, parse_seek};
 use crate::vec_push_ext::PushStrExt;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
@@ -96,12 +96,12 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			ffmpeg_args.add_two("-c:a", args.video_codec.audio_codec());
 
 			match args.optimize_target {
-				None => {
-					ffmpeg_args.add_two("-b:a", "256k");
-				},
 				Some(OptimizeTarget::Ipod) => {
 					// TODO: test this on an actual ipod
 					ffmpeg_args.add_two("-b:a", "160k");
+				},
+				_ => {
+					ffmpeg_args.add_two("-b:a", "256k");
 				}
 			}
 
@@ -147,10 +147,11 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		}
 	}
 
+	// add extra ffmpeg arguments that aren't handled by optimize_settings()
 	match args.optimize_target {
 		None => (),
-		Some(OptimizeTarget::Ipod) => {
-			// TODO: test this on an actual ipod
+		_ => {
+			// TODO: test this on actual target devices
 			ffmpeg_args.add_two("-profile:v", "main"); // apple: baseline
 			ffmpeg_args.add_two("-level", "3.1"); // apple: 3.0
 			ffmpeg_args.add_two("-partitions", "all");
@@ -167,28 +168,10 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	if args.needs_video_filter(cli) {
 		let mut video_filter: Vec<String> = vec![];
 
-		if let Some(fps) = args.framerate {
-			video_filter.push(format!("fps=fps={fps:.3}"));
-		} else if let (Some(fps_mult), Some(fps)) = (args.framerate_mult, video_stream.frame_rate()) {
-			video_filter.push(format!("fps=fps={:.3}", fps * fps_mult));
-		}
+		add_fps_filter(&mut video_filter, args.framerate, args.framerate_mult, video_stream.frame_rate());
 
-		if let Some(crop_str) = &cli.crop {
-			let crop = Crop::new(crop_str)?;
-			video_filter.push(format!("crop={crop}"));
-		}
-
-		let scale = generate_scale_filter(cli)?;
-		if !scale.is_empty() {
-			video_filter.push(scale);
-		}
-
-		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
-			eprintln!("Performing HDR-to-SDR tonemap because the target format doesn't support HDR");
-			video_filter.add("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709");
-		} else if args.tonemap && !video_stream.is_hdr() {
-			eprintln!("HDR-to-SDR tonemap requested but input video is already SDR");
-		}
+		let is_hdr = (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr();
+		add_crop_scale_tonemap_filters(&mut video_filter, cli, is_hdr)?;
 
 		if fade_in > 0.0 {
 			video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
