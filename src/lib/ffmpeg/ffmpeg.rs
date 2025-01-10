@@ -167,6 +167,5 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 	let execution_time = start.elapsed();
 	println!("Encoding took {:.2}s!", execution_time.as_secs_f64());
 
-
 	Ok(())
 }

@@ -9,7 +9,10 @@ fn print_env(key: &str, val: &str) {
 }
 
 fn env_command<I, S>(env: &str, program: S, args: I) -> String
-where I: IntoIterator<Item=S>, S: AsRef<OsStr> {
+where
+	I: IntoIterator<Item = S>,
+	S: AsRef<OsStr>,
+{
 	let mut string = String::from("n/a");
 
 	match Command::new(program).args(args).output() {

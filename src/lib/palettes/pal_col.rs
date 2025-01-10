@@ -11,7 +11,7 @@ use crate::palettes::MAX_PALETTE_COLORS;
 
 const PRO_MAGIC: u16 = 0xB123;
 
-fn div_rem<T: std::ops::Div<Output=T> + std::ops::Rem<Output=T> + Copy>(x: T, y: T) -> (T, T) {
+fn div_rem<T: std::ops::Div<Output = T> + std::ops::Rem<Output = T> + Copy>(x: T, y: T) -> (T, T) {
 	let quot = x / y;
 	let rem = x % y;
 	(quot, rem)
@@ -30,7 +30,8 @@ impl Palette {
 			return Err(PaletteError::InvalidBinaryData { position: 0, msg: "Not an Animator COL file".to_string() });
 		}
 
-		if pro { // Animator Pro checks
+		if pro {
+			// Animator Pro checks
 			f.seek(SeekFrom::Start(4))?; // skip file size
 
 			let magic = f.read_u16::<LittleEndian>()?;

@@ -115,7 +115,7 @@ impl fmt::Display for Crop {
 		let mut crop_str = match (self.width, self.height) {
 			(w, 0) => format!("w={w}"),
 			(0, h) => format!("h={h}"),
-			(w, h) => format!("w={w}:h={h}")
+			(w, h) => format!("w={w}:h={h}"),
 		};
 
 		if self.x > 0 {

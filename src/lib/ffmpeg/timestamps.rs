@@ -11,7 +11,9 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 		return None;
 	}
 
-	if let Ok(f) = timestamp.parse::<f64>() { return Some(Duration::from_secs_f64(f)); }
+	if let Ok(f) = timestamp.parse::<f64>() {
+		return Some(Duration::from_secs_f64(f));
+	}
 
 	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
@@ -21,7 +23,7 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 			eprintln!("invalid duration string: {timestamp}");
 			return None;
 		}
-		Some(captures) => captures
+		Some(captures) => captures,
 	};
 
 	let mut duration = Duration::ZERO;

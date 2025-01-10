@@ -52,9 +52,7 @@ fn main() -> ExitCode {
 		}
 		Some(Commands::Info(args)) => {
 			return match ffmpeg_info(args) {
-				Ok(_) => {
-					ExitCode::SUCCESS
-				}
+				Ok(_) => ExitCode::SUCCESS,
 				Err(e) => {
 					eprintln!("execution failed: {e}");
 					ExitCode::FAILURE

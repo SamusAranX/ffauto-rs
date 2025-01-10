@@ -40,7 +40,7 @@ impl Palette {
 						msg: "Malformed line".to_string(),
 					});
 				}
-				Some(captures) => captures
+				Some(captures) => captures,
 			};
 
 			let mut col = Color::default();
