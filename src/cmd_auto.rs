@@ -111,7 +111,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			}
 
 			if let Some(audio_channels) = &args.audio_channels {
-				ffmpeg_args.add_two("-ac", format!("{audio_channels}"));
+				ffmpeg_args.add_two("-ac", audio_channels.to_string());
 			}
 
 			if args.needs_audio_filter() {

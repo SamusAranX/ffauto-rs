@@ -30,7 +30,7 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 
 		let language = stream.tags.as_ref().and_then(|t| t.language.as_ref());
 		let title = stream.tags.as_ref().and_then(|t| t.title.as_ref());
-		let default = stream.disposition.as_ref().and_then(|d| Some(d.default)).unwrap_or(0) == 1;
+		let default = stream.disposition.as_ref().map(|d| d.default).unwrap_or(0) == 1;
 
 		let type_color = {
 			match codec_type {

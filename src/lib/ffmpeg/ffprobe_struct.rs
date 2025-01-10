@@ -49,7 +49,7 @@ impl FFProbeOutput {
 	}
 
 	pub fn get_stream(&self, index: usize) -> Option<&Stream> {
-		self.streams.iter().nth(index)
+		self.streams.get(index)
 	}
 
 	fn get_typed_stream(&self, index: usize, stream_type: StreamType) -> Option<&Stream> {
