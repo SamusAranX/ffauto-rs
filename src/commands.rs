@@ -238,6 +238,12 @@ pub(crate) struct QuantArgs {
 	pub bayer_scale: u16,
 }
 
+#[derive(Parser, Debug, Clone)]
+pub(crate) struct InfoArgs {
+	#[arg(short, help = "The input file")]
+	pub input: PathBuf,
+}
+
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum Commands {
 	#[command(about = "Common ffmpeg wrapper")]
@@ -248,4 +254,7 @@ pub(crate) enum Commands {
 
 	#[command(about = "Uses ffmpeg to quantize still images")]
 	Quant(QuantArgs),
+
+	#[command(about = "Formats and prints ffprobe information")]
+	Info(InfoArgs),
 }

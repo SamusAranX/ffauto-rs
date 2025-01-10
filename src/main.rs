@@ -7,11 +7,13 @@ use humansize::DECIMAL;
 
 use crate::cmd_auto::ffmpeg_auto;
 use crate::cmd_gif::ffmpeg_gif;
+use crate::cmd_info::ffmpeg_info;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
 
 mod cmd_auto;
 mod cmd_gif;
+mod cmd_info;
 mod cmd_quant;
 mod commands;
 mod common;
@@ -47,6 +49,17 @@ fn main() -> ExitCode {
 		Some(Commands::Quant(args)) => {
 			output = &args.output;
 			ffmpeg_quant(&cli, args)
+		}
+		Some(Commands::Info(args)) => {
+			return match ffmpeg_info(args) {
+				Ok(_) => {
+					ExitCode::SUCCESS
+				}
+				Err(e) => {
+					eprintln!("execution failed: {e}");
+					ExitCode::FAILURE
+				}
+			}
 		}
 		None => {
 			return ExitCode::FAILURE;

@@ -1,6 +1,7 @@
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
+use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -89,10 +90,28 @@ pub enum StreamType {
 	Data,
 }
 
+impl Display for StreamType {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		match self  {
+			StreamType::Audio => write!(f, "Audio"),
+			StreamType::Video => write!(f, "Video"),
+			StreamType::Subtitle => write!(f, "Subtitle"),
+			StreamType::Data => write!(f, "Data"),
+		}
+	}
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Tags {
 	#[serde(rename = "DURATION")]
 	pub duration: Option<String>,
+	pub language: Option<String>,
+	pub title: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct Disposition {
+	pub default: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -105,23 +124,32 @@ pub struct Format {
 pub struct Stream {
 	pub index: u64,
 	pub codec_name: Option<String>,
+	pub profile: Option<String>,
 	pub codec_type: StreamType,
 	pub width: Option<u64>,
 	pub height: Option<u64>,
+	#[serde(rename = "sample_aspect_ratio")]
+	pub sar: Option<String>,
+	#[serde(rename = "display_aspect_ratio")]
+	pub dar: Option<String>,
 	pub pix_fmt: Option<String>,
+	pub field_order: Option<String>,
 	pub color_range: Option<String>,
 	pub color_space: Option<String>,
 	pub color_transfer: Option<String>,
 	pub color_primaries: Option<String>,
 	pub r_frame_rate: Option<String>,
 	pub avg_frame_rate: Option<String>,
+	pub sample_fmt: Option<String>,
 	pub sample_rate: Option<String>,
 	pub channels: Option<u64>,
 	pub channel_layout: Option<String>,
+	pub bits_per_raw_sample: Option<String>,
 	pub bit_rate: Option<String>,
 	pub duration: Option<String>,
 	pub nb_read_frames: Option<String>,
 	pub tags: Option<Tags>,
+	pub disposition: Option<Disposition>,
 }
 
 impl Stream {
