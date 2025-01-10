@@ -46,7 +46,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	// strip out stream titles
 	ffmpeg_args.add_two("-metadata:s", "title=\"\"");
 	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
-	ffmpeg_args.add("-empty_hdlr_name 1");
+	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
 	// select appropriate video stream, default to the first one if no language was specified
 	if let Some(video_language) = &args.video_language {
