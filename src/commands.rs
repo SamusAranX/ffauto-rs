@@ -45,20 +45,28 @@ impl Cli {
 	pub(crate) fn optimize_settings(&mut self, optimize_target: &Option<OptimizeTarget>) {
 		match optimize_target {
 			None => (),
-			Some(OptimizeTarget::Ipod) => {
-				self.width = Some(640);
-				self.height = Some(480);
+			Some(_) => {
+				self.width = None;
+				self.height = None;
 				self.size = None;
+			}
+		}
+
+		match optimize_target {
+			None => (),
+			Some(OptimizeTarget::Ipod5) => {
+				self.size = Some("320x240".to_string());
+			}
+			Some(OptimizeTarget::Ipod) => {
+				self.size = Some("640x480".to_string());
 			}
 			Some(OptimizeTarget::Psp) => {
-				self.width = Some(480);
-				self.height = Some(272);
-				self.size = None;
+				// as of firmware 3.30, allegedly supports MPEG-4 AVC Main Profile 720x480, 352x480 and 480x272
+				// extra info: also supports 160x120 JPEG thumbnails with a .THM extension, next to the video files
+				self.size = Some("480x272".to_string());
 			}
 			Some(OptimizeTarget::PsVita) => {
-				self.width = Some(960);
-				self.height = Some(540);
-				self.size = None;
+				self.size = Some("960x540".to_string());
 			}
 		}
 	}

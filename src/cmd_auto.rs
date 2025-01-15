@@ -152,17 +152,37 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		}
 	}
 
+	ffmpeg_args.add_two("-partitions", "all");
+	ffmpeg_args.add_two("-me_method", "tesa");
+
 	// add extra ffmpeg arguments that aren't handled by optimize_settings()
+	// TODO: test this on actual target devices
 	match args.optimize_target {
 		None => (),
-		_ => {
-			// TODO: test this on actual target devices
-			ffmpeg_args.add_two("-profile:v", "main"); // apple: baseline
-			ffmpeg_args.add_two("-level", "3.1"); // apple: 3.0
-			ffmpeg_args.add_two("-partitions", "all");
-			ffmpeg_args.add_two("-maxrate", "2.5M");
-			ffmpeg_args.add_two("-bufsize", "4M");
-			ffmpeg_args.add_two("-me_method", "tesa");
+		Some(OptimizeTarget::Ipod5) => {
+			ffmpeg_args.add_two("-profile:v", "baseline"); // apple: baseline
+			ffmpeg_args.add_two("-level", "1.3"); // apple: 1.3
+			ffmpeg_args.add_two("-maxrate", "768K"); // apple: 768 kbps, actual level limit
+			ffmpeg_args.add_two("-bufsize", "2M");
+		}
+		Some(OptimizeTarget::Ipod) => {
+			ffmpeg_args.add_two("-profile:v", "baseline"); // apple: baseline
+			ffmpeg_args.add_two("-level", "3.0"); // apple: 3.0
+			ffmpeg_args.add_two("-maxrate", "2.5M"); // apple: 2.5 mbps
+			ffmpeg_args.add_two("-bufsize", "5M");
+		}
+		Some(OptimizeTarget::Psp) => {
+			ffmpeg_args.add_two("-profile:v", "main");
+			ffmpeg_args.add_two("-level", "3.0");
+			ffmpeg_args.add_two("-maxrate", "3M"); // needs verification
+			ffmpeg_args.add_two("-bufsize", "6M");
+		}
+		Some(OptimizeTarget::PsVita) => {
+			// H.264/MPEG-4 AVC Hi/Main/Baseline Profile (AAC)
+			ffmpeg_args.add_two("-profile:v", "high");
+			ffmpeg_args.add_two("-level", "4.1");
+			ffmpeg_args.add_two("-maxrate", "10M");
+			ffmpeg_args.add_two("-bufsize", "20M");
 		}
 	}
 
