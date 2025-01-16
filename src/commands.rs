@@ -154,7 +154,7 @@ impl AutoArgs {
 		match self.optimize_target {
 			None => (),
 			_ => {
-				self.tonemap = true;
+				self.tonemap = true; // none of the optimization targets support HDR media
 				self.faststart = true;
 				self.audio_channels = Some("2".parse().unwrap());
 				self.video_codec = VideoCodec::H264;

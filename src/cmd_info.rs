@@ -64,13 +64,11 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				let codec_profile = stream.profile.as_ref().unwrap();
 				let pix_fmt = stream.pix_fmt.as_ref().unwrap();
 
+				print!("{codec_name} ({codec_profile}), {pix_fmt} ");
+
 				let width = stream.width.unwrap_or(0);
 				let height = stream.height.unwrap_or(0);
-				let sar = stream.sar.as_ref().unwrap();
-				let dar = stream.dar.as_ref().unwrap();
 				let fps = stream.frame_rate().unwrap_or(0_f64);
-
-				print!("{codec_name} ({codec_profile}), {pix_fmt} ");
 
 				let mut format_info: Vec<String> = Vec::new();
 				if let Some(field_order) = &stream.field_order {
@@ -91,7 +89,13 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 					color_info.add(color_transfer)
 				}
 				if !color_info.is_empty() {
-					format_info.add(color_info.join("/"));
+					// if color space, primaries, and transfer are the same,
+					// only print one of them instead of repeating it three times
+					if color_info.iter().all(|c| c == &color_info[0]) {
+						format_info.add(&color_info[0]);
+					} else {
+						format_info.add(color_info.join("/"));
+					}
 				}
 				if !format_info.is_empty() {
 					print!("({})", format_info.join(", "))
@@ -99,7 +103,11 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 
 				let fps = format!("{fps:.3}");
 				let fps = fps.trim_end_matches("0").trim_end_matches(".");
-				println!(", {width}×{height} ({sar}/{dar}), {fps} fps")
+				if let (Some(sar), Some(dar)) = (&stream.sar, &stream.dar) {
+					println!(", {width}×{height} ({sar}/{dar}), {fps} fps")
+				} else {
+					println!(", {width}×{height}, {fps} fps")
+				}
 			}
 			StreamType::Audio => {
 				let codec_name = stream.codec_name.as_ref().unwrap();
