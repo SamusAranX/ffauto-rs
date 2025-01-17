@@ -41,10 +41,6 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
 	}
 
-	ffmpeg_args.add("-dn");
-
-	// strip out stream titles
-	ffmpeg_args.add_two("-metadata:s", "title=\"\"");
 	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
@@ -62,16 +58,13 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		ffmpeg_args.add_two("-map", format!("0:a:{}", &args.audio_index));
 	}
 
-	// select appropriate subtitle stream, default to none if neither of language/index was specified
+	// select appropriate subtitle stream, default to all of them if neither of language/index was specified
 	if let Some(sub_language) = &args.sub_language {
 		ffmpeg_args.add_two("-map", format!("0:s:m:language:{}:?", sub_language));
 	} else if let Some(sub_index) = &args.sub_index {
 		ffmpeg_args.add_two("-map", format!("0:s:{}:?", sub_index));
-	}
-
-	// ensure subtitles are converted to mov_text if output format is one of these three
-	if ["mp4", "mov", "m4v"].contains(&&*args.output.extension().unwrap_or_default().to_str().unwrap().to_lowercase()) {
-		ffmpeg_args.add_two("-c:s", "mov_text");
+	} else {
+		ffmpeg_args.add_two("-map", "0:s?");
 	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
@@ -164,12 +157,14 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			ffmpeg_args.add_two("-level", "1.3"); // apple: 1.3
 			ffmpeg_args.add_two("-maxrate", "768K"); // apple: 768 kbps, actual level limit
 			ffmpeg_args.add_two("-bufsize", "2M");
+			ffmpeg_args.add_two("-c:s", "mov_text");
 		}
 		Some(OptimizeTarget::Ipod) => {
 			ffmpeg_args.add_two("-profile:v", "baseline"); // apple: baseline
 			ffmpeg_args.add_two("-level", "3.0"); // apple: 3.0
 			ffmpeg_args.add_two("-maxrate", "2.5M"); // apple: 2.5 mbps
 			ffmpeg_args.add_two("-bufsize", "5M");
+			ffmpeg_args.add_two("-c:s", "mov_text");
 		}
 		Some(OptimizeTarget::Psp) => {
 			ffmpeg_args.add_two("-profile:v", "main");
