@@ -53,11 +53,16 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
 
 	let filter_complex = generate_palette_filtergraph(
-		true, false,
+		true,
+		false,
 		video_filter,
-		&args.palette_file, &args.palette_name,
-		args.num_colors, &StatsMode::default(), false,
-		&args.dither, args.bayer_scale,
+		&args.palette_file,
+		&args.palette_name,
+		args.num_colors,
+		&StatsMode::default(),
+		false,
+		&args.dither,
+		args.bayer_scale,
 	)?;
 
 	ffmpeg_args.add_two("-filter_complex", filter_complex);

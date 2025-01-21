@@ -134,11 +134,13 @@ pub(crate) struct AutoArgs {
 
 impl AutoArgs {
 	pub(crate) fn audio_copy_possible(&self, input_codec_name: Option<String>) -> bool {
-		!self.mute &&
-			self.audio_channels.is_none() &&
-			input_codec_name == Some("aac".parse().unwrap()) &&
-			self.audio_volume == 1.0 &&
-			self.fade == 0.0 && self.fade_in == 0.0 && self.fade_out == 0.0
+		!self.mute
+			&& self.audio_channels.is_none()
+			&& input_codec_name == Some("aac".parse().unwrap())
+			&& self.audio_volume == 1.0
+			&& self.fade == 0.0
+			&& self.fade_in == 0.0
+			&& self.fade_out == 0.0
 	}
 
 	pub(crate) fn needs_audio_filter(&self) -> bool {
@@ -146,8 +148,15 @@ impl AutoArgs {
 	}
 
 	pub(crate) fn needs_video_filter(&self, cli: &Cli) -> bool {
-		cli.width.is_some() || cli.height.is_some() || cli.size.is_some() || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0 ||
-			cli.crop.is_some() || self.framerate.is_some() || self.tonemap
+		cli.width.is_some()
+			|| cli.height.is_some()
+			|| cli.size.is_some()
+			|| self.fade != 0.0
+			|| self.fade_in != 0.0
+			|| self.fade_out != 0.0
+			|| cli.crop.is_some()
+			|| self.framerate.is_some()
+			|| self.tonemap
 	}
 
 	pub(crate) fn optimize_settings(&mut self) {

@@ -9,11 +9,14 @@ use crate::ffmpeg::ffprobe_struct::FFProbeOutput;
 pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOutput> {
 	let mut ffprobe_args = vec![
 		"-hide_banner",
-		"-loglevel", "error",
-		"-print_format", "json",
+		"-loglevel",
+		"error",
+		"-print_format",
+		"json",
 		"-show_streams",
 		"-show_format",
-		"-i", input.as_ref().to_str().unwrap(),
+		"-i",
+		input.as_ref().to_str().unwrap(),
 	];
 	if count_frames {
 		ffprobe_args.push("-count_frames");
@@ -23,7 +26,8 @@ pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOu
 		.args(ffprobe_args)
 		.stdout(Stdio::piped())
 		.stderr(Stdio::piped())
-		.spawn().expect("failed to run ffprobe");
+		.spawn()
+		.expect("failed to run ffprobe");
 
 	let child_output = ffprobe.wait_with_output().expect("failed to wait for ffprobe");
 	if !child_output.status.success() {

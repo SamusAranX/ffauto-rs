@@ -74,37 +74,25 @@ impl Crop {
 		let crop_str = crop_str.into();
 		let re = Regex::new(r"(-?\d+)").unwrap();
 
-		let numbers = re.find_iter(crop_str.as_str()).map(|s| {
-			s.as_str().parse::<u64>()
-				.map_err(|_| anyhow!("\"{crop_str}\" is not a valid crop value"))
-		}).collect::<Result<Vec<u64>, anyhow::Error>>()?;
+		let numbers = re
+			.find_iter(crop_str.as_str())
+			.map(|s| s.as_str().parse::<u64>().map_err(|_| anyhow!("\"{crop_str}\" is not a valid crop value")))
+			.collect::<Result<Vec<u64>, anyhow::Error>>()?;
 
 		match numbers.as_slice() {
-			[h]
-			if *h > 0 => {
-				Ok(Crop {
-					height: *h,
-					..Crop::default()
-				})
-			}
-			[w, h]
-			if *w > 0 && *h > 0 => {
-				Ok(Crop {
-					width: *w,
-					height: *h,
-					..Crop::default()
-				})
-			}
-			[w, h, x, y]
-			if *w > 0 && *h > 0 => {
-				Ok(Crop {
-					width: *w,
-					height: *h,
-					x: *x,
-					y: *y,
-				})
-			}
-			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value")
+			[h] if *h > 0 => Ok(Crop { height: *h, ..Crop::default() }),
+			[w, h] if *w > 0 && *h > 0 => Ok(Crop {
+				width: *w,
+				height: *h,
+				..Crop::default()
+			}),
+			[w, h, x, y] if *w > 0 && *h > 0 => Ok(Crop {
+				width: *w,
+				height: *h,
+				x: *x,
+				y: *y,
+			}),
+			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value"),
 		}
 	}
 }

@@ -21,8 +21,10 @@ impl Palette {
 			let trimmed_line = trimmed_line.strip_prefix("0x").unwrap_or(&trimmed_line);
 			let trimmed_line = trimmed_line.strip_prefix("#").unwrap_or(trimmed_line);
 
-			let parsed_int = u32::from_str_radix(trimmed_line, 16)
-				.map_err(|_| PaletteError::InvalidTextLine { line: i, msg: "Not a hexadecimal color value".to_string() })?;
+			let parsed_int = u32::from_str_radix(trimmed_line, 16).map_err(|_| PaletteError::InvalidTextLine {
+				line: i,
+				msg: "Not a hexadecimal color value".to_string(),
+			})?;
 
 			pal.push_color(Color::from(parsed_int));
 

@@ -25,7 +25,8 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		println!("{:#^40}", " DEBUG MODE ");
 
 		let ffmpeg_args = &args
-			.iter().map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_owned() })
+			.iter()
+			.map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_owned() })
 			.collect::<Vec<String>>();
 
 		println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
@@ -67,9 +68,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 					if last_progress.elapsed() < Duration::from_secs(5) {
 						sleep(Duration::from_millis(200));
 
-						reader
-							.seek(SeekFrom::Start(pos))
-							.context("Failed to seek to resume point")?;
+						reader.seek(SeekFrom::Start(pos)).context("Failed to seek to resume point")?;
 
 						continue;
 					}
@@ -87,20 +86,10 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 					match (key, value) {
 						("frame", frame) => {
-							frames_processed = Some(
-								frame
-									.trim()
-									.parse::<u64>()
-									.unwrap_or_default(),
-							);
+							frames_processed = Some(frame.trim().parse::<u64>().unwrap_or_default());
 						}
 						("fps", fps) => {
-							frames_per_second = Some(
-								fps
-									.trim()
-									.parse::<f64>()
-									.unwrap_or_default(),
-							);
+							frames_per_second = Some(fps.trim().parse::<f64>().unwrap_or_default());
 						}
 						("out_time", time) => {
 							frame_time = parse_ffmpeg_duration(time);
@@ -109,13 +98,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 							encode_bitrate = Some(bitrate.trim().to_owned());
 						}
 						("speed", speed) => {
-							encode_speed = Some(
-								speed
-									.trim()
-									.trim_end_matches('x')
-									.parse::<f32>()
-									.unwrap_or_default(),
-							);
+							encode_speed = Some(speed.trim().trim_end_matches('x').parse::<f32>().unwrap_or_default());
 						}
 						("progress", "continue") => (),
 						("progress", "end") => {
@@ -136,13 +119,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				}
 			}
 
-			if let (
-				Some(frame),
-				Some(fps),
-				Some(time),
-				Some(bitrate),
-				Some(speed)
-			) = (frames_processed, frames_per_second, frame_time, &encode_bitrate, encode_speed) {
+			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed)) = (frames_processed, frames_per_second, frame_time, &encode_bitrate, encode_speed) {
 				println!(
 					"frame: {frame} - fps: {fps:.2} - time: {} - bitrate: {bitrate} - speed: {speed:.3}x",
 					format_ffmpeg_timestamp(time, true)

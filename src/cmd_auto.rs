@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
-use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-
 use crate::commands::{AutoArgs, Cli};
 use crate::common::{add_crop_scale_tonemap_filters, add_fps_filter, ffprobe_output, parse_duration, parse_seek};
 use crate::vec_push_ext::PushStrExt;
+use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
+use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
+use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Subtitle;
 
 pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
@@ -63,8 +63,13 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		ffmpeg_args.add_two("-map", format!("0:s:m:language:{}:?", sub_language));
 	} else if let Some(sub_index) = &args.sub_index {
 		ffmpeg_args.add_two("-map", format!("0:s:{}:?", sub_index));
-	} else {
+	} else if probe.streams.iter().any(|s| s.codec_type == Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
+		// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
+		// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
 		ffmpeg_args.add_two("-map", "0:s?");
+	} else {
+		// there are only hdmv_pgs_subtitle subtitles, so ignore them
+		ffmpeg_args.add("-sn");
 	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
@@ -95,9 +100,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 
 			match args.optimize_target {
 				Some(OptimizeTarget::Ipod) => {
-					// TODO: test this on an actual ipod
 					ffmpeg_args.add_two("-b:a", "160k");
-				},
+				}
 				_ => {
 					ffmpeg_args.add_two("-b:a", "256k");
 				}
@@ -137,7 +141,9 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	ffmpeg_args.add_two("-preset", "slower");
 	ffmpeg_args.add("-tune");
 	match args.video_codec {
-		VideoCodec::H264 => { ffmpeg_args.add("film"); }
+		VideoCodec::H264 => {
+			ffmpeg_args.add("film");
+		}
 		VideoCodec::H265 | VideoCodec::H265_10 => {
 			ffmpeg_args.add("grain");
 			ffmpeg_args.add("-tag:v");

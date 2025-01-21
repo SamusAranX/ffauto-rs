@@ -66,8 +66,10 @@ pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 		_ => {
 			let re = Regex::new(r"^(?P<W>\d+)x(?P<H>\d+)$").unwrap();
 			let groups: Captures = match re.captures(&size) {
-				None => { anyhow::bail!("Invalid size string \"{size}\" provided") }
-				Some(captures) => captures
+				None => {
+					anyhow::bail!("Invalid size string \"{size}\" provided")
+				}
+				Some(captures) => captures,
 			};
 
 			if let (Some(w), Some(h)) = (groups.name("W"), groups.name("H")) {

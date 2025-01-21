@@ -64,10 +64,10 @@ pub(crate) fn generate_scale_filter(cli: &Cli) -> Result<String> {
 		return Ok(format!("scale=w=-2:h={height}:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp", cli.scale_mode));
 	} else if let Some(size) = &cli.size {
 		let size = parse_ffmpeg_size(size)?;
-		return Ok(
-			format!("scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp",
-			        size.width, size.height, cli.scale_mode)
-		);
+		return Ok(format!(
+			"scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+accurate_rnd+full_chroma_int+full_chroma_inp",
+			size.width, size.height, cli.scale_mode
+		));
 	}
 
 	Ok("".parse().unwrap())
@@ -123,16 +123,27 @@ pub(crate) fn add_color_sharpness_filters(video_filter: &mut Vec<String>, bright
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn generate_palette_filtergraph(
-	gif: bool, dedup: bool,
+	gif: bool,
+	dedup: bool,
 	mut video_filter: Vec<String>,
-	palette_file: &Option<PathBuf>, palette_name: &Option<BuiltInPalette>,
-	num_colors: u16, stats_mode: &StatsMode, diff_rect: bool,
-	dither: &DitherMode, bayer_scale: u16,
+	palette_file: &Option<PathBuf>,
+	palette_name: &Option<BuiltInPalette>,
+	num_colors: u16,
+	stats_mode: &StatsMode,
+	diff_rect: bool,
+	dither: &DitherMode,
+	bayer_scale: u16,
 ) -> Result<String> {
-	if gif && dedup { video_filter.add("mpdecimate"); }
+	if gif && dedup {
+		video_filter.add("mpdecimate");
+	}
 	video_filter.add("setsar=1");
 
-	let bayer_scale = if dither == &DitherMode::Bayer { format!(":bayer_scale={bayer_scale}") } else { String::new() };
+	let bayer_scale = if dither == &DitherMode::Bayer {
+		format!(":bayer_scale={bayer_scale}")
+	} else {
+		String::new()
+	};
 	let diff_mode = if gif && diff_rect { ":diff_mode=rectangle" } else { "" };
 
 	if palette_file.is_some() || palette_name.is_some() {
@@ -148,12 +159,11 @@ pub(crate) fn generate_palette_filtergraph(
 		}
 
 		let video_filter_str = video_filter.join(",");
-		Ok(
-			[
-				format!("{pal_string} [pal]"),
-				format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}"),
-			].join(";")
-		)
+		Ok([
+			format!("{pal_string} [pal]"),
+			format!("[0:v] {video_filter_str} [filtered];[filtered][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}"),
+		]
+		.join(";"))
 	} else {
 		// no palette was given, so we'll use palettegen to create one
 		let new = if gif && stats_mode == &StatsMode::Single { ":new=1" } else { "" };
@@ -161,13 +171,12 @@ pub(crate) fn generate_palette_filtergraph(
 
 		video_filter.add("split");
 		let video_filter_str = video_filter.join(",");
-		Ok(
-			[
-				format!("[0:v] {video_filter_str} [a][b]"),
-				format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0{stats_mode} [pal]"),
-				format!("[b][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}{new}"),
-			].join(";")
-		)
+		Ok([
+			format!("[0:v] {video_filter_str} [a][b]"),
+			format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0{stats_mode} [pal]"),
+			format!("[b][pal] paletteuse=dither={dither}{bayer_scale}{diff_mode}{new}"),
+		]
+		.join(";"))
 	}
 }
 

@@ -27,7 +27,10 @@ impl Palette {
 
 		if pro && div_rem(size - 8, 3).1 != 0 {
 			eprintln!("{pro}, {:?}", div_rem(size - 8, 3));
-			return Err(PaletteError::InvalidBinaryData { position: 0, msg: "Not an Animator COL file".to_string() });
+			return Err(PaletteError::InvalidBinaryData {
+				position: 0,
+				msg: "Not an Animator COL file".to_string(),
+			});
 		}
 
 		if pro {

@@ -15,20 +15,20 @@ impl FFProbeOutput {
 		// intentionally not dealing with FloatParseErrors here.
 		// if ffprobe ever feeds us bad data we've got bigger problems anyway
 
-		let video_stream = self.streams.iter().find(|s| s.codec_type == StreamType::Video)
+		let video_stream = self
+			.streams
+			.iter()
+			.find(|s| s.codec_type == StreamType::Video)
 			.ok_or_else(|| anyhow!("The input file needs to contain a usable video stream"))?;
 
 		if let Some(stream_duration) = video_stream.duration.clone() {
 			// return first video stream duration
 			return Ok(Duration::from_secs_f64(
-				stream_duration.parse()
-					.map_err(|e| anyhow!("{e}: stream duration \"{stream_duration}\""))?
+				stream_duration.parse().map_err(|e| anyhow!("{e}: stream duration \"{stream_duration}\""))?,
 			));
 		}
 
-		if let Some(tags_duration) = video_stream.tags.clone()
-			.and_then(|t| t.duration)
-			.and_then(|s| parse_ffmpeg_duration(&s)) {
+		if let Some(tags_duration) = video_stream.tags.clone().and_then(|t| t.duration).and_then(|s| parse_ffmpeg_duration(&s)) {
 			// return first video stream tags duration
 			return Ok(tags_duration);
 		}
@@ -92,7 +92,7 @@ pub enum StreamType {
 
 impl Display for StreamType {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		match self  {
+		match self {
 			StreamType::Audio => write!(f, "Audio"),
 			StreamType::Video => write!(f, "Video"),
 			StreamType::Subtitle => write!(f, "Subtitle"),
@@ -155,7 +155,9 @@ pub struct Stream {
 impl Stream {
 	pub fn frame_rate(&self) -> Option<f64> {
 		match &self.r_frame_rate {
-			None => { return None; }
+			None => {
+				return None;
+			}
 			Some(fps) => {
 				if fps.contains("/") {
 					if let Some(split) = fps.split_once("/") {

@@ -10,11 +10,7 @@ pub struct Color {
 
 impl From<[u8; 3]> for Color {
 	fn from(v: [u8; 3]) -> Self {
-		Self {
-			r: v[0],
-			g: v[1],
-			b: v[2],
-		}
+		Self { r: v[0], g: v[1], b: v[2] }
 	}
 }
 
@@ -82,9 +78,7 @@ impl Palette {
 
 	fn guess_format<P: AsRef<Path>>(path: P) -> Option<PaletteFormat> {
 		let p = path.as_ref();
-		let ext = p.extension()?
-			.to_str().unwrap()
-			.to_lowercase();
+		let ext = p.extension()?.to_str().unwrap().to_lowercase();
 
 		match ext.as_str() {
 			"act" => Some(PaletteFormat::AdobeAct),
@@ -93,7 +87,7 @@ impl Palette {
 			"hex" => Some(PaletteFormat::Hex),
 			"json" => Some(PaletteFormat::Json),
 			"pal" => Some(PaletteFormat::Pal),
-			_ => None
+			_ => None,
 		}
 	}
 
@@ -175,12 +169,12 @@ impl From<std::io::Error> for PaletteError {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PaletteFormat {
-	AdobeAct, // .act
+	AdobeAct,       // .act
 	AnimatorProCol, // .col
-	Gpl, // .gpl
-	Hex, // .hex
-	Json, // .json
-	Pal, // .pal
+	Gpl,            // .gpl
+	Hex,            // .hex
+	Json,           // .json
+	Pal,            // .pal
 }
 
 impl Display for PaletteFormat {

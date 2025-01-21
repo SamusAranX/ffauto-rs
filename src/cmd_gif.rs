@@ -74,11 +74,16 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 	}
 
 	let filter_complex = generate_palette_filtergraph(
-		true, args.dedup,
+		true,
+		args.dedup,
 		video_filter,
-		&args.palette_file, &args.palette_name,
-		args.num_colors, &args.stats_mode, args.diff_rect,
-		&args.dither, args.bayer_scale,
+		&args.palette_file,
+		&args.palette_name,
+		args.num_colors,
+		&args.stats_mode,
+		args.diff_rect,
+		&args.dither,
+		args.bayer_scale,
 	)?;
 
 	ffmpeg_args.add_two("-filter_complex", filter_complex);

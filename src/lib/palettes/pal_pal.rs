@@ -57,11 +57,23 @@ impl Palette {
 
 			let mut col = Color::default();
 			if let (Some(r), Some(g), Some(b)) = (groups.name("r"), groups.name("g"), groups.name("b")) {
-				col.r = r.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine { line: i + 3, msg: "Invalid red value".to_string() })?;
-				col.g = g.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine { line: i + 3, msg: "Invalid green value".to_string() })?;
-				col.b = b.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine { line: i + 3, msg: "Invalid blue value".to_string() })?;
+				col.r = r.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
+					line: i + 3,
+					msg: "Invalid red value".to_string(),
+				})?;
+				col.g = g.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
+					line: i + 3,
+					msg: "Invalid green value".to_string(),
+				})?;
+				col.b = b.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
+					line: i + 3,
+					msg: "Invalid blue value".to_string(),
+				})?;
 			} else {
-				return Err(PaletteError::InvalidTextLine { line: i + 3, msg: "Malformed line".to_string() });
+				return Err(PaletteError::InvalidTextLine {
+					line: i + 3,
+					msg: "Malformed line".to_string(),
+				});
 			}
 
 			pal.push_color(col);
