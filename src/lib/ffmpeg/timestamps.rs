@@ -57,26 +57,45 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 	Some(duration)
 }
 
+pub enum TimestampFormat {
+	Auto,
+	Full,
+	TwoDigits,
+}
+
 /// Takes a [Duration] and formats it like a timestamp ffmpeg would use. Mainly for display purposes.
-/// Specifying `full` will make this function always return a timestamp of format `HH:MM:SS.ffffff`.
-pub fn format_ffmpeg_timestamp(duration: Duration, full: bool) -> String {
+///
+/// Specifying `TimestampFormat::Auto` will make this function return `SS.fff` , then `MM:SS.fff`, then `HH:MM:SS.fff`.
+///
+/// Specifying `TimestampFormat::Full` will make this function always return a timestamp of format `HH:MM:SS.ffffff`.
+///
+/// Specifying `TimestampFormat::TwoDigits` will make this function always return a timestamp of format `HH:MM:SS.ff`.
+pub fn format_ffmpeg_timestamp(duration: Duration, format: TimestampFormat) -> String {
 	let secs_total = duration.as_secs() as f64;
 	let hours = (secs_total / 3600.0).floor();
 	let minutes = (secs_total % 3600.0 / 60.0).floor();
 	let secs = (secs_total % 60.0).floor() as u64;
 	let millis = duration.subsec_millis();
 
-	let millis_str = format!(".{millis:0>3}");
-	let millis_str = millis_str.trim_end_matches("0").trim_end_matches(".");
-
-	if full {
-		let micros = duration.subsec_micros();
-		format!("{:0>2}:{:0>2}:{secs:0>2}.{micros:0>6}", hours as u64, minutes as u64)
-	} else if secs_total >= 3600.0 {
-		format!("{:0>2}:{:0>2}:{secs:0>2}{millis_str}", hours as u64, minutes as u64)
-	} else if secs_total >= 60.0 {
-		format!("{:0>2}:{secs:0>2}{millis_str}", minutes as u64)
-	} else {
-		format!("{secs}{millis_str}")
+	match format {
+		TimestampFormat::Auto => {
+			let millis_str = format!(".{millis:0>3}");
+			let millis_str = millis_str.trim_end_matches("0").trim_end_matches(".");
+			if secs_total >= 3600.0 {
+				format!("{:0>2}:{:0>2}:{secs:0>2}{millis_str}", hours as u64, minutes as u64)
+			} else if secs_total >= 60.0 {
+				format!("{:0>2}:{secs:0>2}{millis_str}", minutes as u64)
+			} else {
+				format!("{secs}{millis_str}")
+			}
+		}
+		TimestampFormat::Full => {
+			let micros = duration.subsec_micros();
+			format!("{:0>2}:{:0>2}:{secs:0>2}.{micros:0>6}", hours as u64, minutes as u64)
+		}
+		TimestampFormat::TwoDigits => {
+			let millis_two_digits = (duration.as_secs_f64().fract() * 100.0).floor() as u64;
+			format!("{:0>2}:{:0>2}:{secs:0>2}.{millis_two_digits:0>2}", hours as u64, minutes as u64)
+		}
 	}
 }

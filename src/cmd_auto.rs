@@ -164,6 +164,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			ffmpeg_args.add_two("-maxrate", "768K"); // apple: 768 kbps, actual level limit
 			ffmpeg_args.add_two("-bufsize", "2M");
 			ffmpeg_args.add_two("-c:s", "mov_text");
+			ffmpeg_args.add_two("-tag:s", "tx3g");
 		}
 		Some(OptimizeTarget::Ipod) => {
 			ffmpeg_args.add_two("-profile:v", "baseline"); // apple: baseline
@@ -171,6 +172,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 			ffmpeg_args.add_two("-maxrate", "2.5M"); // apple: 2.5 mbps
 			ffmpeg_args.add_two("-bufsize", "5M");
 			ffmpeg_args.add_two("-c:s", "mov_text");
+			ffmpeg_args.add_two("-tag:s", "tx3g");
 		}
 		Some(OptimizeTarget::Psp) => {
 			ffmpeg_args.add_two("-profile:v", "main");

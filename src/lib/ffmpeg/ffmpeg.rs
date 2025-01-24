@@ -1,3 +1,4 @@
+use crate::ffmpeg::timestamps::TimestampFormat::TwoDigits;
 use crate::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use anyhow::{Context, Result};
 use std::fs::File;
@@ -54,7 +55,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 		let mut frames_processed = None;
 		let mut frames_per_second = None;
-		let mut frame_time = None;
+		let mut out_time = None;
 		let mut encode_bitrate = None;
 		let mut encode_speed = None;
 
@@ -92,7 +93,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 							frames_per_second = Some(fps.trim().parse::<f64>().unwrap_or_default());
 						}
 						("out_time", time) => {
-							frame_time = parse_ffmpeg_duration(time);
+							out_time = parse_ffmpeg_duration(time);
 						}
 						("bitrate", bitrate) => {
 							encode_bitrate = Some(bitrate.trim().to_owned());
@@ -119,20 +120,18 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				}
 			}
 
-			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed)) = (frames_processed, frames_per_second, frame_time, &encode_bitrate, encode_speed) {
+			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed)) = (frames_processed, frames_per_second, out_time, &encode_bitrate, encode_speed) {
 				println!(
 					"frame: {frame} - fps: {fps:.2} - time: {} - bitrate: {bitrate} - speed: {speed:.3}x",
-					format_ffmpeg_timestamp(time, true)
+					format_ffmpeg_timestamp(time, TwoDigits)
 				);
 
 				frames_processed = None;
 				frames_per_second = None;
-				frame_time = None;
+				out_time = None;
 				encode_bitrate = None;
 				encode_speed = None;
 			}
-
-			// line.clear();
 		}
 	}
 

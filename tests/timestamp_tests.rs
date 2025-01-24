@@ -1,5 +1,6 @@
 use ffauto_rs::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use std::time::Duration;
+use ffauto_rs::ffmpeg::timestamps::TimestampFormat::{Auto, Full};
 
 struct TimestampTest {
 	pub input_timestamp: String,
@@ -46,11 +47,11 @@ fn timestamp_parsing() {
 		assert_eq!(&dur.unwrap(), &test.expected_duration, "{i}: durations aren't equal!");
 
 		if !test.input_timestamp.ends_with("320000000") {
-			let ts = format_ffmpeg_timestamp(dur.unwrap(), false);
+			let ts = format_ffmpeg_timestamp(dur.unwrap(), Auto);
 			assert_eq!(&ts, &test.input_timestamp, "{i}: formatted duration string doesn't match!");
 		}
 
-		let ts = format_ffmpeg_timestamp(dur.unwrap(), true);
+		let ts = format_ffmpeg_timestamp(dur.unwrap(), Full);
 		assert_eq!(&ts, &test.expected_full_timestamp, "{i}: full formatted duration string doesn't match!");
 
 		// println!("---");
