@@ -110,7 +110,7 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language (ISO 639-2)")]
 	pub sub_language: Option<String>,
 
-	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over -fi/-fo.", default_value_t = 0.0)]
+	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
 	pub fade: f64,
 	#[arg(long = "fi", help = "Sets the fade in duration.", default_value_t = 0.0)]
 	pub fade_in: f64,
@@ -128,7 +128,8 @@ pub(crate) struct AutoArgs {
 	#[arg(short = 'O', long = "optimize", help = "Optimize settings for certain devices")]
 	pub optimize_target: Option<OptimizeTarget>,
 
-	#[arg(short, help = "Reduces video quality depending on how often this was specified", action = ArgAction::Count)]
+	#[arg(short, help = "Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified",
+	action = ArgAction::Count)]
 	pub garbage: u8,
 }
 
@@ -184,7 +185,7 @@ pub(crate) struct GIFArgs {
 	#[arg(long = "to", group = "seeking", help = "The end time offset")]
 	pub duration_to: Option<String>,
 
-	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over -fi/-fo.", default_value_t = 0.0)]
+	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
 	pub fade: f64,
 	#[arg(long = "fi", help = "Sets the fade in duration.", default_value_t = 0.0)]
 	pub fade_in: f64,
