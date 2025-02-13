@@ -131,10 +131,10 @@ pub(crate) fn generate_fps_filter(fps_arg: Option<f64>, fps_mult_arg: Option<f64
 }
 
 pub(crate) fn generate_color_sharpness_filters(brightness: f64, contrast: f64, saturation: f64, sharpness: f64) -> Option<String> {
-	let mut filter_parts: Vec<String> = vec![];
+	let mut filter_parts: Vec<String> = vec!();
 
 	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
-		let mut eq_args: Vec<String> = vec![];
+		let mut eq_args: Vec<String> = vec!();
 
 		if brightness != 0.0 {
 			eq_args.push(format!("brightness={}", brightness))
@@ -173,7 +173,7 @@ pub(crate) fn generate_palette_filtergraph(
 ) -> Result<String> {
 	fn palette_filter_string(pal_string: String, paletteuse_args: String) -> String {
 		[
-			",setsar=1 [filtered]".to_owned(),
+			",setsar=1 [filtered]".to_string(),
 			format!("{pal_string} [pal]"),
 			format!("[filtered][pal] paletteuse={paletteuse_args}"),
 		]
@@ -182,16 +182,16 @@ pub(crate) fn generate_palette_filtergraph(
 
 	let paletteuse_args = {
 		let mut args = HashMap::new();
-		args.insert("dither".to_owned(), format!("{dither}"));
+		args.insert("dither".to_string(), format!("{dither}"));
 		if dither == &DitherMode::Bayer {
-			args.insert("bayer_scale".to_owned(), format!("{bayer_scale}"));
+			args.insert("bayer_scale".to_string(), format!("{bayer_scale}"));
 		}
 		if diff_rect {
-			args.insert("diff_mode".to_owned(), "rectangle".to_owned());
+			args.insert("diff_mode".to_string(), "rectangle".to_string());
 		}
 		if palette_file.is_none() && palette_name.is_none() {
 			let new = (stats_mode == &StatsMode::Single) as u8;
-			args.insert("new".to_owned(), format!("{new}"));
+			args.insert("new".to_string(), format!("{new}"));
 		}
 
 		args
@@ -218,7 +218,7 @@ pub(crate) fn generate_palette_filtergraph(
 		(None, None) => {
 			// no palette was given, so we'll use palettegen to create one
 			Ok([
-				",setsar=1,split [a][b]".to_owned(),
+				",setsar=1,split [a][b]".to_string(),
 				format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0:stats_mode={stats_mode} [pal]"),
 				format!("[b][pal] paletteuse={paletteuse_args}"),
 			]
@@ -238,6 +238,26 @@ pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> 
 			#[cfg(debug_assertions)]
 			eprintln!("Running ffprobe again and counting frames…");
 			ffprobe(&input, true)
+		}
+	}
+}
+
+/// This is a small wrapper for [ffprobe] that repeats the invocation with frame counting
+/// enabled if nb_frames isn't set the first time.
+/// This relies on nb_frames being accurate, which might be a problem.
+/// We'll simply not worry about it :3
+pub(crate) fn ffprobe_frames<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
+	let p = ffprobe(&input, false)?;
+	match p.get_first_video_stream() {
+		Some(v) => {
+			if v.nb_frames.is_some() {
+				Ok(p)
+			} else {
+				ffprobe(&input, true)
+			}
+		}
+		None => {
+			anyhow::bail!("The input file contains no usable video streams")
 		}
 	}
 }

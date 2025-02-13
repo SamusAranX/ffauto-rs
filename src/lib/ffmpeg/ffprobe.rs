@@ -32,7 +32,7 @@ pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOu
 	let child_output = ffprobe.wait_with_output().expect("failed to wait for ffprobe");
 	if !child_output.status.success() {
 		let stderr = String::from_utf8(child_output.stderr).expect("stderr contained corrupted data");
-		anyhow::bail!(stderr.trim().to_owned())
+		anyhow::bail!(stderr.trim().to_string())
 	}
 
 	let stdout = String::from_utf8(child_output.stdout).expect("stdout contained corrupted data");

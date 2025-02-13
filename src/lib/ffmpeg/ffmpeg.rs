@@ -27,7 +27,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 		let ffmpeg_args = &args
 			.iter()
-			.map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_owned() })
+			.map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_string() })
 			.collect::<Vec<String>>();
 
 		println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
@@ -97,7 +97,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 							out_time = parse_ffmpeg_duration(time);
 						}
 						("bitrate", bitrate) => {
-							encode_bitrate = Some(bitrate.trim().to_owned());
+							encode_bitrate = Some(bitrate.trim().to_string());
 						}
 						("speed", speed) => {
 							encode_speed = Some(speed.trim().trim_end_matches('x').parse::<f32>().unwrap_or_default());

@@ -147,6 +147,7 @@ pub struct Stream {
 	pub bits_per_raw_sample: Option<String>,
 	pub bit_rate: Option<String>,
 	pub duration: Option<String>,
+	pub nb_frames: Option<String>,
 	pub nb_read_frames: Option<String>,
 	pub tags: Option<Tags>,
 	pub disposition: Option<Disposition>,
@@ -180,5 +181,15 @@ impl Stream {
 		}
 
 		false
+	}
+
+	pub fn total_frames(&self) -> Option<u64> {
+		if let Some(nb_read_frames) = &self.nb_read_frames {
+			return nb_read_frames.parse().ok();
+		} else if let Some(nb_frames) = &self.nb_frames {
+			return nb_frames.parse().ok();
+		}
+
+		None
 	}
 }

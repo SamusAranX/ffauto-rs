@@ -40,7 +40,7 @@ impl Palette {
 		reader.read_line(&mut version)?;
 
 		for (i, line) in reader.lines().enumerate() {
-			let trimmed_line = line?.trim().to_owned();
+			let trimmed_line = line?.trim().to_string();
 			if trimmed_line.is_empty() || trimmed_line.starts_with("#") {
 				continue;
 			}

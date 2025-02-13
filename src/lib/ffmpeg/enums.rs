@@ -60,3 +60,9 @@ pub enum DitherMode {
 	Atkinson,
 	None,
 }
+
+#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
+pub enum BarcodeMode {
+	#[default] Frames,
+	Colors,
+}

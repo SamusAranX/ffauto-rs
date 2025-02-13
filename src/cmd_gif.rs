@@ -47,7 +47,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
-	let mut video_filter: Vec<String> = vec![];
+	let mut video_filter: Vec<String> = vec!();
 
 	if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
 		video_filter.push(fps_filter);

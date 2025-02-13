@@ -112,7 +112,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			}
 
 			if args.needs_audio_filter() {
-				let mut audio_filter: Vec<String> = vec![];
+				let mut audio_filter: Vec<String> = vec!();
 
 				if args.audio_volume != 1.0 {
 					audio_filter.push(format!("volume={:.3}", args.audio_volume));
@@ -194,7 +194,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	}
 
 	if args.needs_video_filter() {
-		let mut video_filter: Vec<String> = vec![];
+		let mut video_filter: Vec<String> = vec!();
 
 		if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
 			video_filter.push(fps_filter);

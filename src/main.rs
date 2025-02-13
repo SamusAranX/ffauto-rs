@@ -6,12 +6,14 @@ use clap::Parser;
 use humansize::DECIMAL;
 
 use crate::cmd_auto::ffmpeg_auto;
+use crate::cmd_barcode::ffmpeg_barcode;
 use crate::cmd_gif::ffmpeg_gif;
 use crate::cmd_info::ffmpeg_info;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
 
 mod cmd_auto;
+mod cmd_barcode;
 mod cmd_gif;
 mod cmd_info;
 mod cmd_quant;
@@ -35,6 +37,10 @@ fn main() -> ExitCode {
 			args.optimize_settings();
 
 			ffmpeg_auto(&args, cli.debug)
+		}
+		Some(Commands::Barcode(args)) => {
+			output = &args.output;
+			ffmpeg_barcode(args, cli.debug)
 		}
 		Some(Commands::Gif(args)) => {
 			output = &args.output;

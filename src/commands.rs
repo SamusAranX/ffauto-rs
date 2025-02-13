@@ -5,7 +5,7 @@ use const_format::formatcp;
 use std::path::PathBuf;
 
 use crate::palettes::BuiltInPalette;
-use ffauto_rs::ffmpeg::enums::{DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
+use ffauto_rs::ffmpeg::enums::{BarcodeMode, DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
 
 const GIT_HASH: &str = env!("GIT_HASH");
 const GIT_BRANCH: &str = env!("GIT_BRANCH");
@@ -26,18 +26,18 @@ pub(crate) struct Cli {
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct AutoArgs {
-	#[arg(short, help = "The input file")]
+	#[arg(short, help = "The input file.")]
 	pub input: PathBuf,
-	#[arg(help = "The output file")]
+	#[arg(help = "The output file.")]
 	pub output: PathBuf,
 
-	#[arg(short = 't', group = "seeking", help = "The output duration")]
-	pub duration: Option<String>,
-	#[arg(long = "to", group = "seeking", help = "The end time offset")]
-	pub duration_to: Option<String>,
-
-	#[arg(short = 's', long, help = "The start time offset")]
+	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
+
+	#[arg(short = 't', group = "seeking", help = "The output duration.")]
+	pub duration: Option<String>,
+	#[arg(long = "to", group = "seeking", help = "The end time offset.")]
+	pub duration_to: Option<String>,
 
 	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
 	pub crop: Option<String>,
@@ -48,33 +48,33 @@ pub(crate) struct AutoArgs {
 	pub height: Option<u64>,
 	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
-	#[arg(short = 'T', long, help = "Performs an HDR-to-SDR tonemap")]
+	#[arg(short = 'T', long, help = "Performs an HDR-to-SDR tonemap.")]
 	pub tonemap: bool,
-	#[arg(short = 'F', long, default_value_t = true, help = "Moves moov atom to the start")]
+	#[arg(short = 'F', long, default_value_t = true, help = "Moves moov atom to the start.")]
 	pub faststart: bool,
 
-	#[arg(short = 'M', long, group = "volume", help = "Removes the audio stream")]
+	#[arg(short = 'M', long, group = "volume", help = "Removes the audio stream.")]
 	pub mute: bool,
-	#[arg(short = 'v', long = "volume", group = "volume", help = "Sets the output audio volume factor", default_value_t = 1.0)]
+	#[arg(short = 'v', long = "volume", group = "volume", help = "Sets the output audio volume factor.", default_value_t = 1.0)]
 	pub audio_volume: f64,
 
-	#[arg(long = "channels", help = "Sets the number of output audio channels")]
+	#[arg(long = "channels", help = "Sets the number of output audio channels.")]
 	pub audio_channels: Option<String>,
 
-	#[arg(long, group = "video_select", help = "Selects a video stream by index", default_value_t = 0)]
+	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
 	pub video_index: u8,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language (ISO 639-2)")]
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
 	pub video_language: Option<String>,
-	#[arg(long, group = "audio_select", help = "Selects an audio stream by index", default_value_t = 0)]
+	#[arg(long, group = "audio_select", help = "Selects an audio stream by index.", default_value_t = 0)]
 	pub audio_index: u8,
-	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language (ISO 639-2)")]
+	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language. (ISO 639-2)")]
 	pub audio_language: Option<String>,
-	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index")]
+	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index.")]
 	pub sub_index: Option<u8>,
-	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language (ISO 639-2)")]
+	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language. (ISO 639-2)")]
 	pub sub_language: Option<String>,
 
 	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
@@ -89,13 +89,13 @@ pub(crate) struct AutoArgs {
 	#[arg(short = 'R', long, group = "framerates", help = "Sets the output video frame rate to a factor of the input video frame rate.")]
 	pub framerate_mult: Option<f64>,
 
-	#[arg(short = 'C', long = "codec", help = "The video codec", default_value_t = VideoCodec::default())]
+	#[arg(short = 'C', long = "codec", help = "The output video codec.", default_value_t = VideoCodec::default())]
 	pub video_codec: VideoCodec,
 
-	#[arg(short = 'O', long = "optimize", help = "Optimize settings for certain devices")]
+	#[arg(short = 'O', long = "optimize", help = "Optimizes settings for certain devices.")]
 	pub optimize_target: Option<OptimizeTarget>,
 
-	#[arg(short, help = "Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified",
+	#[arg(short, help = "Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified.",
 	action = ArgAction::Count)]
 	pub garbage: u8,
 }
@@ -162,19 +162,35 @@ impl AutoArgs {
 }
 
 #[derive(Parser, Debug, Clone)]
-pub(crate) struct GIFArgs {
-	#[arg(short, help = "The input file")]
+pub(crate) struct BarcodeArgs {
+	#[arg(short, help = "The input file.")]
 	pub input: PathBuf,
-	#[arg(help = "The output file")]
+	#[arg(help = "The output file. (always outputs PNG)")]
 	pub output: PathBuf,
 
-	#[arg(short = 't', group = "seeking", help = "The output duration")]
-	pub duration: Option<String>,
-	#[arg(long = "to", group = "seeking", help = "The end time offset")]
-	pub duration_to: Option<String>,
+	#[arg(short = 'B', long, value_enum, help = "The barcode strip generation method.", default_value_t = BarcodeMode::default())]
+	pub barcode_mode: BarcodeMode,
+	#[arg(short = 'D', long, help = "Outputs a 48-bit PNG.")]
+	pub deep_color: bool,
 
-	#[arg(short = 's', long, help = "The start time offset")]
+	#[arg(long = "vh", group = "resize", help = "Sets the output barcode image's height.")]
+	pub height: Option<u64>,
+}
+
+#[derive(Parser, Debug, Clone)]
+pub(crate) struct GIFArgs {
+	#[arg(short, help = "The input file.")]
+	pub input: PathBuf,
+	#[arg(help = "The output file.")]
+	pub output: PathBuf,
+
+	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
+
+	#[arg(short = 't', group = "seeking", help = "The output duration.")]
+	pub duration: Option<String>,
+	#[arg(long = "to", group = "seeking", help = "The end time offset.")]
+	pub duration_to: Option<String>,
 
 	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
 	pub crop: Option<String>,
@@ -185,7 +201,7 @@ pub(crate) struct GIFArgs {
 	pub height: Option<u64>,
 	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
 	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
@@ -212,32 +228,32 @@ pub(crate) struct GIFArgs {
 	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short, long, group = "palette", help = "A file containing a palette (supports ACT, COL, GPL, HEX, and PAL formats)")]
+	#[arg(short, long, group = "palette", help = "A file containing a palette. (supports ACT, COL, GPL, HEX, and PAL formats)")]
 	pub palette_file: Option<PathBuf>,
-	#[arg(short = 'P', long, group = "palette", help = "A built-in palette")]
+	#[arg(short = 'P', long, group = "palette", help = "A built-in palette.")]
 	pub palette_name: Option<BuiltInPalette>,
-	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
+	#[arg(short = 'n', group = "palette", help = "The number of colors in the generated palette.", default_value_t = 256)]
 	pub num_colors: u16,
 
-	#[arg(long, help = "The statistics mode (palettegen)", default_value_t = StatsMode::default())]
+	#[arg(long, help = "The statistics mode. (palettegen)", default_value_t = StatsMode::default())]
 	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
 
-	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
+	#[arg(short = 'D', long, help = "The dithering mode. (paletteuse)", default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
 	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
 	pub bayer_scale: u8,
-	#[arg(long, help = "Only reprocess the changed rectangle (Helps with noise and compression) (paletteuse)")]
+	#[arg(long, help = "Only reprocess the changed rectangle. (Helps with noise and compression) (paletteuse)")]
 	pub diff_rect: bool,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct QuantArgs {
-	#[arg(short, help = "The input file")]
+	#[arg(short, help = "The input file.")]
 	pub input: PathBuf,
-	#[arg(help = "The output file")]
+	#[arg(help = "The output file.")]
 	pub output: PathBuf,
 
-	#[arg(short = 's', long, help = "The start time offset")]
+	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
 
 	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
@@ -249,7 +265,7 @@ pub(crate) struct QuantArgs {
 	pub height: Option<u64>,
 	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
 	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
@@ -261,11 +277,11 @@ pub(crate) struct QuantArgs {
 	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short, long, group = "palette", help = "A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format")]
+	#[arg(short, long, group = "palette", help = "A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format.")]
 	pub palette_file: Option<PathBuf>,
-	#[arg(short = 'P', long, group = "palette", help = "A built-in palette")]
+	#[arg(short = 'P', long, group = "palette", help = "A built-in palette.")]
 	pub palette_name: Option<BuiltInPalette>,
-	#[arg(short = 'n', group = "palette", help = "The number of colors in the palette (palettegen)", default_value_t = 256)]
+	#[arg(short = 'n', group = "palette", help = "The number of colors in the generated palette", default_value_t = 256)]
 	pub num_colors: u16,
 
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
@@ -276,7 +292,7 @@ pub(crate) struct QuantArgs {
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct InfoArgs {
-	#[arg(short, help = "The input file")]
+	#[arg(short, help = "The input file.")]
 	pub input: PathBuf,
 }
 
@@ -284,6 +300,9 @@ pub(crate) struct InfoArgs {
 pub(crate) enum Commands {
 	#[command(about = "Common ffmpeg wrapper")]
 	Auto(AutoArgs),
+
+	#[command(about = "Movie barcode generator")]
+	Barcode(BarcodeArgs),
 
 	#[command(about = "GIF encoder with a subset of features")]
 	Gif(GIFArgs),
