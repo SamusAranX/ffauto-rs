@@ -44,6 +44,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 	let start = Instant::now();
 
+	#[allow(clippy::zombie_processes)]
 	let mut process = ffmpeg.spawn().expect("failed to run ffmpeg");
 
 	if show_progress {

@@ -3,11 +3,11 @@ use std::time::Duration;
 use anyhow::Result;
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 
-use crate::commands::{Cli, GIFArgs};
+use crate::commands::GIFArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 
-pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
+pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
 	let first_video_stream = probe.get_first_video_stream();
@@ -21,8 +21,8 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	let seek = parse_seek(&cli.seek);
-	let duration = parse_duration(seek, &args.duration, &args.duration_to);
+	let seek = args.parse_seek();
+	let duration = args.parse_duration();
 
 	if let Some(seek) = seek {
 		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
@@ -49,12 +49,28 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	let mut video_filter: Vec<String> = vec![];
 
-	add_fps_filter(&mut video_filter, args.framerate, args.framerate_mult, video_stream.frame_rate());
-	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.is_hdr())?;
-	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
+	if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
+		video_filter.push(fps_filter);
+	}
+
+	if let Some(crop_filter) = args.generate_crop_filter() {
+		video_filter.push(crop_filter);
+	}
+
+	if let Some(scale_filter) = args.generate_scale_filter() {
+		video_filter.push(scale_filter);
+	}
+
+	if video_stream.is_hdr() {
+		video_filter.push(TONEMAP_FILTER.parse()?);
+	}
+
+	if let Some(color_filters) = args.generate_color_filters() {
+		video_filter.push(color_filters);
+	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
-	if args.fade != 0.0 {
+	if args.fade > 0.0 {
 		fade_in = args.fade;
 		fade_out = args.fade;
 	}
@@ -73,20 +89,9 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 		video_filter.push(format!("fade=t=out:st={fade_out_start:.3}:d={fade_out:.3}"));
 	}
 
-	let filter_complex = generate_palette_filtergraph(
-		true,
-		args.dedup,
-		video_filter,
-		&args.palette_file,
-		&args.palette_name,
-		args.num_colors,
-		&args.stats_mode,
-		args.diff_rect,
-		&args.dither,
-		args.bayer_scale,
-	)?;
-
-	ffmpeg_args.add_two("-filter_complex", filter_complex);
+	let video_filter_str = video_filter.join(",");
+	let palette_filters = args.generate_palette_filters()?;
+	ffmpeg_args.add_two("-filter_complex", format!("{video_filter_str}{palette_filters}"));
 
 	// endregion
 
@@ -98,5 +103,5 @@ pub(crate) fn ffmpeg_gif(cli: &Cli, args: &GIFArgs) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, false, cli.debug)
+	ffmpeg(&ffmpeg_args, false, debug)
 }

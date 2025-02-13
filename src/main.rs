@@ -16,6 +16,7 @@ mod cmd_gif;
 mod cmd_info;
 mod cmd_quant;
 mod commands;
+mod commands_traits;
 mod common;
 mod palettes;
 mod vec_push_ext;
@@ -30,25 +31,18 @@ fn main() -> ExitCode {
 		Some(Commands::Auto(args)) => {
 			output = &args.output;
 
-			let (cli, args) = {
-				let mut optimized_cli = cli.clone();
-				optimized_cli.optimize_settings(&args.optimize_target);
+			let mut args = args.clone();
+			args.optimize_settings();
 
-				let mut optimized_args = args.clone();
-				optimized_args.optimize_settings();
-
-				(optimized_cli, optimized_args)
-			};
-
-			ffmpeg_auto(&cli, &args)
+			ffmpeg_auto(&args, cli.debug)
 		}
 		Some(Commands::Gif(args)) => {
 			output = &args.output;
-			ffmpeg_gif(&cli, args)
+			ffmpeg_gif(args, cli.debug)
 		}
 		Some(Commands::Quant(args)) => {
 			output = &args.output;
-			ffmpeg_quant(&cli, args)
+			ffmpeg_quant(args, cli.debug)
 		}
 		Some(Commands::Info(args)) => {
 			return match ffmpeg_info(args) {

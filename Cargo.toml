@@ -18,7 +18,7 @@ debug = "line-tables-only"
 [dependencies]
 anyhow = "1.0.95"
 byteorder = "1.5.0"
-clap = { version = "4.5.28", features = ["derive"] }
+clap = { version = "4.5.29", features = ["derive"] }
 colored = "3.0.0"
 const_format = "0.2.34"
 humansize = "2.1.3"

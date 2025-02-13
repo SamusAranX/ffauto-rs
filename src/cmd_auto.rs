@@ -2,14 +2,14 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::commands::{AutoArgs, Cli};
-use crate::common::{add_crop_scale_tonemap_filters, add_fps_filter, ffprobe_output, parse_duration, parse_seek};
+use crate::commands::AutoArgs;
+use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Subtitle;
 
-pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
+pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
 	let first_audio_stream = probe.get_first_audio_stream();
@@ -28,8 +28,8 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	let seek = parse_seek(&cli.seek);
-	let duration = parse_duration(seek, &args.duration, &args.duration_to);
+	let seek = args.parse_seek();
+	let duration = args.parse_duration();
 
 	if let Some(seek) = seek {
 		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
@@ -73,7 +73,7 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
-	if args.fade != 0.0 {
+	if args.fade > 0.0 {
 		fade_in = args.fade;
 		fade_out = args.fade;
 	}
@@ -193,13 +193,24 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 		ffmpeg_args.add_two("-movflags", "faststart");
 	}
 
-	if args.needs_video_filter(cli) {
+	if args.needs_video_filter() {
 		let mut video_filter: Vec<String> = vec![];
 
-		add_fps_filter(&mut video_filter, args.framerate, args.framerate_mult, video_stream.frame_rate());
+		if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
+			video_filter.push(fps_filter);
+		}
 
-		let is_hdr = (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr();
-		add_crop_scale_tonemap_filters(&mut video_filter, cli, is_hdr)?;
+		if let Some(crop_filter) = args.generate_crop_filter() {
+			video_filter.push(crop_filter);
+		}
+
+		if let Some(scale_filter) = args.generate_scale_filter() {
+			video_filter.push(scale_filter);
+		}
+
+		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
+			video_filter.push(TONEMAP_FILTER.parse()?);
+		}
 
 		if fade_in > 0.0 {
 			video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
@@ -216,5 +227,5 @@ pub(crate) fn ffmpeg_auto(cli: &Cli, args: &AutoArgs) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, true, cli.debug)
+	ffmpeg(&ffmpeg_args, true, debug)
 }

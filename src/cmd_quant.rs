@@ -1,14 +1,13 @@
 use anyhow::Result;
 
-use ffauto_rs::ffmpeg::enums::StatsMode;
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 
-use crate::commands::{Cli, QuantArgs};
-use crate::common::{add_color_sharpness_filters, add_crop_scale_tonemap_filters, generate_palette_filtergraph, parse_seek};
+use crate::commands::QuantArgs;
+use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 
-pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
+pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
 
 	let first_video_stream = probe.get_first_video_stream();
@@ -20,7 +19,7 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 		"-y".to_string(),
 	];
 
-	let seek = parse_seek(&cli.seek);
+	let seek = args.parse_seek();
 	if let Some(seek) = seek {
 		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
 	}
@@ -49,27 +48,29 @@ pub(crate) fn ffmpeg_quant(cli: &Cli, args: &QuantArgs) -> Result<()> {
 	let mut video_filter: Vec<String> = vec![];
 	video_filter.add("select=eq(n\\,0)");
 
-	add_crop_scale_tonemap_filters(&mut video_filter, cli, video_stream.is_hdr())?;
-	add_color_sharpness_filters(&mut video_filter, args.brightness, args.contrast, args.saturation, args.sharpness);
+	if let Some(crop_filter) = args.generate_crop_filter() {
+		video_filter.push(crop_filter);
+	}
 
-	let filter_complex = generate_palette_filtergraph(
-		true,
-		false,
-		video_filter,
-		&args.palette_file,
-		&args.palette_name,
-		args.num_colors,
-		&StatsMode::default(),
-		false,
-		&args.dither,
-		args.bayer_scale,
-	)?;
+	if let Some(scale_filter) = args.generate_scale_filter() {
+		video_filter.push(scale_filter);
+	}
 
-	ffmpeg_args.add_two("-filter_complex", filter_complex);
+	if video_stream.is_hdr() {
+		video_filter.push(TONEMAP_FILTER.parse()?);
+	}
+
+	if let Some(color_filters) = args.generate_color_filters() {
+		video_filter.push(color_filters);
+	}
+
+	let video_filter_str = video_filter.join(",");
+	let palette_filters = args.generate_palette_filters()?;
+	ffmpeg_args.add_two("-filter_complex", format!("{video_filter_str}{palette_filters}"));
 
 	// endregion
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, false, cli.debug)
+	ffmpeg(&ffmpeg_args, false, debug)
 }

@@ -1,13 +1,11 @@
-use std::path::PathBuf;
-
 use clap::ArgAction;
 use clap::Parser;
 use clap::Subcommand;
 use const_format::formatcp;
-
-use ffauto_rs::ffmpeg::enums::{DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
+use std::path::PathBuf;
 
 use crate::palettes::BuiltInPalette;
+use ffauto_rs::ffmpeg::enums::{DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
 
 const GIT_HASH: &str = env!("GIT_HASH");
 const GIT_BRANCH: &str = env!("GIT_BRANCH");
@@ -22,54 +20,8 @@ pub(crate) struct Cli {
 	#[command(subcommand)]
 	pub command: Option<Commands>,
 
-	#[arg(short = 's', long, global = true, help = "The start time offset")]
-	pub seek: Option<String>,
-
-	#[arg(short, long, global = true, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
-	pub crop: Option<String>,
-
-	#[arg(long = "vw", group = "resize", global = true, help = "Sets the output video width, preserving aspect ratio.")]
-	pub width: Option<u64>,
-	#[arg(long = "vh", group = "resize", global = true, help = "Sets the output video height, preserving aspect ratio.")]
-	pub height: Option<u64>,
-	#[arg(long = "vs", group = "resize", global = true, help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
-	pub size: Option<String>,
-	#[arg(short = 'S', long, global = true, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
-	pub scale_mode: ScaleMode,
-
 	#[arg(long, global = true)]
 	pub debug: bool,
-}
-
-impl Cli {
-	pub(crate) fn optimize_settings(&mut self, optimize_target: &Option<OptimizeTarget>) {
-		match optimize_target {
-			None => (),
-			Some(_) => {
-				self.width = None;
-				self.height = None;
-				self.size = None;
-			}
-		}
-
-		match optimize_target {
-			None => (),
-			Some(OptimizeTarget::Ipod5) => {
-				self.size = Some("320x240".to_string());
-			}
-			Some(OptimizeTarget::Ipod) => {
-				self.size = Some("640x480".to_string());
-			}
-			Some(OptimizeTarget::Psp) => {
-				// as of firmware 3.30, allegedly supports MPEG-4 AVC Main Profile 720x480, 352x480 and 480x272
-				// extra info: also supports 160x120 JPEG thumbnails with a .THM extension, next to the video files
-				self.size = Some("480x272".to_string());
-			}
-			Some(OptimizeTarget::PsVita) => {
-				self.size = Some("960x540".to_string());
-			}
-		}
-	}
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -83,6 +35,21 @@ pub(crate) struct AutoArgs {
 	pub duration: Option<String>,
 	#[arg(long = "to", group = "seeking", help = "The end time offset")]
 	pub duration_to: Option<String>,
+
+	#[arg(short = 's', long, help = "The start time offset")]
+	pub seek: Option<String>,
+
+	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	pub crop: Option<String>,
+
+	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	pub width: Option<u64>,
+	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	pub height: Option<u64>,
+	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	pub size: Option<String>,
+	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	pub scale_mode: ScaleMode,
 
 	#[arg(short = 'T', long, help = "Performs an HDR-to-SDR tonemap")]
 	pub tonemap: bool,
@@ -139,23 +106,23 @@ impl AutoArgs {
 			&& self.audio_channels.is_none()
 			&& input_codec_name == Some("aac".parse().unwrap())
 			&& self.audio_volume == 1.0
-			&& self.fade == 0.0
-			&& self.fade_in == 0.0
-			&& self.fade_out == 0.0
+			&& self.fade <= 0.0
+			&& self.fade_in <= 0.0
+			&& self.fade_out <= 0.0
 	}
 
 	pub(crate) fn needs_audio_filter(&self) -> bool {
-		self.audio_volume != 1.0 || self.fade != 0.0 || self.fade_in != 0.0 || self.fade_out != 0.0
+		self.audio_volume != 1.0 || self.fade > 0.0 || self.fade_in > 0.0 || self.fade_out > 0.0
 	}
 
-	pub(crate) fn needs_video_filter(&self, cli: &Cli) -> bool {
-		cli.width.is_some()
-			|| cli.height.is_some()
-			|| cli.size.is_some()
-			|| self.fade != 0.0
-			|| self.fade_in != 0.0
-			|| self.fade_out != 0.0
-			|| cli.crop.is_some()
+	pub(crate) fn needs_video_filter(&self) -> bool {
+		self.width.is_some()
+			|| self.height.is_some()
+			|| self.size.is_some()
+			|| self.fade > 0.0
+			|| self.fade_in > 0.0
+			|| self.fade_out > 0.0
+			|| self.crop.is_some()
 			|| self.framerate.is_some()
 			|| self.tonemap
 	}
@@ -164,10 +131,31 @@ impl AutoArgs {
 		match self.optimize_target {
 			None => (),
 			_ => {
+				self.width = None;
+				self.height = None;
+				self.size = None;
 				self.tonemap = true; // none of the optimization targets support HDR media
 				self.faststart = true;
 				self.audio_channels = Some("2".parse().unwrap());
 				self.video_codec = VideoCodec::H264;
+			}
+		}
+
+		match self.optimize_target {
+			None => (),
+			Some(OptimizeTarget::Ipod5) => {
+				self.size = Some("320x240".to_string());
+			}
+			Some(OptimizeTarget::Ipod) => {
+				self.size = Some("640x480".to_string());
+			}
+			Some(OptimizeTarget::Psp) => {
+				// as of firmware 3.30, allegedly supports MPEG-4 AVC Main Profile 720x480, 352x480 and 480x272
+				// extra info: also supports 160x120 JPEG thumbnails with a .THM extension, next to the video files
+				self.size = Some("480x272".to_string());
+			}
+			Some(OptimizeTarget::PsVita) => {
+				self.size = Some("960x540".to_string());
 			}
 		}
 	}
@@ -184,6 +172,21 @@ pub(crate) struct GIFArgs {
 	pub duration: Option<String>,
 	#[arg(long = "to", group = "seeking", help = "The end time offset")]
 	pub duration_to: Option<String>,
+
+	#[arg(short = 's', long, help = "The start time offset")]
+	pub seek: Option<String>,
+
+	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	pub crop: Option<String>,
+
+	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	pub width: Option<u64>,
+	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	pub height: Option<u64>,
+	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	pub size: Option<String>,
+	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	pub scale_mode: ScaleMode,
 
 	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
 	pub fade: f64,
@@ -222,7 +225,7 @@ pub(crate) struct GIFArgs {
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
 	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
-	pub bayer_scale: u16,
+	pub bayer_scale: u8,
 	#[arg(long, help = "Only reprocess the changed rectangle (Helps with noise and compression) (paletteuse)")]
 	pub diff_rect: bool,
 }
@@ -233,6 +236,21 @@ pub(crate) struct QuantArgs {
 	pub input: PathBuf,
 	#[arg(help = "The output file")]
 	pub output: PathBuf,
+
+	#[arg(short = 's', long, help = "The start time offset")]
+	pub seek: Option<String>,
+
+	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	pub crop: Option<String>,
+
+	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	pub width: Option<u64>,
+	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	pub height: Option<u64>,
+	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	pub size: Option<String>,
+	#[arg(short = 'S', long, value_enum, help = "Scaling algorithm", default_value_t = ScaleMode::default())]
+	pub scale_mode: ScaleMode,
 
 	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
@@ -253,7 +271,7 @@ pub(crate) struct QuantArgs {
 	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
 	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
-	pub bayer_scale: u16,
+	pub bayer_scale: u8,
 }
 
 #[derive(Parser, Debug, Clone)]
