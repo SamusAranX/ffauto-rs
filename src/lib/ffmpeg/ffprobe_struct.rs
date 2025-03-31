@@ -107,6 +107,7 @@ pub struct Tags {
 	pub duration: Option<String>,
 	pub language: Option<String>,
 	pub title: Option<String>,
+	pub handler_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -126,6 +127,7 @@ pub struct Stream {
 	pub codec_name: Option<String>,
 	pub profile: Option<String>,
 	pub codec_type: StreamType,
+	pub codec_tag_string: Option<String>,
 	pub width: Option<u64>,
 	pub height: Option<u64>,
 	#[serde(rename = "sample_aspect_ratio")]

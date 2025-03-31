@@ -113,7 +113,6 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				let codec_name = stream.codec_name.as_ref().unwrap();
 				let sample_rate = stream.sample_rate.as_ref().unwrap();
 				let channels = stream.channels.unwrap_or(0);
-				let channel_layout = stream.channel_layout.as_ref().unwrap();
 				let sample_fmt = stream.sample_fmt.as_ref().unwrap();
 
 				print!("{codec_name}");
@@ -121,7 +120,12 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 					print!(" ({codec_profile})");
 				}
 
-				print!(", {sample_rate} Hz, {channels}ch: {channel_layout}, {sample_fmt}");
+				if let Some(channel_layout) = stream.channel_layout.as_ref() {
+					print!(", {sample_rate} Hz, {channels}ch: {channel_layout}, {sample_fmt}");
+				} else {
+					print!(", {sample_rate} Hz, {channels}ch, {sample_fmt}");
+				}
+
 				if let Some(bits_per_sample) = &stream.bits_per_raw_sample {
 					print!(" ({bits_per_sample})");
 				}
@@ -138,7 +142,19 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				let codec_name = stream.codec_name.as_ref().unwrap();
 				println!("{codec_name}")
 			}
-			StreamType::Data => println!("data?"),
+			StreamType::Data => {
+				if let Some(codec_type_string) = stream.codec_tag_string.as_ref() {
+					print!("{codec_type_string}")
+				} else {
+					print!("data?")
+				}
+
+				if let Some(handler_name) = stream.tags.as_ref().and_then(|tags| tags.handler_name.as_ref()) {
+					print!(" ({handler_name})");
+				}
+
+				println!();
+			},
 		}
 	}
 
