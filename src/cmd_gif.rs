@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 
 use crate::commands::GIFArgs;
@@ -46,7 +46,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
-	let mut video_filter: Vec<String> = vec!();
+	let mut video_filter: Vec<String> = vec![];
 
 	if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
 		video_filter.push(fps_filter);

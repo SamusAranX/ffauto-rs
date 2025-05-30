@@ -10,7 +10,7 @@ use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	let probe = match args.video_frames {
 		None => ffprobe_frames(&args.input)?,
-		Some(_) => ffprobe(&args.input, false)?
+		Some(_) => ffprobe(&args.input, false)?,
 	};
 
 	let mut ffmpeg_args: Vec<String> = vec![
@@ -30,8 +30,8 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 
 	// region Filtering
 
-	let mut video_pipelines: Vec<Vec<String>> = vec!();
-	let mut input_pipeline: Vec<String> = vec!();
+	let mut video_pipelines: Vec<Vec<String>> = vec![];
+	let mut input_pipeline: Vec<String> = vec![];
 
 	if video_stream.is_hdr() {
 		input_pipeline.push(format!("[{video_stream_id}]{TONEMAP_FILTER}"));
@@ -53,23 +53,23 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 			input_pipeline.add("split [p1][p2]");
 			video_pipelines.push(input_pipeline);
 
-			video_pipelines.push(vec!(
+			video_pipelines.push(vec![
 				"[p1] crop=1:1:0:0".to_string(), // dark
 				format!("scale=w=1:h={video_height}:flags=neighbor+{SCALE_FLAGS}"),
 				format!("tile={video_frames}x1 [s1]"),
-			));
-			video_pipelines.push(vec!(
+			]);
+			video_pipelines.push(vec![
 				"[p2] crop=1:1:1:0".to_string(), // light
 				format!("scale=w=1:h={video_height}:flags=neighbor+{SCALE_FLAGS}"),
 				format!("tile={video_frames}x1 [s2]"),
-			));
-			video_pipelines.push(vec!(
+			]);
+			video_pipelines.push(vec![
 				"[s2][s1] blend=all_mode=softlight [video_out]".to_string()
-			));
+			]);
 		}
 	}
 
-	let mut output_pipeline = vec!();
+	let mut output_pipeline = vec![];
 	output_pipeline.add("[video_out] setsar=1");
 
 	if args.deep_color {

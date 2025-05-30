@@ -1,6 +1,6 @@
+use ffauto_rs::ffmpeg::timestamps::TimestampFormat::{Auto, Full};
 use ffauto_rs::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use std::time::Duration;
-use ffauto_rs::ffmpeg::timestamps::TimestampFormat::{Auto, Full};
 
 struct TimestampTest {
 	pub input_timestamp: String,

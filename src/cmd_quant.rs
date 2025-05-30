@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
@@ -44,7 +44,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
-	let mut video_filter: Vec<String> = vec!();
+	let mut video_filter: Vec<String> = vec![];
 	video_filter.add("select=eq(n\\,0)");
 
 	if let Some(crop_filter) = args.generate_crop_filter() {

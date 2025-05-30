@@ -1,4 +1,4 @@
-use crate::palettes::{get_builtin_palette, BuiltInPalette};
+use crate::palettes::{BuiltInPalette, get_builtin_palette};
 use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;

@@ -56,7 +56,7 @@ fn main() -> ExitCode {
 					eprintln!("execution failed: {e}");
 					ExitCode::FAILURE
 				}
-			}
+			};
 		}
 		None => {
 			return ExitCode::FAILURE;

@@ -1,5 +1,5 @@
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
@@ -106,7 +106,7 @@ impl FFProbeOutput {
 			Some(0) => anyhow::bail!("The selected video stream contains invalid height information"),
 			_ => (),
 		}
-		
+
 		Ok((video_stream, video_stream_id))
 	}
 

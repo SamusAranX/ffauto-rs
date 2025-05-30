@@ -9,7 +9,7 @@ const FILE_FORMATS: [PaletteFormat; 6] = [
 	PaletteFormat::Gpl,
 	PaletteFormat::Hex,
 	PaletteFormat::Json,
-	PaletteFormat::Pal
+	PaletteFormat::Pal,
 ];
 const TEXT_FORMATS: [PaletteFormat; 4] = [PaletteFormat::Gpl, PaletteFormat::Hex, PaletteFormat::Json, PaletteFormat::Pal];
 

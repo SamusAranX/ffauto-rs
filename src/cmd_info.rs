@@ -154,7 +154,7 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				}
 
 				println!();
-			},
+			}
 		}
 	}
 

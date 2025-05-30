@@ -1,5 +1,5 @@
 use crate::ffmpeg::enums::*;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::fmt;
 
