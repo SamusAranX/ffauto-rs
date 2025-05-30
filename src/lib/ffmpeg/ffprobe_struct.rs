@@ -1,5 +1,5 @@
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
@@ -81,6 +81,33 @@ impl FFProbeOutput {
 
 	pub fn get_video_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
 		self.get_typed_stream_by_language(lang, StreamType::Video)
+	}
+
+	pub fn checked_get_video_stream_by_index_or_language(&self, lang: &Option<String>, index: usize) -> Result<(Stream, String)> {
+		let (video_stream, video_stream_id) = match lang {
+			Some(language) => {
+				let stream = self
+					.get_video_stream_by_language(language)
+					.context(format!("No stream with language \"{language}\" found"))?
+					.clone();
+				(stream, format!("0:V:m:language:{}", language))
+			}
+			None => {
+				let stream = self
+					.get_video_stream(index)
+					.context(format!("No stream with index {} found", index))?
+					.clone();
+				(stream, format!("0:V:{}", index))
+			}
+		};
+
+		match video_stream.height {
+			None => anyhow::bail!("The selected video stream contains no height information"),
+			Some(0) => anyhow::bail!("The selected video stream contains invalid height information"),
+			_ => (),
+		}
+		
+		Ok((video_stream, video_stream_id))
 	}
 
 	pub fn get_audio_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {

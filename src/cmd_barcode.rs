@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::commands::BarcodeArgs;
 use crate::common::*;
@@ -22,28 +22,7 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
 
-	let (video_stream, video_stream_id) = match &args.video_language {
-		Some(language) => {
-			let stream = probe
-				.get_video_stream_by_language(language)
-				.context(format!("No stream with language \"{language}\" found"))?
-				.clone();
-			(stream, format!("0:V:m:language:{}", language))
-		}
-		None => {
-			let stream = probe
-				.get_video_stream(args.video_stream)
-				.context(format!("No stream with index {} found", &args.video_stream))?
-				.clone();
-			(stream, format!("0:V:{}", &args.video_stream))
-		}
-	};
-
-	match video_stream.height {
-		None => anyhow::bail!("The selected video stream contains no height information"),
-		Some(0) => anyhow::bail!("The selected video stream contains invalid height information"),
-		_ => (),
-	}
+	let (video_stream, video_stream_id) = probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
 	let video_height = video_stream.height.unwrap();
 	let video_frames = &args.video_frames.unwrap_or_else(|| video_stream.total_frames().unwrap());

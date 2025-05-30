@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 
 use crate::commands::GIFArgs;
@@ -10,8 +10,7 @@ use crate::vec_push_ext::PushStrExt;
 pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
-	let first_video_stream = probe.get_first_video_stream();
-	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
+	let (video_stream, video_stream_id) = probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
 	let video_duration = probe.duration()?;
 
@@ -91,7 +90,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	let video_filter_str = video_filter.join(",");
 	let palette_filters = args.generate_palette_filters()?;
-	ffmpeg_args.add_two("-filter_complex", format!("{video_filter_str}{palette_filters}"));
+	ffmpeg_args.add_two("-filter_complex", format!("[{video_stream_id}]{video_filter_str}{palette_filters}"));
 
 	// endregion
 

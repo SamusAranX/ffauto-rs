@@ -31,6 +31,19 @@ pub(crate) struct AutoArgs {
 	#[arg(help = "The output file.")]
 	pub output: PathBuf,
 
+	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	pub video_stream: usize,
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	pub video_language: Option<String>,
+	#[arg(long, group = "audio_select", help = "Selects an audio stream by index.", default_value_t = 0)]
+	pub audio_stream: usize,
+	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language. (ISO 639-2)")]
+	pub audio_language: Option<String>,
+	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index.")]
+	pub sub_stream: Option<usize>,
+	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language. (ISO 639-2)")]
+	pub sub_language: Option<String>,
+
 	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
 
@@ -63,19 +76,6 @@ pub(crate) struct AutoArgs {
 
 	#[arg(long = "channels", help = "Sets the number of output audio channels.")]
 	pub audio_channels: Option<String>,
-
-	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
-	pub video_stream: usize,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
-	pub video_language: Option<String>,
-	#[arg(long, group = "audio_select", help = "Selects an audio stream by index.", default_value_t = 0)]
-	pub audio_stream: usize,
-	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language. (ISO 639-2)")]
-	pub audio_language: Option<String>,
-	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index.")]
-	pub sub_stream: Option<usize>,
-	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language. (ISO 639-2)")]
-	pub sub_language: Option<String>,
 
 	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
 	pub fade: f64,
@@ -192,6 +192,11 @@ pub(crate) struct GIFArgs {
 	#[arg(help = "The output file.")]
 	pub output: PathBuf,
 
+	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	pub video_stream: usize,
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	pub video_language: Option<String>,
+
 	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
 
@@ -260,6 +265,11 @@ pub(crate) struct QuantArgs {
 	pub input: PathBuf,
 	#[arg(help = "The output file.")]
 	pub output: PathBuf,
+
+	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	pub video_stream: usize,
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	pub video_language: Option<String>,
 
 	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,
