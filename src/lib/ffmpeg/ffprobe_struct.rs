@@ -56,6 +56,17 @@ impl FFProbeOutput {
 		self.streams.iter().filter(|s| s.codec_type == stream_type).nth(index)
 	}
 
+	fn get_typed_stream_by_language<S: Into<String>>(&self, lang: S, stream_type: StreamType) -> Option<&Stream> {
+		let lang = lang.into();
+		self.streams.iter().find(|s| {
+			s.codec_type == stream_type &&
+				s.tags.as_ref()
+					.and_then(|t| t.language.as_ref())
+					.map(|l| l == &lang)
+					.is_some_and(|x| x)
+		})
+	}
+
 	pub fn get_video_stream(&self, index: usize) -> Option<&Stream> {
 		self.get_typed_stream(index, StreamType::Video)
 	}
@@ -68,6 +79,18 @@ impl FFProbeOutput {
 		self.get_typed_stream(index, StreamType::Subtitle)
 	}
 
+	pub fn get_video_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
+		self.get_typed_stream_by_language(lang, StreamType::Video)
+	}
+
+	pub fn get_audio_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
+		self.get_typed_stream_by_language(lang, StreamType::Audio)
+	}
+
+	pub fn get_subtitle_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
+		self.get_typed_stream_by_language(lang, StreamType::Subtitle)
+	}
+
 	pub fn get_first_video_stream(&self) -> Option<&Stream> {
 		self.streams.iter().find(|s| s.codec_type == StreamType::Video)
 	}
@@ -78,6 +101,18 @@ impl FFProbeOutput {
 
 	pub fn get_first_subtitle_stream(&self) -> Option<&Stream> {
 		self.streams.iter().find(|s| s.codec_type == StreamType::Subtitle)
+	}
+
+	pub fn has_video_streams(&self) -> bool {
+		self.get_first_video_stream().is_some()
+	}
+
+	pub fn has_audio_streams(&self) -> bool {
+		self.get_first_audio_stream().is_some()
+	}
+
+	pub fn has_subtitle_streams(&self) -> bool {
+		self.get_first_subtitle_stream().is_some()
 	}
 }
 

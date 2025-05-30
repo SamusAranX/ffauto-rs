@@ -65,15 +65,15 @@ pub(crate) struct AutoArgs {
 	pub audio_channels: Option<String>,
 
 	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
-	pub video_index: u8,
+	pub video_stream: usize,
 	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
 	pub video_language: Option<String>,
 	#[arg(long, group = "audio_select", help = "Selects an audio stream by index.", default_value_t = 0)]
-	pub audio_index: u8,
+	pub audio_stream: usize,
 	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language. (ISO 639-2)")]
 	pub audio_language: Option<String>,
 	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index.")]
-	pub sub_index: Option<u8>,
+	pub sub_stream: Option<usize>,
 	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language. (ISO 639-2)")]
 	pub sub_language: Option<String>,
 
@@ -167,6 +167,14 @@ pub(crate) struct BarcodeArgs {
 	pub input: PathBuf,
 	#[arg(help = "The output file. (always outputs PNG)")]
 	pub output: PathBuf,
+
+	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	pub video_stream: usize,
+	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	pub video_language: Option<String>,
+
+	#[arg(short='f', long="frames", help = "Override the number of frames, skipping ffprobe's potentially lengthy frame counting process.")]
+	pub video_frames: Option<u64>,
 
 	#[arg(short = 'B', long, value_enum, help = "The barcode strip generation method.", default_value_t = BarcodeMode::default())]
 	pub barcode_mode: BarcodeMode,

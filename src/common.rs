@@ -2,13 +2,18 @@ use crate::palettes::{get_builtin_palette, BuiltInPalette};
 use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
-use ffauto_rs::ffmpeg::ffprobe_struct::FFProbeOutput;
+use ffauto_rs::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
 use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffauto_rs::palettes::palette::{Color, Palette};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+const MAX32: u64 = i32::MAX as u64;
+
+pub(crate) const TONEMAP_FILTER: &str = "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709";
+pub(crate) const SCALE_FLAGS: &str = "accurate_rnd+full_chroma_int+full_chroma_inp";
 
 pub trait CanSeek {
 	fn parse_seek(&self) -> Option<Duration>;
@@ -25,10 +30,6 @@ pub trait CanCrop {
 pub trait CanScale {
 	fn generate_scale_filter(&self) -> Option<String>;
 }
-
-// pub trait CanTonemap {
-// 	fn generate_tonemap_filter(&self) -> Option<String>;
-// }
 
 pub trait CanChangeFPS {
 	fn generate_fps_filter(&self, stream_fps: Option<f64>) -> Option<String>;
@@ -97,15 +98,14 @@ pub(crate) fn generate_crop_filter(crop: &Option<String>) -> Option<String> {
 }
 
 pub(crate) fn generate_scale_filter(width: Option<u64>, height: Option<u64>, size: &Option<String>, scale_mode: &ScaleMode) -> Option<String> {
-	let scale_flags = "accurate_rnd+full_chroma_int+full_chroma_inp";
 	if let Some(width) = width {
-		return Some(format!("scale=w={width}:h=-2:flags={}+{scale_flags}", scale_mode));
+		return Some(format!("scale=w={width}:h=-2:flags={}+{SCALE_FLAGS}", scale_mode));
 	} else if let Some(height) = height {
-		return Some(format!("scale=w=-2:h={height}:flags={}+{scale_flags}", scale_mode));
+		return Some(format!("scale=w=-2:h={height}:flags={}+{SCALE_FLAGS}", scale_mode));
 	} else if let Some(size) = size {
 		return match parse_ffmpeg_size(size) {
 			Ok(size) => Some(format!(
-				"scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+{scale_flags}",
+				"scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+{SCALE_FLAGS}",
 				size.width, size.height, scale_mode
 			)),
 			Err(err) => {
@@ -118,8 +118,6 @@ pub(crate) fn generate_scale_filter(width: Option<u64>, height: Option<u64>, siz
 	None
 }
 
-pub(crate) const TONEMAP_FILTER: &str = "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709";
-
 pub(crate) fn generate_fps_filter(fps_arg: Option<f64>, fps_mult_arg: Option<f64>, stream_fps: Option<f64>) -> Option<String> {
 	if let Some(fps) = fps_arg {
 		Some(format!("fps=fps={fps:.3}"));
@@ -131,10 +129,10 @@ pub(crate) fn generate_fps_filter(fps_arg: Option<f64>, fps_mult_arg: Option<f64
 }
 
 pub(crate) fn generate_color_sharpness_filters(brightness: f64, contrast: f64, saturation: f64, sharpness: f64) -> Option<String> {
-	let mut filter_parts: Vec<String> = vec!();
+	let mut filter_parts: Vec<String> = vec![];
 
 	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
-		let mut eq_args: Vec<String> = vec!();
+		let mut eq_args: Vec<String> = vec![];
 
 		if brightness != 0.0 {
 			eq_args.push(format!("brightness={}", brightness))
@@ -248,16 +246,42 @@ pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> 
 /// We'll simply not worry about it :3
 pub(crate) fn ffprobe_frames<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
 	let p = ffprobe(&input, false)?;
-	match p.get_first_video_stream() {
-		Some(v) => {
-			if v.nb_frames.is_some() {
-				Ok(p)
-			} else {
-				ffprobe(&input, true)
-			}
-		}
-		None => {
-			anyhow::bail!("The input file contains no usable video streams")
-		}
+	if !p.has_video_streams() {
+		anyhow::bail!("The input file contains no usable video streams")
 	}
+
+	let all_video_streams_have_nb_frames = p
+		.streams
+		.iter()
+		.filter_map(|s| match s.codec_type {
+			StreamType::Video => Some(s.nb_frames.is_some()),
+			_ => None,
+		})
+		.all(|x| x);
+
+	if !all_video_streams_have_nb_frames {
+		return ffprobe(&input, true);
+	}
+
+	Ok(p)
+}
+
+pub(crate) fn check_frame_size(w: u64, h: u64) -> Result<()> {
+	// adapted from ffmpeg's av_image_check_size2:
+	// https://github.com/FFmpeg/FFmpeg/blob/75960ac2708659344bc33b4c108e4a49a0d3184e/libavutil/imgutils.c#L289
+
+	// turns out ffmpeg assesses image size using AV_PIX_FMT_NONE instead of an actual pixel format
+	// this feels like an oversight, but I'm not familiar enough with ffmpeg's inner workings to say for sure
+
+	let stride = w * 8 + 128 * 8;
+	let stride_area = stride * (h + 128);
+
+	#[cfg(debug_assertions)]
+	eprintln!("stride: {stride} | stride_area: {stride_area}");
+
+	if w == 0 || h == 0 || w > MAX32 || h > MAX32 || stride >= MAX32 || stride_area >= MAX32 {
+		anyhow::bail!("ffmpeg can't handle frames as big as {w}×{h}!")
+	}
+
+	Ok(())
 }

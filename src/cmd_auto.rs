@@ -48,20 +48,20 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	if let Some(video_language) = &args.video_language {
 		ffmpeg_args.add_two("-map", format!("0:V:m:language:{}", video_language));
 	} else {
-		ffmpeg_args.add_two("-map", format!("0:V:{}", &args.video_index));
+		ffmpeg_args.add_two("-map", format!("0:V:{}", &args.video_stream));
 	}
 
 	// select appropriate audio stream, default to the first one if no language was specified
 	if let Some(audio_language) = &args.audio_language {
 		ffmpeg_args.add_two("-map", format!("0:a:m:language:{}", audio_language));
 	} else {
-		ffmpeg_args.add_two("-map", format!("0:a:{}", &args.audio_index));
+		ffmpeg_args.add_two("-map", format!("0:a:{}", &args.audio_stream));
 	}
 
 	// select appropriate subtitle stream, default to all of them if neither of language/index was specified
 	if let Some(sub_language) = &args.sub_language {
 		ffmpeg_args.add_two("-map", format!("0:s:m:language:{}:?", sub_language));
-	} else if let Some(sub_index) = &args.sub_index {
+	} else if let Some(sub_index) = &args.sub_stream {
 		ffmpeg_args.add_two("-map", format!("0:s:{}:?", sub_index));
 	} else if probe.streams.iter().any(|s| s.codec_type == Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
 		// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
