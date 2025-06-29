@@ -285,3 +285,11 @@ pub(crate) fn check_frame_size(w: u64, h: u64) -> Result<()> {
 
 	Ok(())
 }
+
+/// sometimes, language tags don't work for silly reasons. this function "fixes" language tags by replacing broken ones.
+pub(crate) fn iso639_lut(lang: String) -> String {
+	match lang.as_str() { 
+		"deu" => "ger".to_string(),
+		_ => lang,
+	}
+}

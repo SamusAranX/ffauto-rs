@@ -113,7 +113,6 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				let codec_name = stream.codec_name.as_ref().unwrap();
 				let sample_rate = stream.sample_rate.as_ref().unwrap();
 				let channels = stream.channels.unwrap_or(0);
-				let sample_fmt = stream.sample_fmt.as_ref().unwrap();
 
 				print!("{codec_name}");
 				if let Some(codec_profile) = &stream.profile {
@@ -121,9 +120,13 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				}
 
 				if let Some(channel_layout) = stream.channel_layout.as_ref() {
-					print!(", {sample_rate} Hz, {channels}ch: {channel_layout}, {sample_fmt}");
+					print!(", {sample_rate} Hz, {channels}ch: {channel_layout}");
 				} else {
-					print!(", {sample_rate} Hz, {channels}ch, {sample_fmt}");
+					print!(", {sample_rate} Hz, {channels}ch");
+				}
+
+				if let Some(sample_fmt) = stream.sample_fmt.as_ref() {
+					print!(", {sample_fmt}");
 				}
 
 				if let Some(bits_per_sample) = &stream.bits_per_raw_sample {

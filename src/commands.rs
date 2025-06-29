@@ -31,18 +31,12 @@ pub(crate) struct AutoArgs {
 	#[arg(help = "The output file.")]
 	pub output: PathBuf,
 
-	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
-	pub video_stream: usize,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
-	pub video_language: Option<String>,
-	#[arg(long, group = "audio_select", help = "Selects an audio stream by index.", default_value_t = 0)]
-	pub audio_stream: usize,
-	#[arg(long = "audio-lang", group = "audio_select", help = "Selects an audio stream by language. (ISO 639-2)")]
-	pub audio_language: Option<String>,
-	#[arg(long, group = "sub_select", help = "Selects a subtitle stream by index.")]
-	pub sub_stream: Option<usize>,
-	#[arg(long = "sub-lang", group = "sub_select", help = "Selects a subtitle stream by language. (ISO 639-2)")]
-	pub sub_language: Option<String>,
+	#[arg(long, alias = "Vs", help = "Selects video streams by index or ISO 639-2 language code.", default_values_t = ["0".to_string()])]
+	pub video_streams: Vec<String>,
+	#[arg(long, alias = "As", help = "Selects audio streams by index or ISO 639-2 language code.", default_values_t = ["0".to_string()])]
+	pub audio_streams: Vec<String>,
+	#[arg(long, alias = "Ss", help = "Selects subtitle streams by index or ISO 639-2 language code.")]
+	pub sub_streams: Vec<String>,
 
 	#[arg(short = 's', long, help = "The start time offset.")]
 	pub seek: Option<String>,

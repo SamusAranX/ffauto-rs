@@ -21,8 +21,8 @@ pub enum VideoCodec {
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
 pub enum OptimizeTarget {
-	Ipod5,
-	Ipod,
+	Ipod5, // earliest video-capable iPod
+	Ipod,  // newer video-capable iPods
 	Psp,
 	PsVita,
 }

@@ -9,7 +9,6 @@ use crate::cmd_info::ffmpeg_info;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
 use clap::Parser;
-use humansize::DECIMAL;
 
 mod cmd_auto;
 mod cmd_barcode;
@@ -67,7 +66,7 @@ fn main() -> ExitCode {
 		Ok(_) => {
 			match fs::metadata(output) {
 				Ok(m) => {
-					let size = humansize::format_size(m.len(), DECIMAL);
+					let size = humansize::format_size(m.len(), humansize::WINDOWS);
 					println!("Output file size: {size}");
 				}
 				Err(err) => {

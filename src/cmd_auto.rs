@@ -8,6 +8,7 @@ use crate::vec_push_ext::PushStrExt;
 use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Subtitle;
+use ffauto_rs::ffmpeg::ffprobe_struct::{Stream, Tags};
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
@@ -41,35 +42,72 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
 	}
 
+	ffmpeg_args.add_two("-disposition", "0");
 	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
-	// select appropriate video stream, default to the first one if no language was specified
-	if let Some(video_language) = &args.video_language {
-		ffmpeg_args.add_two("-map", format!("0:V:m:language:{}", video_language));
-	} else {
-		ffmpeg_args.add_two("-map", format!("0:V:{}", &args.video_stream));
+	#[derive(PartialEq)]
+	enum UsedIndex<'a> {
+		Index(usize),
+		Language(&'a String),
 	}
 
-	// select appropriate audio stream, default to the first one if no language was specified
-	if let Some(audio_language) = &args.audio_language {
-		ffmpeg_args.add_two("-map", format!("0:a:m:language:{}", audio_language));
-	} else {
-		ffmpeg_args.add_two("-map", format!("0:a:{}", &args.audio_stream));
+	let all_streams = [&args.video_streams, &args.audio_streams, &args.sub_streams];
+	let stream_types = ["V", "a", "s"];
+
+	// -metadata expects output stream indices, so keep track of those
+	let mut output_stream_idx = 0_usize;
+
+	// select appropriate streams, default to the first one respectively if none were specified
+	for (streams, stream_type) in all_streams.iter().zip(stream_types.iter()) {
+		let mut used_indices: Vec<UsedIndex> = vec![];
+		for stream in *streams {
+			if let Ok(i) = stream.parse::<usize>() {
+				let used_idx = UsedIndex::Index(i);
+				if used_indices.contains(&used_idx) {
+					continue;
+				}
+
+				ffmpeg_args.add_two("-map", format!("0:{stream_type}:{i}"));
+				if let Some(Stream { tags: Some(Tags { language: Some(lang), .. }), .. }) = match *stream_type {
+					"V" => probe.get_video_stream(i),
+					"a" => probe.get_audio_stream(i),
+					"s" => probe.get_subtitle_stream(i),
+					_ => panic!("you shouldn't be here")
+				} {
+					let lang = iso639_lut(lang.clone());
+					ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
+				}
+
+				used_indices.push(used_idx);
+			} else if stream.trim().is_empty() {
+				let used_lang = UsedIndex::Language(stream);
+				if used_indices.contains(&used_lang) {
+					continue;
+				}
+
+				ffmpeg_args.add_two("-map", format!("0:{stream_type}:m:language:{stream}"));
+
+				let lang = iso639_lut(stream.clone());
+				ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
+
+				used_indices.push(used_lang);
+			}
+
+			output_stream_idx += 1;
+		}
 	}
 
-	// select appropriate subtitle stream, default to all of them if neither of language/index was specified
-	if let Some(sub_language) = &args.sub_language {
-		ffmpeg_args.add_two("-map", format!("0:s:m:language:{}:?", sub_language));
-	} else if let Some(sub_index) = &args.sub_stream {
-		ffmpeg_args.add_two("-map", format!("0:s:{}:?", sub_index));
-	} else if probe.streams.iter().any(|s| s.codec_type == Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
-		// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
-		// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
-		ffmpeg_args.add_two("-map", "0:s?");
-	} else {
-		// there are only hdmv_pgs_subtitle subtitles, so ignore them
-		ffmpeg_args.add("-sn");
+	// subtitle fixup
+	if args.sub_streams.is_empty() {
+		if probe.streams.iter().any(|s| s.codec_type == Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
+			// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
+			// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
+			ffmpeg_args.add_two("-map", "0:s?");
+		} else {
+			// there are only hdmv_pgs_subtitle subtitles, so ignore them
+			ffmpeg_args.add("-sn");
+		}
 	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);

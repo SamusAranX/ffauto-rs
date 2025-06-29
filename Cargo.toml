@@ -1,9 +1,9 @@
 [package]
 name = "ffauto-rs"
-version = "1.9.1"
+version = "1.10.0"
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.88"
 
 [lib]
 path = "src/lib/mod.rs"
@@ -18,7 +18,7 @@ debug = "line-tables-only"
 [dependencies]
 anyhow = "1.0.98"
 byteorder = "1.5.0"
-clap = { version = "4.5.39", features = ["derive"] }
+clap = { version = "4.5.40", features = ["derive"] }
 colored = "3.0.0"
 const_format = "0.2.34"
 humansize = "2.1.3"

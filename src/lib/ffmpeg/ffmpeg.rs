@@ -59,6 +59,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		let mut out_time = None;
 		let mut encode_bitrate = None;
 		let mut encode_speed = None;
+		let mut total_size = None;
 
 		loop {
 			let mut line = String::new();
@@ -102,13 +103,16 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 						("speed", speed) => {
 							encode_speed = Some(speed.trim().trim_end_matches('x').parse::<f32>().unwrap_or_default());
 						}
+						("total_size", size) => {
+							total_size = size.parse::<u64>().ok()
+						}
 						("progress", "continue") => (),
 						("progress", "end") => {
 							#[cfg(debug_assertions)]
 							eprintln!("PROCESSING HAS ENDED");
 							break;
 						}
-						("stream_0_0_q" | "total_size" | "out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
+						("stream_0_0_q" | "out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
 						_ => {
 							#[cfg(debug_assertions)]
 							eprintln!("Unknown progress value: {key} = {value}");
@@ -121,10 +125,11 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				}
 			}
 
-			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed)) = (frames_processed, frames_per_second, out_time, &encode_bitrate, encode_speed) {
+			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed), Some(total_size)) = (frames_processed, frames_per_second, out_time, &encode_bitrate, encode_speed, total_size) {
 				println!(
-					"frame: {frame} - fps: {fps:.2} - time: {} - bitrate: {bitrate} - speed: {speed:.3}x",
-					format_ffmpeg_timestamp(time, TwoDigits)
+					"frame: {frame} - fps: {fps:.2} - time: {} - size: {} - bitrate: {bitrate} - speed: {speed:.3}x",
+					format_ffmpeg_timestamp(time, TwoDigits),
+					humansize::format_size(total_size, humansize::WINDOWS)
 				);
 
 				frames_processed = None;
