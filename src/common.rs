@@ -99,9 +99,9 @@ pub(crate) fn generate_crop_filter(crop: &Option<String>) -> Option<String> {
 
 pub(crate) fn generate_scale_filter(width: Option<u64>, height: Option<u64>, size: &Option<String>, scale_mode: &ScaleMode) -> Option<String> {
 	if let Some(width) = width {
-		return Some(format!("scale=w={width}:h=-2:flags={}+{SCALE_FLAGS}", scale_mode));
+		return Some(format!("scale=w={width}:h=-2:flags={scale_mode}+{SCALE_FLAGS}"));
 	} else if let Some(height) = height {
-		return Some(format!("scale=w=-2:h={height}:flags={}+{SCALE_FLAGS}", scale_mode));
+		return Some(format!("scale=w=-2:h={height}:flags={scale_mode}+{SCALE_FLAGS}"));
 	} else if let Some(size) = size {
 		return match parse_ffmpeg_size(size) {
 			Ok(size) => Some(format!(
@@ -135,20 +135,20 @@ pub(crate) fn generate_color_sharpness_filters(brightness: f64, contrast: f64, s
 		let mut eq_args: Vec<String> = vec![];
 
 		if brightness != 0.0 {
-			eq_args.push(format!("brightness={}", brightness))
+			eq_args.push(format!("brightness={brightness}"))
 		}
 		if contrast != 1.0 {
-			eq_args.push(format!("contrast={}", contrast))
+			eq_args.push(format!("contrast={contrast}"))
 		}
 		if saturation != 1.0 {
-			eq_args.push(format!("saturation={}", saturation))
+			eq_args.push(format!("saturation={saturation}"))
 		}
 
 		filter_parts.push(format!("eq={}", eq_args.join(":")));
 	}
 
 	if sharpness != 0.0 {
-		filter_parts.push(format!("unsharp=la={0}:ca={0}", sharpness));
+		filter_parts.push(format!("unsharp=la={sharpness}:ca={sharpness}"));
 	}
 
 	if filter_parts.is_empty() {

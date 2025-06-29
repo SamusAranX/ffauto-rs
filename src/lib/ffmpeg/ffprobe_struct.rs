@@ -90,14 +90,14 @@ impl FFProbeOutput {
 					.get_video_stream_by_language(language)
 					.context(format!("No stream with language \"{language}\" found"))?
 					.clone();
-				(stream, format!("0:V:m:language:{}", language))
+				(stream, format!("0:V:m:language:{language}"))
 			}
 			None => {
 				let stream = self
 					.get_video_stream(index)
-					.context(format!("No stream with index {} found", index))?
+					.context(format!("No stream with index {index} found"))?
 					.clone();
-				(stream, format!("0:V:{}", index))
+				(stream, format!("0:V:{index}"))
 			}
 		};
 

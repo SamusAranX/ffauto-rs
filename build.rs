@@ -5,7 +5,7 @@ use std::str;
 use chrono::SecondsFormat;
 
 fn print_env(key: &str, val: &str) {
-	println!("cargo::rustc-env={}={}", key, val)
+	println!("cargo::rustc-env={key}={val}")
 }
 
 fn env_command<I, S>(env: &str, program: S, args: I) -> String

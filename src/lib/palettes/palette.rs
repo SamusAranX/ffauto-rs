@@ -44,7 +44,7 @@ impl Display for Color {
 		let mut rgb = self.r as u32;
 		rgb = (rgb << 8) | self.g as u32;
 		rgb = (rgb << 8) | self.b as u32;
-		write!(f, "#{:06X}", rgb)
+		write!(f, "#{rgb:06X}")
 	}
 }
 
