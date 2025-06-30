@@ -1,7 +1,3 @@
-use std::fs;
-use std::path::PathBuf;
-use std::process::ExitCode;
-
 use crate::cmd_auto::ffmpeg_auto;
 use crate::cmd_barcode::ffmpeg_barcode;
 use crate::cmd_gif::ffmpeg_gif;
@@ -9,6 +5,9 @@ use crate::cmd_info::ffmpeg_info;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
 use clap::Parser;
+use std::fs;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 mod cmd_auto;
 mod cmd_barcode;
@@ -24,8 +23,6 @@ mod vec_push_ext;
 fn main() -> ExitCode {
 	let cli = Cli::parse();
 	let output: &PathBuf;
-
-	// println!("{cli:?}");
 
 	let result = match &cli.command {
 		Some(Commands::Auto(args)) => {

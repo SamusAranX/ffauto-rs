@@ -1,14 +1,19 @@
+use std::str::FromStr;
 use std::time::Duration;
-
-use anyhow::Result;
 
 use crate::commands::AutoArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
+use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Subtitle;
 use ffauto_rs::ffmpeg::ffprobe_struct::{Stream, Tags};
+use isolang::Language;
+
+fn fix_language_code(s: &str) -> &str {
+	Language::from_str(s).map(|l| l.to_639_2b()).unwrap_or_else(|_| s)
+}
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
@@ -69,13 +74,16 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 				}
 
 				ffmpeg_args.add_two("-map", format!("0:{stream_type}:{i}"));
-				if let Some(Stream { tags: Some(Tags { language: Some(lang), .. }), .. }) = match *stream_type {
+				if let Some(Stream {
+					tags: Some(Tags { language: Some(lang), .. }),
+					..
+				}) = match *stream_type {
 					"V" => probe.get_video_stream(i),
 					"a" => probe.get_audio_stream(i),
 					"s" => probe.get_subtitle_stream(i),
-					_ => panic!("you shouldn't be here")
+					_ => panic!("you shouldn't be here"),
 				} {
-					let lang = iso639_lut(lang.clone());
+					let lang = fix_language_code(lang);
 					ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
 				}
 
@@ -88,7 +96,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 				ffmpeg_args.add_two("-map", format!("0:{stream_type}:m:language:{stream}"));
 
-				let lang = iso639_lut(stream.clone());
+				let lang = fix_language_code(stream);
 				ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
 
 				used_indices.push(used_lang);

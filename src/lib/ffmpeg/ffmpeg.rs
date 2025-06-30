@@ -89,22 +89,22 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 
 					match (key, value) {
 						("frame", frame) => {
-							frames_processed = Some(frame.trim().parse::<u64>().unwrap_or_default());
+							frames_processed = frame.trim().parse::<u64>().ok();
 						}
 						("fps", fps) => {
-							frames_per_second = Some(fps.trim().parse::<f64>().unwrap_or_default());
+							frames_per_second = fps.trim().parse::<f64>().ok();
 						}
 						("out_time", time) => {
-							out_time = parse_ffmpeg_duration(time);
+							out_time = parse_ffmpeg_duration(time.trim());
 						}
 						("bitrate", bitrate) => {
 							encode_bitrate = Some(bitrate.trim().to_string());
 						}
 						("speed", speed) => {
-							encode_speed = Some(speed.trim().trim_end_matches('x').parse::<f32>().unwrap_or_default());
+							encode_speed = speed.trim().trim_end_matches('x').parse::<f64>().ok();
 						}
 						("total_size", size) => {
-							total_size = size.parse::<u64>().ok()
+							total_size = size.trim().parse::<u64>().ok()
 						}
 						("progress", "continue") => (),
 						("progress", "end") => {
@@ -112,7 +112,8 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 							eprintln!("PROCESSING HAS ENDED");
 							break;
 						}
-						("stream_0_0_q" | "out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
+						("out_time_us" | "out_time_ms" | "dup_frames" | "drop_frames", _) => (),
+						_ if key.starts_with("stream_") && key.ends_with("_q") => (),
 						_ => {
 							#[cfg(debug_assertions)]
 							eprintln!("Unknown progress value: {key} = {value}");
@@ -125,11 +126,23 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				}
 			}
 
-			if let (Some(frame), Some(fps), Some(time), Some(bitrate), Some(speed), Some(total_size)) = (frames_processed, frames_per_second, out_time, &encode_bitrate, encode_speed, total_size) {
+			// values for keys "bitrate", "out_time", and "speed" can be N/A for a while after starting an encode
+			// so we process those values separately
+			// there's probably a better way of doing this but I'm lazy and this works
+			if let (Some(frame), Some(fps), Some(size)) = (frames_processed, frames_per_second, total_size) {
+				let timestamp = out_time
+					.map(|time| format_ffmpeg_timestamp(time, TwoDigits))
+					.unwrap_or("N/A".to_string());
+				let bitrate = encode_bitrate
+					.unwrap_or("N/A".to_string());
+				let speed = encode_speed
+					.map(|speed| format!("{speed:.3}x"))
+					.unwrap_or("N/A".to_string());
+
 				println!(
-					"frame: {frame} - fps: {fps:.2} - time: {} - size: {} - bitrate: {bitrate} - speed: {speed:.3}x",
-					format_ffmpeg_timestamp(time, TwoDigits),
-					humansize::format_size(total_size, humansize::WINDOWS)
+					"frame: {frame} - fps: {fps:.2} - time: {} - size: {} - bitrate: {bitrate} - speed: {speed}",
+					timestamp,
+					humansize::format_size(size, humansize::WINDOWS)
 				);
 
 				frames_processed = None;
@@ -137,6 +150,7 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				out_time = None;
 				encode_bitrate = None;
 				encode_speed = None;
+				total_size = None;
 			}
 		}
 	}

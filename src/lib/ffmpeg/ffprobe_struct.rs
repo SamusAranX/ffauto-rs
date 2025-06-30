@@ -1,5 +1,5 @@
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
@@ -58,13 +58,9 @@ impl FFProbeOutput {
 
 	fn get_typed_stream_by_language<S: Into<String>>(&self, lang: S, stream_type: StreamType) -> Option<&Stream> {
 		let lang = lang.into();
-		self.streams.iter().find(|s| {
-			s.codec_type == stream_type &&
-				s.tags.as_ref()
-					.and_then(|t| t.language.as_ref())
-					.map(|l| l == &lang)
-					.is_some_and(|x| x)
-		})
+		self.streams
+			.iter()
+			.find(|s| s.codec_type == stream_type && s.tags.as_ref().and_then(|t| t.language.as_ref()).map(|l| l == &lang).is_some_and(|x| x))
 	}
 
 	pub fn get_video_stream(&self, index: usize) -> Option<&Stream> {
@@ -93,10 +89,7 @@ impl FFProbeOutput {
 				(stream, format!("0:V:m:language:{language}"))
 			}
 			None => {
-				let stream = self
-					.get_video_stream(index)
-					.context(format!("No stream with index {index} found"))?
-					.clone();
+				let stream = self.get_video_stream(index).context(format!("No stream with index {index} found"))?.clone();
 				(stream, format!("0:V:{index}"))
 			}
 		};

@@ -1,4 +1,4 @@
-use crate::palettes::{BuiltInPalette, get_builtin_palette};
+use crate::palettes::{get_builtin_palette, BuiltInPalette};
 use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
@@ -284,12 +284,4 @@ pub(crate) fn check_frame_size(w: u64, h: u64) -> Result<()> {
 	}
 
 	Ok(())
-}
-
-/// sometimes, language tags don't work for silly reasons. this function "fixes" language tags by replacing broken ones.
-pub(crate) fn iso639_lut(lang: String) -> String {
-	match lang.as_str() { 
-		"deu" => "ger".to_string(),
-		_ => lang,
-	}
 }
