@@ -63,6 +63,9 @@ fn main() -> ExitCode {
 		Ok(_) => {
 			match fs::metadata(output) {
 				Ok(m) => {
+					#[cfg(target_os = "macos")]
+					let size = humansize::format_size(m.len(), humansize::DECIMAL);
+					#[cfg(not(target_os = "macos"))]
 					let size = humansize::format_size(m.len(), humansize::WINDOWS);
 					println!("Output file size: {size}");
 				}

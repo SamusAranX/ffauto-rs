@@ -32,6 +32,16 @@ impl CanChangeFPS for AutoArgs {
 	fn generate_fps_filter(&self, stream_fps: Option<f64>) -> Option<String> {
 		generate_fps_filter(self.framerate, self.framerate_mult, stream_fps)
 	}
+
+	fn generate_fps_filter_explicit(&self, stream_fps: Option<f64>, target: f64) -> Option<String> {
+		if let Some(fps) = stream_fps {
+			let divisor = (fps / target).ceil();
+			let adj_fps = (fps / divisor).round().min(target);
+			return generate_fps_filter(Some(adj_fps), None, stream_fps);
+		}
+
+		None
+	}
 }
 
 impl CanSeek for GIFArgs {
@@ -62,6 +72,8 @@ impl CanChangeFPS for GIFArgs {
 	fn generate_fps_filter(&self, stream_fps: Option<f64>) -> Option<String> {
 		generate_fps_filter(self.framerate, self.framerate_mult, stream_fps)
 	}
+
+	fn generate_fps_filter_explicit(&self, _: Option<f64>, _: f64) -> Option<String> { None }
 }
 
 impl CanColorFilter for GIFArgs {

@@ -123,7 +123,7 @@ impl AutoArgs {
 
 	pub(crate) fn optimize_settings(&mut self) {
 		match self.optimize_target {
-			None => (),
+			None => return,
 			_ => {
 				self.width = None;
 				self.height = None;

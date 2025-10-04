@@ -17,9 +17,11 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		.context("Couldn't create temp file: {e}")?;
 
 	let mut args = vec![
-		String::from("-progress"),
-		temp_file.path().to_str().unwrap().to_string()
+		"-progress".to_string(),
+		temp_file.path().to_str().unwrap().to_string(),
 	];
+	#[cfg(target_os = "macos")]
+	args.extend(["-hwaccel".to_string(), "videotoolbox".to_string()]);
 	args.extend(in_args.to_vec());
 
 	if debug {
@@ -138,12 +140,16 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 				let speed = encode_speed
 					.map(|speed| format!("{speed:.3}x"))
 					.unwrap_or("N/A".to_string());
+				
+				let formatted_size = {
+					if cfg!(target_os = "macos") {
+						humansize::format_size(size, humansize::DECIMAL)
+					} else {
+						humansize::format_size(size, humansize::WINDOWS)
+					}
+				};
 
-				println!(
-					"frame: {frame} - fps: {fps:.2} - time: {} - size: {} - bitrate: {bitrate} - speed: {speed}",
-					timestamp,
-					humansize::format_size(size, humansize::WINDOWS)
-				);
+				println!("frame: {frame} - fps: {fps:.2} - time: {timestamp} - size: {formatted_size} - bitrate: {bitrate} - speed: {speed}");
 
 				frames_processed = None;
 				frames_per_second = None;

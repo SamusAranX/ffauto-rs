@@ -1,31 +1,35 @@
+use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
 use crate::commands::AutoArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType::Subtitle;
-use ffauto_rs::ffmpeg::ffprobe_struct::{Stream, Tags};
+use ffauto_rs::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
 use isolang::Language;
 
 fn fix_language_code(s: &str) -> &str {
-	Language::from_str(s).map(|l| l.to_639_2b()).unwrap_or_else(|_| s)
+	Language::from_str(s)
+		.ok()
+		.or(Language::from_locale(&s.replace("-", "_")))
+		.map(|l| l.to_639_2b())
+		.unwrap_or(s)
 }
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
-	let first_audio_stream = probe.get_first_audio_stream();
 	let first_video_stream = probe.get_first_video_stream();
+	let first_audio_stream = probe.get_first_audio_stream();
 
-	if first_audio_stream.is_none() && first_video_stream.is_none() {
+	if !probe.has_video_streams() && probe.has_audio_streams() {
 		anyhow::bail!("The input file contains no usable audio/video streams")
 	}
 
-	let video_stream = first_video_stream.expect("The input file needs to contain a usable video stream").clone();
+	let video_stream = first_video_stream.context("The input file needs to contain a usable video stream")?.clone();
 	let video_duration = probe.duration()?;
 
 	let mut ffmpeg_args: Vec<String> = vec![
@@ -52,35 +56,56 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
 	#[derive(PartialEq)]
-	enum UsedIndex<'a> {
+	enum UsedIndex {
 		Index(usize),
-		Language(&'a String),
+		Language(Language),
 	}
 
-	let all_streams = [&args.video_streams, &args.audio_streams, &args.sub_streams];
-	let stream_types = ["V", "a", "s"];
+	let streams_and_types = [
+		(&args.video_streams, StreamType::Video),
+		(&args.audio_streams, StreamType::Audio),
+		(&args.sub_streams, StreamType::Subtitle),
+	];
 
 	// -metadata expects output stream indices, so keep track of those
-	let mut output_stream_idx = 0_usize;
+	let mut output_stream_idx: usize = 0;
+
+	// let subtitle_lang_re = Regex::new(r"(?i)\.(?<lang>[a-z0-9\-_]+)\.[a-z0-9]+$").unwrap();
 
 	// select appropriate streams, default to the first one respectively if none were specified
-	for (streams, stream_type) in all_streams.iter().zip(stream_types.iter()) {
+	for (streams, stream_type) in streams_and_types {
+		match stream_type {
+			StreamType::Audio => {
+				if !probe.has_audio_streams() {
+					continue
+				}
+			}
+			StreamType::Video => {
+				if !probe.has_video_streams() {
+					continue
+				}
+			}
+			_ => ()
+		}
+		
 		let mut used_indices: Vec<UsedIndex> = vec![];
-		for stream in *streams {
+		for stream in streams {
+			let stream = stream.trim();
 			if let Ok(i) = stream.parse::<usize>() {
+				// value is a numeric stream ID
 				let used_idx = UsedIndex::Index(i);
 				if used_indices.contains(&used_idx) {
 					continue;
 				}
 
-				ffmpeg_args.add_two("-map", format!("0:{stream_type}:{i}"));
+				ffmpeg_args.add_two("-map", format!("0:{}:{i}", stream_type.identifier()));
 				if let Some(Stream {
 					tags: Some(Tags { language: Some(lang), .. }),
 					..
-				}) = match *stream_type {
-					"V" => probe.get_video_stream(i),
-					"a" => probe.get_audio_stream(i),
-					"s" => probe.get_subtitle_stream(i),
+				}) = match stream_type {
+					StreamType::Video => probe.get_video_stream(i),
+					StreamType::Audio => probe.get_audio_stream(i),
+					StreamType::Subtitle => probe.get_subtitle_stream(i),
 					_ => panic!("you shouldn't be here"),
 				} {
 					let lang = fix_language_code(lang);
@@ -88,18 +113,46 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 				}
 
 				used_indices.push(used_idx);
-			} else if stream.trim().is_empty() {
-				let used_lang = UsedIndex::Language(stream);
+			} else if let Ok(lang) = Language::from_str(stream) {
+				// value is a valid language code
+				let used_lang = UsedIndex::Language(lang);
 				if used_indices.contains(&used_lang) {
 					continue;
 				}
 
-				ffmpeg_args.add_two("-map", format!("0:{stream_type}:m:language:{stream}"));
+				ffmpeg_args.add_two("-map", format!("0:{}:m:language:{stream}", stream_type.identifier()));
 
 				let lang = fix_language_code(stream);
 				ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
 
 				used_indices.push(used_lang);
+			} else if stream_type == StreamType::Subtitle {
+				// TODO: allow adding subtitles by file here
+				let path;
+				let path_no_ext;
+				let lang;
+				if let Some((path_str, lang_explicit)) = stream.split_once(":") {
+					path = Path::new(path_str);
+					lang = lang_explicit;
+				} else {
+					path = Path::new(stream);
+					path_no_ext = path.with_extension("");
+					lang = match path_no_ext.extension().and_then(|ext| ext.to_str()) {
+						None => continue,
+						Some(ext) => ext,
+					};
+				}
+
+				match path.canonicalize() {
+					Ok(canon) => {
+						ffmpeg_args.add_two("-i", canon.into_os_string().into_string().unwrap());
+						ffmpeg_args.add_two(
+							format!("-metadata:s:{output_stream_idx}"), 
+							format!("language={}", fix_language_code(lang)),
+						);
+					}
+					_ => continue,
+				};
 			}
 
 			output_stream_idx += 1;
@@ -108,7 +161,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 	// subtitle fixup
 	if args.sub_streams.is_empty() {
-		if probe.streams.iter().any(|s| s.codec_type == Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
+		if probe.streams.iter().any(|s| s.codec_type == StreamType::Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
 			// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
 			// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
 			ffmpeg_args.add_two("-map", "0:s?");
@@ -209,8 +262,8 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			ffmpeg_args.add_two("-level", "1.3"); // apple: 1.3
 			ffmpeg_args.add_two("-maxrate", "768K"); // apple: 768 kbps, actual level limit
 			ffmpeg_args.add_two("-bufsize", "2M");
-			ffmpeg_args.add_two("-c:s", "mov_text");
-			ffmpeg_args.add_two("-tag:s", "tx3g");
+			ffmpeg_args.add("-sn"); // the 5th gen iPod does not support subtitles
+			ffmpeg_args.add_two("-map_chapters", "0"); // it does however support video chapters
 		}
 		Some(OptimizeTarget::Ipod) => {
 			ffmpeg_args.add_two("-profile:v", "baseline"); // apple: baseline
@@ -219,6 +272,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			ffmpeg_args.add_two("-bufsize", "5M");
 			ffmpeg_args.add_two("-c:s", "mov_text");
 			ffmpeg_args.add_two("-tag:s", "tx3g");
+			ffmpeg_args.add_two("-map_chapters", "0");
 		}
 		Some(OptimizeTarget::Psp) => {
 			ffmpeg_args.add_two("-profile:v", "main");
@@ -242,8 +296,21 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	if args.needs_video_filter() {
 		let mut video_filter: Vec<String> = vec![];
 
-		if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
-			video_filter.push(fps_filter);
+		match args.optimize_target {
+			// limit fps to 30
+			// TODO: find a nicer way to do this
+			Some(OptimizeTarget::Ipod) | Some(OptimizeTarget::Ipod5) => {
+				if let Some(fps) = video_stream.frame_rate() && fps > 30.0 {
+					if let Some(fps_filter) = args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0) {
+						video_filter.push(fps_filter);
+					}
+				}
+			}
+			_ => {
+				if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
+					video_filter.push(fps_filter);
+				}
+			}
 		}
 
 		if let Some(crop_filter) = args.generate_crop_filter() {

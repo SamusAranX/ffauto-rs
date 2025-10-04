@@ -145,6 +145,17 @@ pub enum StreamType {
 	Data,
 }
 
+impl StreamType {
+	pub fn identifier(&self) -> &str {
+		match self {
+			StreamType::Audio => "a",
+			StreamType::Video => "V",
+			StreamType::Subtitle => "s",
+			StreamType::Data => "d",
+		}
+	}
+}
+
 impl Display for StreamType {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {

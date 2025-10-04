@@ -33,6 +33,7 @@ pub trait CanScale {
 
 pub trait CanChangeFPS {
 	fn generate_fps_filter(&self, stream_fps: Option<f64>) -> Option<String>;
+	fn generate_fps_filter_explicit(&self, stream_fps: Option<f64>, target: f64) -> Option<String>;
 }
 
 pub trait CanColorFilter {
