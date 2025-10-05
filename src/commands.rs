@@ -26,70 +26,95 @@ pub(crate) struct Cli {
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct AutoArgs {
-	#[arg(short, help = "The input file.")]
+	/// The input file.
+	#[arg(short)]
 	pub input: PathBuf,
-	#[arg(help = "The output file.")]
+	/// The output file.
+	#[arg()]
 	pub output: PathBuf,
 
-	#[arg(long, alias = "Vs", help = "Selects video streams by index or ISO 639-2 language code.", default_values_t = ["0".to_string()])]
+	/// Selects video streams by index or ISO 639-2 language code.
+	#[arg(long, alias = "Vs", default_values_t = ["0".to_string()])]
 	pub video_streams: Vec<String>,
-	#[arg(long, alias = "As", help = "Selects audio streams by index or ISO 639-2 language code.", default_values_t = ["0".to_string()])]
+	/// Selects audio streams by index or ISO 639-2 language code.
+	#[arg(long, alias = "As", default_values_t = ["0".to_string()])]
 	pub audio_streams: Vec<String>,
-	#[arg(long, alias = "Ss", help = "Selects subtitle streams by index or ISO 639-2 language code.")]
+	/// Selects subtitle streams by index or ISO 639-2 language code.
+	#[arg(long, alias = "Ss")]
 	pub sub_streams: Vec<String>,
 
-	#[arg(short = 's', long, help = "The start time offset.")]
+	/// The start time offset.
+	#[arg(short = 's', long)]
 	pub seek: Option<String>,
 
-	#[arg(short = 't', group = "seeking", help = "The output duration.")]
+	/// The output duration.
+	#[arg(short = 't', group = "seeking")]
 	pub duration: Option<String>,
-	#[arg(long = "to", group = "seeking", help = "The end time offset.")]
+	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	#[arg(short, long)]
 	pub crop: Option<String>,
 
-	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	/// Sets the output video width, preserving aspect ratio.
+	#[arg(long = "vw", group = "resize")]
 	pub width: Option<u64>,
-	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	/// Sets the output video height, preserving aspect ratio.
+	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
+	/// Sets the scaling algorithm used.
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
-	#[arg(short = 'T', long, help = "Performs an HDR-to-SDR tonemap.")]
+	/// Performs an HDR-to-SDR tonemap.
+	#[arg(short = 'T', long)]
 	pub tonemap: bool,
-	#[arg(short = 'F', long, default_value_t = true, help = "Moves moov atom to the start.")]
+	/// Moves moov atom to the start.
+	#[arg(short = 'F', long, default_value_t = true)]
 	pub faststart: bool,
 
-	#[arg(short = 'M', long, group = "volume", help = "Removes the audio stream.")]
+	/// Removes the audio stream.
+	#[arg(short = 'M', long, group = "volume")]
 	pub mute: bool,
-	#[arg(short = 'v', long = "volume", group = "volume", help = "Sets the output audio volume factor.", default_value_t = 1.0)]
+	/// Sets the output audio volume factor.
+	#[arg(short = 'v', long = "volume", group = "volume", default_value_t = 1.0)]
 	pub audio_volume: f64,
 
-	#[arg(long = "channels", help = "Sets the number of output audio channels.")]
+	/// Sets the number of output audio channels.
+	#[arg(long = "channels")]
 	pub audio_channels: Option<String>,
 
-	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
+	/// Sets the fade in and out durations. Takes precedence over --fi/--fo.
+	#[arg(short, long, default_value_t = 0.0)]
 	pub fade: f64,
-	#[arg(long = "fi", help = "Sets the fade in duration.", default_value_t = 0.0)]
+	/// Sets the fade in duration.
+	#[arg(long = "fi", default_value_t = 0.0)]
 	pub fade_in: f64,
-	#[arg(long = "fo", help = "Sets the fade out duration.", default_value_t = 0.0)]
+	/// Sets the fade out duration.
+	#[arg(long = "fo", default_value_t = 0.0)]
 	pub fade_out: f64,
 
-	#[arg(short = 'r', long, group = "framerates", help = "Sets the output video frame rate.")]
+	/// Sets the output video frame rate.
+	#[arg(short = 'r', long, group = "framerates")]
 	pub framerate: Option<f64>,
-	#[arg(short = 'R', long, group = "framerates", help = "Sets the output video frame rate to a factor of the input video frame rate.")]
+	/// Sets the output video frame rate to a factor of the input video frame rate.
+	#[arg(short = 'R', long, group = "framerates")]
 	pub framerate_mult: Option<f64>,
 
-	#[arg(short = 'C', long = "codec", help = "The output video codec.", default_value_t = VideoCodec::default())]
+	/// The output video codec.
+	#[arg(short = 'C', long = "codec", default_value_t = VideoCodec::default())]
 	pub video_codec: VideoCodec,
 
-	#[arg(short = 'O', long = "optimize", help = "Optimizes settings for certain devices.")]
+	/// Optimizes settings for certain devices.
+	#[arg(short = 'O', long = "optimize")]
 	pub optimize_target: Option<OptimizeTarget>,
 
-	#[arg(short, help = "Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified.",
+	/// Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified.
+	#[arg(short,
 	action = ArgAction::Count)]
 	pub garbage: u8,
 }
@@ -157,154 +182,211 @@ impl AutoArgs {
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct BarcodeArgs {
-	#[arg(short, help = "The input file.")]
+	/// The input file.
+	#[arg(short)]
 	pub input: PathBuf,
-	#[arg(help = "The output file. (always outputs PNG)")]
+	/// The output file. (always outputs PNG)
+	#[arg()]
 	pub output: PathBuf,
 
-	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	/// Selects a video stream by index.
+	#[arg(long, group = "video_select", default_value_t = 0)]
 	pub video_stream: usize,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	/// Selects a video stream by language. (ISO 639-2)
+	#[arg(long = "video-lang", group = "video_select")]
 	pub video_language: Option<String>,
 
-	#[arg(short='f', long="frames", help = "Override the number of frames, skipping ffprobe's potentially lengthy frame counting process.")]
+	/// Override the number of frames, skipping ffprobe's potentially lengthy frame counting process.
+	#[arg(short = 'f', long = "frames")]
 	pub video_frames: Option<u64>,
 
-	#[arg(short = 'B', long, value_enum, help = "The barcode strip generation method.", default_value_t = BarcodeMode::default())]
+	/// The barcode strip generation method.
+	#[arg(short = 'B', long, value_enum, default_value_t = BarcodeMode::default())]
 	pub barcode_mode: BarcodeMode,
-	#[arg(short = 'D', long, help = "Outputs a 48-bit PNG.")]
+	/// Outputs a 48-bit PNG.
+	#[arg(short = 'D', long)]
 	pub deep_color: bool,
 
-	#[arg(long = "vh", group = "resize", help = "Sets the output barcode image's height.")]
+	/// Sets the output barcode image's height.
+	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct GIFArgs {
-	#[arg(short, help = "The input file.")]
+	/// The input file.
+	#[arg(short)]
 	pub input: PathBuf,
-	#[arg(help = "The output file.")]
+	/// The output file.
+	#[arg()]
 	pub output: PathBuf,
 
-	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	/// Selects a video stream by index.
+	#[arg(long, group = "video_select", default_value_t = 0)]
 	pub video_stream: usize,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	/// Selects a video stream by language. (ISO 639-2)
+	#[arg(long = "video-lang", group = "video_select")]
 	pub video_language: Option<String>,
 
-	#[arg(short = 's', long, help = "The start time offset.")]
+	/// The start time offset.
+	#[arg(short = 's', long)]
 	pub seek: Option<String>,
 
-	#[arg(short = 't', group = "seeking", help = "The output duration.")]
+	/// The output duration.
+	#[arg(short = 't', group = "seeking")]
 	pub duration: Option<String>,
-	#[arg(long = "to", group = "seeking", help = "The end time offset.")]
+	/// The end time offset.
+	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	#[arg(short, long)]
 	pub crop: Option<String>,
 
-	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	/// Sets the output video width, preserving aspect ratio.
+	#[arg(long = "vw", group = "resize")]
 	pub width: Option<u64>,
-	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	/// Sets the output video height, preserving aspect ratio.
+	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
+	/// Sets the scaling algorithm used.
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
-	#[arg(short, long, help = "Sets the fade in and out durations. Takes precedence over --fi/--fo.", default_value_t = 0.0)]
+	/// Sets the fade in and out durations. Takes precedence over --fi/--fo.
+	#[arg(short, long, default_value_t = 0.0)]
 	pub fade: f64,
-	#[arg(long = "fi", help = "Sets the fade in duration.", default_value_t = 0.0)]
+	/// Sets the fade in duration.
+	#[arg(long = "fi", default_value_t = 0.0)]
 	pub fade_in: f64,
-	#[arg(long = "fo", help = "Sets the fade out duration.", default_value_t = 0.0)]
+	/// Sets the fade out duration.
+	#[arg(long = "fo", default_value_t = 0.0)]
 	pub fade_out: f64,
 
-	#[arg(short = 'r', long, group = "framerates", help = "Sets the output video frame rate.")]
+	/// Sets the output video frame rate.
+	#[arg(short = 'r', long, group = "framerates")]
 	pub framerate: Option<f64>,
-	#[arg(short = 'R', long, group = "framerates", help = "Sets the output video frame rate to a factor of the input video frame rate.")]
+	/// Sets the output video frame rate to a factor of the input video frame rate.
+	#[arg(short = 'R', long, group = "framerates")]
 	pub framerate_mult: Option<f64>,
 
-	#[arg(long, help = "Attempts to deduplicate frames.")]
+	/// Attempts to deduplicate frames.
+	#[arg(long)]
 	pub dedup: bool,
 
-	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
+	/// Affects the output brightness, range [-1.0;1.0]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
-	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", allow_negative_numbers = true, default_value_t = 1.0)]
+	/// Affects the output contrast, range [-1000.0;1000.0]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 1.0)]
 	pub contrast: f64,
-	#[arg(long, help = "Affects the output saturation, range [0.0;3.0]", default_value_t = 1.0)]
+	/// Affects the output saturation, range [0.0;3.0]
+	#[arg(long, default_value_t = 1.0)]
 	pub saturation: f64,
-	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
+	/// Affects the output sharpness, range [-1.5;1.5]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short, long, group = "palette", help = "A file containing a palette. (supports ACT, COL, GPL, HEX, and PAL formats)")]
+	/// A file containing a palette. (supports ACT, COL, GPL, HEX, and PAL formats)
+	#[arg(short, long, group = "palette")]
 	pub palette_file: Option<PathBuf>,
-	#[arg(short = 'P', long, group = "palette", help = "A built-in palette.")]
+	/// A built-in palette.
+	#[arg(short = 'P', long, group = "palette")]
 	pub palette_name: Option<BuiltInPalette>,
-	#[arg(short = 'n', group = "palette", help = "The number of colors in the generated palette.", default_value_t = 256)]
+	/// The number of colors in the generated palette.
+	#[arg(short = 'n', group = "palette", default_value_t = 256)]
 	pub num_colors: u16,
 
-	#[arg(long, help = "The statistics mode. (palettegen)", default_value_t = StatsMode::default())]
+	/// The statistics mode. (palettegen)
+	#[arg(long, default_value_t = StatsMode::default())]
 	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
 
-	#[arg(short = 'D', long, help = "The dithering mode. (paletteuse)", default_value_t = DitherMode::default())]
+	/// The dithering mode. (paletteuse)
+	#[arg(short = 'D', long, default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
-	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
+	/// The bayer pattern scale in the range [0;5] (paletteuse)
+	#[arg(long, default_value_t = 2)]
 	pub bayer_scale: u8,
-	#[arg(long, help = "Only reprocess the changed rectangle. (Helps with noise and compression) (paletteuse)")]
+	/// Only reprocess the changed rectangle. (Helps with noise and compression) (paletteuse)
+	#[arg(long)]
 	pub diff_rect: bool,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct QuantArgs {
-	#[arg(short, help = "The input file.")]
+	/// The input file.
+	#[arg(short)]
 	pub input: PathBuf,
-	#[arg(help = "The output file.")]
+	/// The output file.
+	#[arg()]
 	pub output: PathBuf,
 
-	#[arg(long, group = "video_select", help = "Selects a video stream by index.", default_value_t = 0)]
+	/// Selects a video stream by index.
+	#[arg(long, group = "video_select", default_value_t = 0)]
 	pub video_stream: usize,
-	#[arg(long = "video-lang", group = "video_select", help = "Selects a video stream by language. (ISO 639-2)")]
+	/// Selects a video stream by language. (ISO 639-2)
+	#[arg(long = "video-lang", group = "video_select")]
 	pub video_language: Option<String>,
 
-	#[arg(short = 's', long, help = "The start time offset.")]
+	/// The start time offset.
+	#[arg(short = 's', long)]
 	pub seek: Option<String>,
 
-	#[arg(short, long, help = "Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)")]
+	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	#[arg(short, long)]
 	pub crop: Option<String>,
 
-	#[arg(long = "vw", group = "resize", help = "Sets the output video width, preserving aspect ratio.")]
+	/// Sets the output video width, preserving aspect ratio.
+	#[arg(long = "vw", group = "resize")]
 	pub width: Option<u64>,
-	#[arg(long = "vh", group = "resize", help = "Sets the output video height, preserving aspect ratio.")]
+	/// Sets the output video height, preserving aspect ratio.
+	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	#[arg(long = "vs", group = "resize", help = "Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.")]
+	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
-	#[arg(short = 'S', long, value_enum, help = "Sets the scaling algorithm used.", default_value_t = ScaleMode::default())]
+	/// Sets the scaling algorithm used.
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
 	pub scale_mode: ScaleMode,
 
-	#[arg(long, help = "Affects the output brightness, range [-1.0;1.0]", allow_negative_numbers = true, default_value_t = 0.0)]
+	/// Affects the output brightness, range [-1.0;1.0]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
 	pub brightness: f64,
-	#[arg(long, help = "Affects the output contrast, range [-1000.0;1000.0]", allow_negative_numbers = true, default_value_t = 1.0)]
+	/// Affects the output contrast, range [-1000.0;1000.0]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 1.0)]
 	pub contrast: f64,
-	#[arg(long, help = "Affects the output saturation, range [0.0;3.0]", default_value_t = 1.0)]
+	/// Affects the output saturation, range [0.0;3.0]
+	#[arg(long, default_value_t = 1.0)]
 	pub saturation: f64,
-	#[arg(long, help = "Affects the output sharpness, range [-1.5;1.5]", allow_negative_numbers = true, default_value_t = 0.0)]
+	/// Affects the output sharpness, range [-1.5;1.5]
+	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	#[arg(short, long, group = "palette", help = "A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format.")]
+	/// A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format.
+	#[arg(short, long, group = "palette")]
 	pub palette_file: Option<PathBuf>,
-	#[arg(short = 'P', long, group = "palette", help = "A built-in palette.")]
+	/// A built-in palette.
+	#[arg(short = 'P', long, group = "palette")]
 	pub palette_name: Option<BuiltInPalette>,
-	#[arg(short = 'n', group = "palette", help = "The number of colors in the generated palette", default_value_t = 256)]
+	/// The number of colors in the generated palette
+	#[arg(short = 'n', group = "palette", default_value_t = 256)]
 	pub num_colors: u16,
 
-	#[arg(short = 'D', long, help = "The dithering mode (paletteuse)", default_value_t = DitherMode::default())]
+	/// The dithering mode (paletteuse)
+	#[arg(short = 'D', long, default_value_t = DitherMode::default())]
 	pub dither: DitherMode,
-	#[arg(long, help = "The bayer pattern scale in the range [0;5] (paletteuse)", default_value_t = 2)]
+	/// The bayer pattern scale in the range [0;5] (paletteuse)
+	#[arg(long, default_value_t = 2)]
 	pub bayer_scale: u8,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct InfoArgs {
-	#[arg(short, help = "The input file.")]
+	/// The input file.
+	#[arg(short)]
 	pub input: PathBuf,
 }
 
