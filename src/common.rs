@@ -3,7 +3,7 @@ use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
 use ffauto_rs::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
-use ffauto_rs::ffmpeg::sizes::parse_ffmpeg_size;
+use ffauto_rs::ffmpeg::size::parse_ffmpeg_size;
 use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffauto_rs::palettes::palette::{Color, Palette};
 use std::collections::HashMap;

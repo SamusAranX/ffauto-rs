@@ -24,6 +24,14 @@ pub(crate) struct Cli {
 	pub debug: bool,
 }
 
+#[allow(unreachable_code)]
+fn default_accelerator() -> String {
+	#[cfg(target_os = "macos")]
+	return "videotoolbox".to_string();
+
+	"auto".to_string()
+}
+
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct AutoArgs {
 	/// The input file.
@@ -73,9 +81,15 @@ pub(crate) struct AutoArgs {
 	/// Performs an HDR-to-SDR tonemap.
 	#[arg(short = 'T', long)]
 	pub tonemap: bool,
-	/// Moves moov atom to the start.
+	/// Moves moov atom to the start. (Enabled by default, use -F=false to disable)
 	#[arg(short = 'F', long, default_value_t = true)]
 	pub faststart: bool,
+	/// Experimental: Enables hardware-assisted decoding. Might break things.
+	#[arg(short = 'H', long)]
+	pub hwaccel: bool,
+	/// Used with --hwaccel. Defaults to "videotoolbox" on macOS and "auto" everywhere else.
+	#[arg(short = 'a', long, default_value_t = default_accelerator())]
+	pub accelerator: String,
 
 	/// Removes the audio stream.
 	#[arg(short = 'M', long, group = "volume")]

@@ -9,7 +9,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tempfile::Builder;
 
-pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()> {
+pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bool, debug: bool) -> Result<()> {
 	let temp_file = Builder::new()
 		.prefix("ffmpeg")
 		.suffix(".txt")
@@ -20,8 +20,11 @@ pub fn ffmpeg(in_args: &[String], show_progress: bool, debug: bool) -> Result<()
 		"-progress".to_string(),
 		temp_file.path().to_str().unwrap().to_string(),
 	];
-	#[cfg(target_os = "macos")]
-	args.extend(["-hwaccel".to_string(), "videotoolbox".to_string()]);
+
+	if let Some(accelerator) = accelerator {
+		args.extend(["-hwaccel".to_string(), accelerator]);
+	}
+
 	args.extend(in_args.to_vec());
 
 	if debug {

@@ -300,10 +300,8 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			// limit fps to 30
 			// TODO: find a nicer way to do this
 			Some(OptimizeTarget::Ipod) | Some(OptimizeTarget::Ipod5) => {
-				if let Some(fps) = video_stream.frame_rate() && fps > 30.0 {
-					if let Some(fps_filter) = args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0) {
-						video_filter.push(fps_filter);
-					}
+				if let Some(fps) = video_stream.frame_rate() && fps > 30.0 && let Some(fps_filter) = args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0) {
+					video_filter.push(fps_filter);
 				}
 			}
 			_ => {
@@ -333,12 +331,14 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		}
 
 		let video_filter_str = video_filter.join(",");
-		ffmpeg_args.add_two("-vf", video_filter_str);
+		if !video_filter_str.is_empty() {
+			ffmpeg_args.add_two("-vf", video_filter_str);
+		}
 	}
 
 	// endregion
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, true, debug)
+	ffmpeg(&ffmpeg_args, args.hwaccel.then(|| args.accelerator.clone()),true, debug)
 }

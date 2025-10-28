@@ -63,12 +63,6 @@ impl VideoCodec {
 	}
 }
 
-impl Size {
-	pub(crate) fn new(width: u64, height: u64) -> Self {
-		Size { width, height }
-	}
-}
-
 impl Crop {
 	pub fn new<S: Into<String>>(crop_str: S) -> Result<Self> {
 		let crop_str = crop_str.into();

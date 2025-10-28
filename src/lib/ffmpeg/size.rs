@@ -1,6 +1,32 @@
-use crate::ffmpeg::enums::Size;
+use std::fmt::{Display, Formatter};
 use anyhow::Result;
 use regex::{Captures, Regex};
+
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub struct Size {
+	pub width: u64,
+	pub height: u64,
+}
+
+impl Size {
+	pub(crate) fn new(width: u64, height: u64) -> Self {
+		Size { width, height }
+	}
+}
+
+impl TryFrom<String> for Size {
+	type Error = anyhow::Error;
+
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		parse_ffmpeg_size(value)
+	}
+}
+
+impl Display for Size {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}x{}", self.width, self.height)
+	}
+}
 
 pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 	let size: String = size.into();
@@ -78,7 +104,7 @@ pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 				return Ok(Size::new(width, height));
 			}
 
-			anyhow::bail!("Couldn't parse size string \"{size}\"")
+			anyhow::bail!("Couldn't parse provided size string")
 		}
 	}
 }

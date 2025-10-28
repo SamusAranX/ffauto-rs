@@ -94,5 +94,5 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, false, debug)
+	ffmpeg(&ffmpeg_args, None, false, debug)
 }

@@ -28,12 +28,6 @@ pub enum OptimizeTarget {
 }
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
-pub struct Size {
-	pub width: u64,
-	pub height: u64,
-}
-
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Crop {
 	pub width: u64,
 	pub height: u64,
