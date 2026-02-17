@@ -1,8 +1,10 @@
+use crate::ffmpeg::deserialize_bool_from_int;
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
+use colored::Color;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FFProbeOutput {
@@ -143,6 +145,7 @@ pub enum StreamType {
 	Video,
 	Subtitle,
 	Data,
+	Attachment,
 }
 
 impl StreamType {
@@ -152,6 +155,17 @@ impl StreamType {
 			StreamType::Video => "V",
 			StreamType::Subtitle => "s",
 			StreamType::Data => "d",
+			StreamType::Attachment => "t",
+		}
+	}
+
+	pub fn color(&self) -> Color {
+		match self {
+			StreamType::Video => Color::Blue,
+			StreamType::Audio => Color::Red,
+			StreamType::Subtitle => Color::Magenta,
+			StreamType::Data => Color::Green,
+			StreamType::Attachment => Color::Yellow,
 		}
 	}
 }
@@ -163,6 +177,7 @@ impl Display for StreamType {
 			StreamType::Video => write!(f, "Video"),
 			StreamType::Subtitle => write!(f, "Subtitle"),
 			StreamType::Data => write!(f, "Data"),
+			StreamType::Attachment => write!(f, "Attachment"),
 		}
 	}
 }
@@ -174,11 +189,110 @@ pub struct Tags {
 	pub language: Option<String>,
 	pub title: Option<String>,
 	pub handler_name: Option<String>,
+	pub filename: Option<String>,
+	pub mimetype: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct Disposition {
-	pub default: u64,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub default: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub dub: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub original: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub comment: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub lyrics: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub karaoke: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub forced: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub hearing_impaired: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub visual_impaired: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub clean_effects: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub attached_pic: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub timed_thumbnails: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub non_diegetic: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub captions: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub descriptions: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub metadata: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub dependent: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub still_image: bool,
+	#[serde(deserialize_with = "deserialize_bool_from_int")]
+	pub multilayer: bool,
+}
+
+impl Disposition {
+	pub fn any_true(&self) -> bool {
+		if self.default { return true }
+		if self.dub { return true }
+		if self.original { return true }
+		if self.comment { return true }
+		if self.lyrics { return true }
+		if self.karaoke { return true }
+		if self.forced { return true }
+		if self.hearing_impaired { return true }
+		if self.visual_impaired { return true }
+		if self.clean_effects { return true }
+		if self.attached_pic { return true }
+		if self.timed_thumbnails { return true }
+		if self.non_diegetic { return true }
+		if self.captions { return true }
+		if self.descriptions { return true }
+		if self.metadata { return true }
+		if self.dependent { return true }
+		if self.still_image { return true }
+		if self.multilayer { return true }
+
+		false
+	}
+}
+
+impl Display for Disposition {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let mut disposition: Vec<String> = Vec::with_capacity(19);
+
+		if self.default { disposition.push("default".into()) }
+		if self.dub { disposition.push("dub".into()) }
+		if self.original { disposition.push("original".into()) }
+		if self.comment { disposition.push("comment".into()) }
+		if self.lyrics { disposition.push("lyrics".into()) }
+		if self.karaoke { disposition.push("karaoke".into()) }
+		if self.forced { disposition.push("forced".into()) }
+		if self.hearing_impaired { disposition.push("hearing impaired".into()) }
+		if self.visual_impaired { disposition.push("visual impaired".into()) }
+		if self.clean_effects { disposition.push("clean effects".into()) }
+		if self.attached_pic { disposition.push("attached pic".into()) }
+		if self.timed_thumbnails { disposition.push("timed thumbnails".into()) }
+		if self.non_diegetic { disposition.push("non diegetic".into()) }
+		if self.captions { disposition.push("captions".into()) }
+		if self.descriptions { disposition.push("descriptions".into()) }
+		if self.metadata { disposition.push("metadata".into()) }
+		if self.dependent { disposition.push("dependent".into()) }
+		if self.still_image { disposition.push("still image".into()) }
+		if self.multilayer { disposition.push("multilayer".into()) }
+
+		if disposition.is_empty() {
+			write!(f, "")
+		} else {
+			let disposition_str = disposition.join(", ");
+			write!(f, "{disposition_str}")
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

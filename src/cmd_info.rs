@@ -2,7 +2,7 @@ use crate::commands::InfoArgs;
 use crate::common::ffprobe_output;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
-use colored::{Color, Colorize};
+use colored::Colorize;
 use ffauto_rs::ffmpeg::ffprobe_struct::StreamType;
 
 pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
@@ -30,16 +30,9 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 
 		let language = stream.tags.as_ref().and_then(|t| t.language.as_ref());
 		let title = stream.tags.as_ref().and_then(|t| t.title.as_ref());
-		let default = stream.disposition.as_ref().map(|d| d.default).unwrap_or(0) == 1;
+		let default = stream.disposition.as_ref().map(|d| d.default).unwrap_or_default();
 
-		let type_color = {
-			match codec_type {
-				StreamType::Video => Color::Blue,
-				StreamType::Audio => Color::Red,
-				StreamType::Subtitle => Color::Magenta,
-				StreamType::Data => Color::Green,
-			}
-		};
+		let type_color = codec_type.color();
 		print!("[{}|{}] {}", index, stream_type_index, codec_type.to_string().color(type_color));
 
 		let mut extra_info: Vec<String> = Vec::new();
@@ -104,7 +97,13 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				let fps = format!("{fps:.3}");
 				let fps = fps.trim_end_matches("0").trim_end_matches(".");
 				if let (Some(sar), Some(dar)) = (&stream.sar, &stream.dar) {
-					println!(", {width}×{height} ({sar}/{dar}), {fps} fps")
+					print!(", {width}×{height}");
+					if sar == dar {
+						print!(" ({sar})")
+					} else {
+						print!(" ({sar}/{dar})")
+					}
+					println!(", {fps} fps")
 				} else {
 					println!(", {width}×{height}, {fps} fps")
 				}
@@ -157,6 +156,23 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 				}
 
 				println!();
+			}
+			StreamType::Attachment => {
+				if let Some(tags) = &stream.tags {
+					if let Some(filename) = &tags.filename && let Some(mimetype) = &tags.mimetype {
+						print!("\"{filename}\", ({mimetype})")
+					} else {
+						print!("Unknown")
+					}
+				} else {
+					print!("No information")
+				}
+
+				if let Some(disposition) = &stream.disposition && disposition.any_true() {
+					print!(" ({disposition})")
+				}
+
+				println!("")
 			}
 		}
 	}
