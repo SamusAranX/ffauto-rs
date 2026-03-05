@@ -6,7 +6,8 @@ pub mod enums_impl;
 pub mod ffmpeg;
 pub mod ffprobe;
 pub mod ffprobe_struct;
-pub mod sizes;
+mod filters;
+pub mod size;
 pub mod timestamps;
 
 fn deserialize_bool_from_int<'de, D>(deserializer: D) -> Result<bool, D::Error>

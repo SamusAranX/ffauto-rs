@@ -11,13 +11,18 @@ const FILE_FORMATS: [PaletteFormat; 6] = [
 	PaletteFormat::Json,
 	PaletteFormat::Pal,
 ];
-const TEXT_FORMATS: [PaletteFormat; 4] = [PaletteFormat::Gpl, PaletteFormat::Hex, PaletteFormat::Json, PaletteFormat::Pal];
+const TEXT_FORMATS: [PaletteFormat; 4] = [
+	PaletteFormat::Gpl,
+	PaletteFormat::Hex,
+	PaletteFormat::Json,
+	PaletteFormat::Pal,
+];
 
 #[test]
 fn palette_parsing() {
 	for palette_type in FILE_FORMATS {
-		let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-			.join(format!("tests/palettes/palette.{palette_type}"));
+		let test_file =
+			PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/palettes/palette.{palette_type}"));
 
 		println!("Testing {} from file…", palette_type.to_string().to_uppercase());
 
@@ -32,7 +37,12 @@ fn palette_parsing() {
 
 		if palette_type == PaletteFormat::Gpl {
 			// the .gpl format supports names
-			let names = pal.colors.iter().cloned().map(|c| c.name).collect::<Vec<String>>();
+			let names = pal
+				.colors
+				.iter()
+				.cloned()
+				.map(|c| c.name)
+				.collect::<Vec<String>>();
 			assert!(names.iter().all(|n| n == "Untitled"));
 		}
 
@@ -44,8 +54,8 @@ fn palette_parsing() {
 #[test]
 fn palette_parsing_from_string() {
 	for palette_type in TEXT_FORMATS {
-		let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-			.join(format!("tests/palettes/palette.{palette_type}"));
+		let test_file =
+			PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("tests/palettes/palette.{palette_type}"));
 
 		println!("Testing {} from String…", palette_type.to_string().to_uppercase());
 
@@ -56,7 +66,12 @@ fn palette_parsing_from_string() {
 
 		if palette_type == PaletteFormat::Gpl {
 			// the .gpl format supports names
-			let names = pal.colors.iter().cloned().map(|c| c.name).collect::<Vec<String>>();
+			let names = pal
+				.colors
+				.iter()
+				.cloned()
+				.map(|c| c.name)
+				.collect::<Vec<String>>();
 			assert!(names.iter().all(|n| n == "Untitled"));
 		}
 
@@ -69,8 +84,7 @@ fn palette_parsing_from_string() {
 #[should_panic(expected = "InvalidBinaryData { position: 768, msg: \"Invalid footer value 0xFFFF\" }")]
 fn palette_parsing_broken_act() {
 	println!("Testing broken ACT…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.act");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.act");
 
 	Palette::load_from_file(&test_file).unwrap();
 }
@@ -79,8 +93,7 @@ fn palette_parsing_broken_act() {
 #[should_panic(expected = "InvalidBinaryData { position: 4, msg: \"Invalid magic sequence 0xB124\" }")]
 fn palette_parsing_broken_col() {
 	println!("Testing broken COL…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.col");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.col");
 
 	Palette::load_from_file(&test_file).unwrap();
 }
@@ -89,8 +102,7 @@ fn palette_parsing_broken_col() {
 #[should_panic(expected = "InvalidTextLine { line: 4, msg: \"Malformed line\" }")]
 fn palette_parsing_broken_gpl() {
 	println!("Testing broken GPL…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.gpl");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.gpl");
 
 	Palette::load_from_file(&test_file).unwrap();
 }
@@ -99,18 +111,18 @@ fn palette_parsing_broken_gpl() {
 #[should_panic(expected = "InvalidTextLine { line: 1, msg: \"Not a hexadecimal color value\" }")]
 fn palette_parsing_broken_hex() {
 	println!("Testing broken HEX…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.hex");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.hex");
 
 	Palette::load_from_file(&test_file).unwrap();
 }
 
 #[test]
-#[should_panic(expected = "InvalidJsonEntry { index: 1, msg: \"\\\"not a color\\\" is not a valid hexadecimal color value\" }")]
+#[should_panic(
+	expected = "InvalidJsonEntry { index: 1, msg: \"\\\"not a color\\\" is not a valid hexadecimal color value\" }"
+)]
 fn palette_parsing_broken_json() {
 	println!("Testing broken JSON…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.json");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.json");
 
 	Palette::load_from_file(&test_file).unwrap();
 }
@@ -119,8 +131,7 @@ fn palette_parsing_broken_json() {
 #[should_panic(expected = "InvalidTextLine { line: 4, msg: \"Malformed line\" }")]
 fn palette_parsing_broken_pal() {
 	println!("Testing broken PAL…");
-	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-		.join("tests/palettes/palette_broken.pal");
+	let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/palettes/palette_broken.pal");
 
 	Palette::load_from_file(&test_file).unwrap();
 }

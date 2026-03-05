@@ -1,4 +1,4 @@
-use crate::ffmpeg::timestamps::TimestampFormat::TwoDigits;
+use crate::ffmpeg::timestamps::TimestampFormat;
 use crate::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use anyhow::{Context, Result};
 use std::fs::File;
@@ -16,10 +16,7 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 		.tempfile()
 		.context("Couldn't create temp file: {e}")?;
 
-	let mut args = vec![
-		"-progress".to_string(),
-		temp_file.path().to_str().unwrap().to_string(),
-	];
+	let mut args = vec!["-progress".to_string(), temp_file.path().to_str().unwrap().to_string()];
 
 	if let Some(accelerator) = accelerator {
 		args.extend(["-hwaccel".to_string(), accelerator]);
@@ -32,7 +29,7 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 
 		let ffmpeg_args = &args
 			.iter()
-			.map(|a| if a.contains(" ") { format!("\"{a}\"") } else { a.to_string() })
+			.map(|a| if a.contains(' ') { format!("\"{a}\"") } else { a.clone() })
 			.collect::<Vec<String>>();
 
 		println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
@@ -40,7 +37,7 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 		let stdin = io::stdin();
 		write!(stdout, "{:#^40}", " Press Enter to continue… ").unwrap();
 		stdout.flush().unwrap();
-		let _ = stdin.read_line(&mut "".to_string()).unwrap();
+		let _ = stdin.read_line(&mut String::new()).unwrap();
 		writeln!(stdout, "Continuing…").unwrap();
 	}
 
@@ -69,6 +66,8 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 		loop {
 			let mut line = String::new();
 			let res = reader.read_line(&mut line);
+
+			#[allow(clippy::match_same_arms)]
 			match res {
 				Ok(0) => {
 					// stats_period defaults to 0.5 seconds, but sometimes heavy processing means output gets delayed
@@ -76,7 +75,9 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 					if last_progress.elapsed() < Duration::from_secs(5) {
 						sleep(Duration::from_millis(200));
 
-						reader.seek(SeekFrom::Start(pos)).context("Failed to seek to resume point")?;
+						reader
+							.seek(SeekFrom::Start(pos))
+							.context("Failed to seek to resume point")?;
 
 						continue;
 					}
@@ -87,9 +88,8 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 					last_progress = Instant::now();
 					pos += len as u64;
 
-					let (key, value) = match line.trim().split_once('=') {
-						Some(v) => v,
-						None => break,
+					let Some((key, value)) = line.trim().split_once('=') else {
+						break;
 					};
 
 					match (key, value) {
@@ -108,9 +108,7 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 						("speed", speed) => {
 							encode_speed = speed.trim().trim_end_matches('x').parse::<f64>().ok();
 						}
-						("total_size", size) => {
-							total_size = size.trim().parse::<u64>().ok()
-						}
+						("total_size", size) => total_size = size.trim().parse::<u64>().ok(),
 						("progress", "continue") => (),
 						("progress", "end") => {
 							#[cfg(debug_assertions)]
@@ -135,15 +133,12 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 			// so we process those values separately
 			// there's probably a better way of doing this but I'm lazy and this works
 			if let (Some(frame), Some(fps), Some(size)) = (frames_processed, frames_per_second, total_size) {
-				let timestamp = out_time
-					.map(|time| format_ffmpeg_timestamp(time, TwoDigits))
-					.unwrap_or("N/A".to_string());
-				let bitrate = encode_bitrate
-					.unwrap_or("N/A".to_string());
-				let speed = encode_speed
-					.map(|speed| format!("{speed:.3}x"))
-					.unwrap_or("N/A".to_string());
-				
+				let timestamp = out_time.map_or("N/A".to_string(), |time| {
+					format_ffmpeg_timestamp(time, &TimestampFormat::TwoDigits)
+				});
+				let bitrate = encode_bitrate.unwrap_or("N/A".to_string());
+				let speed = encode_speed.map_or("N/A".to_string(), |speed| format!("{speed:.3}x"));
+
 				let formatted_size = {
 					if cfg!(target_os = "macos") {
 						humansize::format_size(size, humansize::DECIMAL)
@@ -152,7 +147,9 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 					}
 				};
 
-				println!("frame: {frame} - fps: {fps:.2} - time: {timestamp} - size: {formatted_size} - bitrate: {bitrate} - speed: {speed}");
+				println!(
+					"frame: {frame} - fps: {fps:.2} - time: {timestamp} - size: {formatted_size} - bitrate: {bitrate} - speed: {speed}"
+				);
 
 				frames_processed = None;
 				frames_per_second = None;

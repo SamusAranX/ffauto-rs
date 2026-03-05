@@ -47,7 +47,7 @@ fn main() -> ExitCode {
 		}
 		Some(Commands::Info(args)) => {
 			return match ffmpeg_info(args) {
-				Ok(_) => ExitCode::SUCCESS,
+				Ok(()) => ExitCode::SUCCESS,
 				Err(e) => {
 					eprintln!("execution failed: {e}");
 					ExitCode::FAILURE
@@ -60,7 +60,7 @@ fn main() -> ExitCode {
 	};
 
 	match result {
-		Ok(_) => {
+		Ok(()) => {
 			match fs::metadata(output) {
 				Ok(m) => {
 					#[cfg(target_os = "macos")]

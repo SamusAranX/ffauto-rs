@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::{Read, Seek};
 use std::path::Path;
 
-use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
+use crate::palettes::palette::{Color, Palette, PaletteError};
 
 // https://github.com/aseprite/aseprite/blob/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/src/doc/file/act_file.cpp
 
@@ -27,6 +27,7 @@ impl Palette {
 			let num_colors = u16::from_be_bytes(buf);
 
 			if num_colors as usize > pal.len() || num_colors as usize > MAX_PALETTE_COLORS {
+				#[allow(clippy::cast_possible_truncation)]
 				return Err(PaletteError::InvalidBinaryData {
 					position: (f.stream_position().unwrap() - 2) as usize,
 					msg: format!("Invalid footer value {num_colors:#X}"),

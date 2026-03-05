@@ -14,9 +14,14 @@ use isolang::Language;
 fn fix_language_code(s: &str) -> &str {
 	Language::from_str(s)
 		.ok()
-		.or(Language::from_locale(&s.replace("-", "_")))
-		.map(|l| l.to_639_2b())
-		.unwrap_or(s)
+		.or(Language::from_locale(&s.replace('-', "_")))
+		.map_or(s, |l| l.to_639_2b())
+}
+
+#[derive(PartialEq)]
+enum UsedIndex {
+	Index(usize),
+	Language(Language),
 }
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
@@ -29,12 +34,15 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		anyhow::bail!("The input file contains no usable audio/video streams")
 	}
 
-	let video_stream = first_video_stream.context("The input file needs to contain a usable video stream")?.clone();
+	let video_stream = first_video_stream
+		.context("The input file needs to contain a usable video stream")?
+		.clone();
 	let video_duration = probe.duration()?;
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
-		"-loglevel".to_string(), "warning".to_string(),
+		"-loglevel".to_string(),
+		"warning".to_string(),
 		"-y".to_string(),
 	];
 
@@ -55,12 +63,6 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
-	#[derive(PartialEq)]
-	enum UsedIndex {
-		Index(usize),
-		Language(Language),
-	}
-
 	let streams_and_types = [
 		(&args.video_streams, StreamType::Video),
 		(&args.audio_streams, StreamType::Audio),
@@ -77,17 +79,17 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		match stream_type {
 			StreamType::Audio => {
 				if !probe.has_audio_streams() {
-					continue
+					continue;
 				}
 			}
 			StreamType::Video => {
 				if !probe.has_video_streams() {
-					continue
+					continue;
 				}
 			}
-			_ => ()
+			_ => (),
 		}
-		
+
 		let mut used_indices: Vec<UsedIndex> = vec![];
 		for stream in streams {
 			let stream = stream.trim();
@@ -131,7 +133,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 				let path;
 				let path_no_ext;
 				let lang;
-				if let Some((path_str, lang_explicit)) = stream.split_once(":") {
+				if let Some((path_str, lang_explicit)) = stream.split_once(':') {
 					path = Path::new(path_str);
 					lang = lang_explicit;
 				} else {
@@ -147,12 +149,12 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 					Ok(canon) => {
 						ffmpeg_args.add_two("-i", canon.into_os_string().into_string().unwrap());
 						ffmpeg_args.add_two(
-							format!("-metadata:s:{output_stream_idx}"), 
+							format!("-metadata:s:{output_stream_idx}"),
 							format!("language={}", fix_language_code(lang)),
 						);
 					}
 					_ => continue,
-				};
+				}
 			}
 
 			output_stream_idx += 1;
@@ -161,7 +163,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 	// subtitle fixup
 	if args.sub_streams.is_empty() {
-		if probe.streams.iter().any(|s| s.codec_type == StreamType::Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into())) {
+		if probe
+			.streams
+			.iter()
+			.any(|s| s.codec_type == StreamType::Subtitle && s.codec_name != Some("hdmv_pgs_subtitle".into()))
+		{
 			// there are subtitles that are not of type hdmv_pgs_subtitle, so we can actually use this
 			// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
 			ffmpeg_args.add_two("-map", "0:s?");
@@ -181,7 +187,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		duration.as_secs_f64() - fade_out
 	} else {
 		// duration wasn't given, use video duration
-		(video_duration - seek.unwrap_or(Duration::ZERO)).as_secs_f64() - fade_out
+		(video_duration.saturating_sub(seek.unwrap_or(Duration::ZERO))).as_secs_f64() - fade_out
 	};
 
 	// region Audio Filtering
@@ -190,7 +196,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		// input has no audio streams or explicit mute was requested
 		ffmpeg_args.add("-an");
 	} else if let Some(audio_stream) = first_audio_stream.cloned() {
-		if args.audio_copy_possible(audio_stream.codec_name) {
+		if args.audio_copy_possible(audio_stream.codec_name.as_deref()) {
 			// input stream is already aac, copy stream
 			ffmpeg_args.add_two("-c:a", "copy");
 		} else {
@@ -207,12 +213,13 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			}
 
 			if let Some(audio_channels) = &args.audio_channels {
-				ffmpeg_args.add_two("-ac", audio_channels.to_string());
+				ffmpeg_args.add_two("-ac", audio_channels.clone());
 			}
 
 			if args.needs_audio_filter() {
 				let mut audio_filter: Vec<String> = vec![];
 
+				#[allow(clippy::float_cmp)]
 				if args.audio_volume != 1.0 {
 					audio_filter.push(format!("volume={:.3}", args.audio_volume));
 				}
@@ -299,8 +306,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		match args.optimize_target {
 			// limit fps to 30
 			// TODO: find a nicer way to do this
-			Some(OptimizeTarget::Ipod) | Some(OptimizeTarget::Ipod5) => {
-				if let Some(fps) = video_stream.frame_rate() && fps > 30.0 && let Some(fps_filter) = args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0) {
+			Some(OptimizeTarget::Ipod | OptimizeTarget::Ipod5) => {
+				if let Some(fps) = video_stream.frame_rate()
+					&& fps > 30.0 && let Some(fps_filter) =
+					args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0)
+				{
 					video_filter.push(fps_filter);
 				}
 			}
@@ -340,5 +350,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
-	ffmpeg(&ffmpeg_args, args.hwaccel.then(|| args.accelerator.clone()),true, debug)
+	ffmpeg(
+		&ffmpeg_args,
+		args.hwaccel.then(|| args.accelerator.clone()),
+		true,
+		debug,
+	)
 }

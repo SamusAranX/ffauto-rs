@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 use anyhow::Result;
 use regex::{Captures, Regex};
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Size {
@@ -32,6 +32,7 @@ pub fn parse_ffmpeg_size<S: Into<String>>(size: S) -> Result<Size> {
 	let size: String = size.into();
 
 	// https://github.com/FFmpeg/FFmpeg/blob/00f5a34c9a5f0adee28aca11971918d6aca48745/libavutil/parseutils.c#L76
+	#[allow(clippy::match_same_arms)]
 	match size.as_str() {
 		"ntsc" => Ok(Size::new(720, 480)),
 		"pal" => Ok(Size::new(720, 576)),

@@ -157,6 +157,7 @@ pub enum BuiltInPalette {
 	Zughy32,
 }
 
+#[rustfmt::skip]
 pub fn get_builtin_palette(pal: &BuiltInPalette) -> Palette {
 	match pal {
 		BuiltInPalette::Cmyk => Palette::from(vec![0x0, 0xffff00, 0x00ffff, 0xff00ff, 0xffffff]),

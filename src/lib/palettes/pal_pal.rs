@@ -4,8 +4,8 @@ use std::path::Path;
 
 use regex::{Captures, Regex};
 
-use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
+use crate::palettes::palette::{Color, Palette, PaletteError};
 
 // https://github.com/aseprite/aseprite/blob/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/src/doc/file/pal_file.cpp
 
@@ -41,7 +41,7 @@ impl Palette {
 
 		for (i, line) in reader.lines().enumerate() {
 			let trimmed_line = line?.trim().to_string();
-			if trimmed_line.is_empty() || trimmed_line.starts_with("#") {
+			if trimmed_line.is_empty() || trimmed_line.starts_with('#') {
 				continue;
 			}
 
@@ -57,18 +57,27 @@ impl Palette {
 
 			let mut col = Color::default();
 			if let (Some(r), Some(g), Some(b)) = (groups.name("r"), groups.name("g"), groups.name("b")) {
-				col.r = r.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
-					line: i + 3,
-					msg: "Invalid red value".to_string(),
-				})?;
-				col.g = g.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
-					line: i + 3,
-					msg: "Invalid green value".to_string(),
-				})?;
-				col.b = b.as_str().parse::<u8>().map_err(|_| PaletteError::InvalidTextLine {
-					line: i + 3,
-					msg: "Invalid blue value".to_string(),
-				})?;
+				col.r = r
+					.as_str()
+					.parse::<u8>()
+					.map_err(|_| PaletteError::InvalidTextLine {
+						line: i + 3,
+						msg: "Invalid red value".to_string(),
+					})?;
+				col.g = g
+					.as_str()
+					.parse::<u8>()
+					.map_err(|_| PaletteError::InvalidTextLine {
+						line: i + 3,
+						msg: "Invalid green value".to_string(),
+					})?;
+				col.b = b
+					.as_str()
+					.parse::<u8>()
+					.map_err(|_| PaletteError::InvalidTextLine {
+						line: i + 3,
+						msg: "Invalid blue value".to_string(),
+					})?;
 			} else {
 				return Err(PaletteError::InvalidTextLine {
 					line: i + 3,

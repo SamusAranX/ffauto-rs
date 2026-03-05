@@ -41,9 +41,9 @@ impl Color {
 
 impl Display for Color {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let mut rgb = self.r as u32;
-		rgb = (rgb << 8) | self.g as u32;
-		rgb = (rgb << 8) | self.b as u32;
+		let mut rgb = u32::from(self.r);
+		rgb = (rgb << 8) | u32::from(self.g);
+		rgb = (rgb << 8) | u32::from(self.b);
 		write!(f, "#{rgb:06X}")
 	}
 }
@@ -68,10 +68,12 @@ impl Palette {
 		self.colors.push(Entry { color: c, name });
 	}
 
+	#[must_use]
 	pub fn len(&self) -> usize {
 		self.colors.len()
 	}
 
+	#[must_use]
 	pub fn is_empty(&self) -> bool {
 		self.colors.is_empty()
 	}
@@ -146,6 +148,7 @@ pub enum PaletteError {
 	IoErr(std::io::Error),
 }
 
+#[rustfmt::skip]
 impl Display for PaletteError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {

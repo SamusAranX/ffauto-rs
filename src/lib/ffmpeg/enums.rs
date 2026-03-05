@@ -4,7 +4,8 @@ pub enum ScaleMode {
 	Bilinear,
 	FastBilinear,
 	Bicublin,
-	#[default] Bicubic,
+	#[default]
+	Bicubic,
 	Area,
 	Gauss,
 	Sinc,
@@ -14,7 +15,8 @@ pub enum ScaleMode {
 
 #[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
 pub enum VideoCodec {
-	#[default] H264,
+	#[default]
+	H264,
 	H265,
 	H265_10,
 }
@@ -37,7 +39,8 @@ pub struct Crop {
 
 #[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
 pub enum StatsMode {
-	#[default] Full,
+	#[default]
+	Full,
 	Diff,
 	Single,
 }
@@ -48,7 +51,8 @@ pub enum DitherMode {
 	Heckbert,
 	FloydSteinberg,
 	Sierra2,
-	#[default] Sierra2_4a,
+	#[default]
+	Sierra2_4a,
 	Sierra3,
 	Burkes,
 	Atkinson,
@@ -57,6 +61,7 @@ pub enum DitherMode {
 
 #[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
 pub enum BarcodeMode {
-	#[default] Frames,
+	#[default]
+	Frames,
 	Colors,
 }

@@ -15,7 +15,8 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 		return Some(Duration::from_secs_f64(f));
 	}
 
-	let re = Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
+	let re =
+		Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
 
 	let groups: Captures = match re.captures(&timestamp) {
 		None => {
@@ -44,7 +45,7 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 		let millis = millis_str.parse::<u64>().unwrap_or_default();
 		if millis >= 1000000000 {
 			// picoseconds. idk if ffmpeg/ffprobe return these but just in case we'll ignore these
-			eprintln!("ignoring picoseconds in duration string")
+			eprintln!("ignoring picoseconds in duration string");
 		} else if millis >= 1000000 {
 			duration += Duration::from_nanos(millis);
 		} else if millis >= 1000 {
@@ -70,7 +71,9 @@ pub enum TimestampFormat {
 /// Specifying `TimestampFormat::Full` will make this function always return a timestamp of format `HH:MM:SS.ffffff`.
 ///
 /// Specifying `TimestampFormat::TwoDigits` will make this function always return a timestamp of format `HH:MM:SS.ff`.
-pub fn format_ffmpeg_timestamp(duration: Duration, format: TimestampFormat) -> String {
+#[must_use]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
+pub fn format_ffmpeg_timestamp(duration: Duration, format: &TimestampFormat) -> String {
 	let secs_total = duration.as_secs() as f64;
 	let hours = (secs_total / 3600.0).floor();
 	let minutes = (secs_total % 3600.0 / 60.0).floor();
@@ -80,7 +83,7 @@ pub fn format_ffmpeg_timestamp(duration: Duration, format: TimestampFormat) -> S
 	match format {
 		TimestampFormat::Auto => {
 			let millis_str = format!(".{millis:0>3}");
-			let millis_str = millis_str.trim_end_matches("0").trim_end_matches(".");
+			let millis_str = millis_str.trim_end_matches('0').trim_end_matches('.');
 			if secs_total >= 3600.0 {
 				format!("{:0>2}:{:0>2}:{secs:0>2}{millis_str}", hours as u64, minutes as u64)
 			} else if secs_total >= 60.0 {
@@ -95,7 +98,10 @@ pub fn format_ffmpeg_timestamp(duration: Duration, format: TimestampFormat) -> S
 		}
 		TimestampFormat::TwoDigits => {
 			let millis_two_digits = (duration.as_secs_f64().fract() * 100.0).floor() as u64;
-			format!("{:0>2}:{:0>2}:{secs:0>2}.{millis_two_digits:0>2}", hours as u64, minutes as u64)
+			format!(
+				"{:0>2}:{:0>2}:{secs:0>2}.{millis_two_digits:0>2}",
+				hours as u64, minutes as u64
+			)
 		}
 	}
 }

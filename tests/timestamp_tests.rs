@@ -1,5 +1,4 @@
-use ffauto_rs::ffmpeg::timestamps::TimestampFormat::{Auto, Full};
-use ffauto_rs::ffmpeg::timestamps::{format_ffmpeg_timestamp, parse_ffmpeg_duration};
+use ffauto_rs::ffmpeg::timestamps::{TimestampFormat, format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use std::time::Duration;
 
 struct TimestampTest {
@@ -18,6 +17,7 @@ impl TimestampTest {
 	}
 }
 
+#[rustfmt::skip]
 fn timestamp_data() -> Vec<TimestampTest> {
 	vec![
 		// rust does not have negative durations so negative timestamps can't be parsed currently
@@ -47,12 +47,18 @@ fn timestamp_parsing() {
 		assert_eq!(&dur.unwrap(), &test.expected_duration, "{i}: durations aren't equal!");
 
 		if !test.input_timestamp.ends_with("320000000") {
-			let ts = format_ffmpeg_timestamp(dur.unwrap(), Auto);
-			assert_eq!(&ts, &test.input_timestamp, "{i}: formatted duration string doesn't match!");
+			let ts = format_ffmpeg_timestamp(dur.unwrap(), &TimestampFormat::Auto);
+			assert_eq!(
+				&ts, &test.input_timestamp,
+				"{i}: formatted duration string doesn't match!"
+			);
 		}
 
-		let ts = format_ffmpeg_timestamp(dur.unwrap(), Full);
-		assert_eq!(&ts, &test.expected_full_timestamp, "{i}: full formatted duration string doesn't match!");
+		let ts = format_ffmpeg_timestamp(dur.unwrap(), &TimestampFormat::Full);
+		assert_eq!(
+			&ts, &test.expected_full_timestamp,
+			"{i}: full formatted duration string doesn't match!"
+		);
 
 		// println!("---");
 	}

@@ -9,10 +9,10 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
 	if probe.get_first_video_stream().is_none() {
-		eprintln!("NOTE: The input file has no video streams!")
+		eprintln!("NOTE: The input file has no video streams!");
 	}
 	if probe.get_first_audio_stream().is_none() {
-		eprintln!("NOTE: The input file has no audio streams!")
+		eprintln!("NOTE: The input file has no audio streams!");
 	}
 
 	let mut stream_type_index = 0;
@@ -21,32 +21,37 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 		let index = &stream.index;
 		let codec_type = &stream.codec_type;
 
-		if last_codec_type != Some(codec_type) {
-			last_codec_type = Some(codec_type);
-			stream_type_index = 0
+		if last_codec_type == Some(codec_type) {
+			stream_type_index += 1;
 		} else {
-			stream_type_index += 1
+			last_codec_type = Some(codec_type);
+			stream_type_index = 0;
 		}
 
 		let language = stream.tags.as_ref().and_then(|t| t.language.as_ref());
 		let title = stream.tags.as_ref().and_then(|t| t.title.as_ref());
-		let default = stream.disposition.as_ref().map(|d| d.default).unwrap_or_default();
+		let default = stream.disposition.as_ref().is_some_and(|d| d.default);
 
 		let type_color = codec_type.color();
-		print!("[{}|{}] {}", index, stream_type_index, codec_type.to_string().color(type_color));
+		print!(
+			"[{}|{}] {}",
+			index,
+			stream_type_index,
+			codec_type.to_string().color(type_color)
+		);
 
 		let mut extra_info: Vec<String> = Vec::new();
 		if let Some(language) = language {
-			extra_info.add(language)
+			extra_info.add(language);
 		}
 		if let Some(title) = title {
-			extra_info.add(format!("\"{title}\""))
+			extra_info.add(format!("\"{title}\""));
 		}
 		if default {
-			extra_info.add("default")
+			extra_info.add("default");
 		}
 		if !extra_info.is_empty() {
-			print!("({})", extra_info.join(", "))
+			print!("({})", extra_info.join(", "));
 		}
 
 		print!(": ");
@@ -65,21 +70,21 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 
 				let mut format_info: Vec<String> = Vec::new();
 				if let Some(field_order) = &stream.field_order {
-					format_info.add(field_order)
+					format_info.add(field_order);
 				}
 				if let Some(color_range) = &stream.color_range {
-					format_info.add(color_range)
+					format_info.add(color_range);
 				}
 
 				let mut color_info: Vec<String> = Vec::new();
 				if let Some(color_space) = &stream.color_space {
-					color_info.add(color_space)
+					color_info.add(color_space);
 				}
 				if let Some(color_primaries) = &stream.color_primaries {
-					color_info.add(color_primaries)
+					color_info.add(color_primaries);
 				}
 				if let Some(color_transfer) = &stream.color_transfer {
-					color_info.add(color_transfer)
+					color_info.add(color_transfer);
 				}
 				if !color_info.is_empty() {
 					// if color space, primaries, and transfer are the same,
@@ -91,21 +96,21 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 					}
 				}
 				if !format_info.is_empty() {
-					print!("({})", format_info.join(", "))
+					print!("({})", format_info.join(", "));
 				}
 
 				let fps = format!("{fps:.3}");
-				let fps = fps.trim_end_matches("0").trim_end_matches(".");
+				let fps = fps.trim_end_matches('0').trim_end_matches('.');
 				if let (Some(sar), Some(dar)) = (&stream.sar, &stream.dar) {
 					print!(", {width}×{height}");
 					if sar == dar {
-						print!(" ({sar})")
+						print!(" ({sar})");
 					} else {
-						print!(" ({sar}/{dar})")
+						print!(" ({sar}/{dar})");
 					}
-					println!(", {fps} fps")
+					println!(", {fps} fps");
 				} else {
-					println!(", {width}×{height}, {fps} fps")
+					println!(", {width}×{height}, {fps} fps");
 				}
 			}
 			StreamType::Audio => {
@@ -142,16 +147,20 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 			}
 			StreamType::Subtitle => {
 				let codec_name = stream.codec_name.as_ref().unwrap();
-				println!("{codec_name}")
+				println!("{codec_name}");
 			}
 			StreamType::Data => {
 				if let Some(codec_type_string) = stream.codec_tag_string.as_ref() {
-					print!("{codec_type_string}")
+					print!("{codec_type_string}");
 				} else {
-					print!("data?")
+					print!("data?");
 				}
 
-				if let Some(handler_name) = stream.tags.as_ref().and_then(|tags| tags.handler_name.as_ref()) {
+				if let Some(handler_name) = stream
+					.tags
+					.as_ref()
+					.and_then(|tags| tags.handler_name.as_ref())
+				{
 					print!(" ({handler_name})");
 				}
 
@@ -159,20 +168,24 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 			}
 			StreamType::Attachment => {
 				if let Some(tags) = &stream.tags {
-					if let Some(filename) = &tags.filename && let Some(mimetype) = &tags.mimetype {
-						print!("\"{filename}\", ({mimetype})")
+					if let Some(filename) = &tags.filename
+						&& let Some(mimetype) = &tags.mimetype
+					{
+						print!("\"{filename}\", ({mimetype})");
 					} else {
-						print!("Unknown")
+						print!("Unknown");
 					}
 				} else {
-					print!("No information")
+					print!("No information");
 				}
 
-				if let Some(disposition) = &stream.disposition && disposition.any_true() {
-					print!(" ({disposition})")
+				if let Some(disposition) = &stream.disposition
+					&& disposition.any_true()
+				{
+					print!(" ({disposition})");
 				}
 
-				println!("")
+				println!();
 			}
 		}
 	}

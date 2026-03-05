@@ -15,17 +15,21 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
-		"-loglevel".to_string(), "warning".to_string(),
+		"-loglevel".to_string(),
+		"warning".to_string(),
 		"-y".to_string(),
 	];
 
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
 
-	let (video_stream, video_stream_id) = probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
+	let (video_stream, video_stream_id) =
+		probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
 	let video_height = video_stream.height.unwrap();
-	let video_frames = &args.video_frames.unwrap_or_else(|| video_stream.total_frames().unwrap());
+	let video_frames = &args
+		.video_frames
+		.unwrap_or_else(|| video_stream.total_frames().unwrap());
 	check_frame_size(*video_frames, video_height)?;
 
 	// region Filtering
@@ -63,9 +67,7 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 				format!("scale=w=1:h={video_height}:flags=neighbor+{SCALE_FLAGS}"),
 				format!("tile={video_frames}x1 [s2]"),
 			]);
-			video_pipelines.push(vec![
-				"[s2][s1] blend=all_mode=softlight [video_out]".to_string()
-			]);
+			video_pipelines.push(vec!["[s2][s1] blend=all_mode=softlight [video_out]".to_string()]);
 		}
 	}
 
@@ -83,7 +85,11 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	output_pipeline.add("setparams=colorspace=bt709:color_primaries=bt709:color_trc=iec61966-2-1");
 	video_pipelines.push(output_pipeline);
 
-	let filter_graph = video_pipelines.iter().map(|p| p.join(",")).collect::<Vec<String>>().join(";");
+	let filter_graph = video_pipelines
+		.iter()
+		.map(|p| p.join(","))
+		.collect::<Vec<String>>()
+		.join(";");
 	ffmpeg_args.add_two("-filter_complex", filter_graph);
 
 	// endregion

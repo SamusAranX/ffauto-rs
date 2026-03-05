@@ -1,5 +1,5 @@
 use crate::ffmpeg::enums::*;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use regex::Regex;
 use std::fmt;
 
@@ -30,6 +30,7 @@ impl fmt::Display for VideoCodec {
 }
 
 impl VideoCodec {
+	#[must_use]
 	pub fn video_codec(&self) -> &str {
 		match self {
 			VideoCodec::H264 => "libx264",
@@ -37,13 +38,13 @@ impl VideoCodec {
 		}
 	}
 
+	#[must_use]
+	#[expect(clippy::unnecessary_literal_bound)]
 	pub fn audio_codec(&self) -> &str {
-		match self {
-			VideoCodec::H264 => "aac",
-			VideoCodec::H265 | VideoCodec::H265_10 => "aac",
-		}
+		"aac"
 	}
 
+	#[must_use]
 	pub fn pix_fmt(&self) -> &str {
 		match self {
 			VideoCodec::H264 | VideoCodec::H265 => "yuv420p",
@@ -51,6 +52,7 @@ impl VideoCodec {
 		}
 	}
 
+	#[must_use]
 	pub fn default_crf(&self) -> u8 {
 		match self {
 			VideoCodec::H264 => 23,
@@ -58,6 +60,7 @@ impl VideoCodec {
 		}
 	}
 
+	#[must_use]
 	pub fn crf_with_garbage(&self, garbage: u8) -> u8 {
 		(self.default_crf() + (garbage * 3)).clamp(0, 51)
 	}
@@ -70,22 +73,17 @@ impl Crop {
 
 		let numbers = re
 			.find_iter(crop_str.as_str())
-			.map(|s| s.as_str().parse::<u64>().map_err(|_| anyhow!("\"{crop_str}\" is not a valid crop value")))
+			.map(|s| {
+				s.as_str()
+					.parse::<u64>()
+					.map_err(|_| anyhow!("\"{crop_str}\" is not a valid crop value"))
+			})
 			.collect::<Result<Vec<u64>, anyhow::Error>>()?;
 
 		match numbers.as_slice() {
 			[h] if *h > 0 => Ok(Crop { height: *h, ..Crop::default() }),
-			[w, h] if *w > 0 && *h > 0 => Ok(Crop {
-				width: *w,
-				height: *h,
-				..Crop::default()
-			}),
-			[w, h, x, y] if *w > 0 && *h > 0 => Ok(Crop {
-				width: *w,
-				height: *h,
-				x: *x,
-				y: *y,
-			}),
+			[w, h] if *w > 0 && *h > 0 => Ok(Crop { width: *w, height: *h, ..Crop::default() }),
+			[w, h, x, y] if *w > 0 && *h > 0 => Ok(Crop { width: *w, height: *h, x: *x, y: *y }),
 			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value"),
 		}
 	}

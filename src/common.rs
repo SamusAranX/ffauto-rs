@@ -1,4 +1,4 @@
-use crate::palettes::{get_builtin_palette, BuiltInPalette};
+use crate::palettes::{BuiltInPalette, get_builtin_palette};
 use anyhow::Result;
 use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffauto_rs::ffmpeg::ffprobe::ffprobe;
@@ -7,12 +7,14 @@ use ffauto_rs::ffmpeg::size::parse_ffmpeg_size;
 use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffauto_rs::palettes::palette::{Color, Palette};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::fmt::Write;
+use std::path::Path;
 use std::time::Duration;
 
 const MAX32: u64 = i32::MAX as u64;
 
-pub(crate) const TONEMAP_FILTER: &str = "zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709";
+pub(crate) const TONEMAP_FILTER: &str =
+	"zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709";
 pub(crate) const SCALE_FLAGS: &str = "accurate_rnd+full_chroma_int+full_chroma_inp";
 
 pub trait CanSeek {
@@ -45,7 +47,7 @@ pub trait CanGeneratePalette {
 }
 
 /// Parses the seek string and returns it as a [Duration], if present.
-pub(crate) fn parse_seek(seek: &Option<String>) -> Option<Duration> {
+pub(crate) fn parse_seek(seek: Option<&str>) -> Option<Duration> {
 	if let Some(seek_str) = seek {
 		return parse_ffmpeg_duration(seek_str);
 	}
@@ -54,19 +56,23 @@ pub(crate) fn parse_seek(seek: &Option<String>) -> Option<Duration> {
 }
 
 /// Parses the duration strings and returns an appropriate [Duration].
-pub(crate) fn parse_duration(seek: &Option<String>, duration: &Option<String>, duration_to: &Option<String>) -> Option<Duration> {
+pub(crate) fn parse_duration(
+	seek: Option<&str>,
+	duration: Option<&str>,
+	duration_to: Option<&str>,
+) -> Option<Duration> {
 	if let Some(t) = duration {
 		return parse_ffmpeg_duration(t);
 	}
 
 	if let (Some(seek), Some(to)) = (parse_seek(seek), duration_to) {
-		return parse_ffmpeg_duration(to).map(|to| to - seek);
+		return parse_ffmpeg_duration(to).map(|to| to.saturating_sub(seek));
 	}
 
 	None
 }
 
-pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
+pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> String {
 	let colors = pal.colors.iter().map(|e| e.color).collect::<Vec<Color>>();
 
 	let mut color_sources: Vec<String> = Vec::new();
@@ -75,10 +81,17 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 		color_sources.push(source);
 	}
 
-	let mut all_sources = (0..color_sources.len()).map(|i| format!("[p{}]", i + 1)).collect::<Vec<String>>().join("");
+	let mut all_sources = (0..color_sources.len()).fold(String::new(), |mut output, i| {
+		let _ = write!(output, "[p{}]", i + 1);
+		output
+	});
+
 	if color_sources.len() < 256 {
 		let num_dummies = 256 - color_sources.len();
-		let all_dummies = (0..num_dummies).map(|i| format!("[d{}]", i + 1)).collect::<Vec<String>>().join("");
+		let all_dummies = (0..num_dummies).fold(String::new(), |mut output, i| {
+			let _ = write!(output, "[d{}]", i + 1);
+			output
+		});
 		let dummy_color = colors.last().unwrap().to_string();
 		let source = format!("color=c={dummy_color}:r=1:s=1x1,format=rgb24,split={num_dummies} {all_dummies}");
 		color_sources.push(source);
@@ -90,7 +103,7 @@ pub(crate) fn palette_to_ffmpeg(pal: Palette) -> String {
 	color_sources.join(";")
 }
 
-pub(crate) fn generate_crop_filter(crop: &Option<String>) -> Option<String> {
+pub(crate) fn generate_crop_filter(crop: Option<&str>) -> Option<String> {
 	if let Some(crop_str) = crop {
 		return Crop::new(crop_str).map(|c| format!("crop={c}")).ok();
 	}
@@ -98,7 +111,12 @@ pub(crate) fn generate_crop_filter(crop: &Option<String>) -> Option<String> {
 	None
 }
 
-pub(crate) fn generate_scale_filter(width: Option<u64>, height: Option<u64>, size: &Option<String>, scale_mode: &ScaleMode) -> Option<String> {
+pub(crate) fn generate_scale_filter(
+	width: Option<u64>,
+	height: Option<u64>,
+	size: Option<&str>,
+	scale_mode: &ScaleMode,
+) -> Option<String> {
 	if let Some(width) = width {
 		return Some(format!("scale=w={width}:h=-2:flags={scale_mode}+{SCALE_FLAGS}"));
 	} else if let Some(height) = height {
@@ -119,7 +137,11 @@ pub(crate) fn generate_scale_filter(width: Option<u64>, height: Option<u64>, siz
 	None
 }
 
-pub(crate) fn generate_fps_filter(fps_arg: Option<f64>, fps_mult_arg: Option<f64>, stream_fps: Option<f64>) -> Option<String> {
+pub(crate) fn generate_fps_filter(
+	fps_arg: Option<f64>,
+	fps_mult_arg: Option<f64>,
+	stream_fps: Option<f64>,
+) -> Option<String> {
 	if let Some(fps) = fps_arg {
 		Some(format!("fps=fps={fps:.3}"));
 	} else if let (Some(fps_mult), Some(fps)) = (fps_mult_arg, stream_fps) {
@@ -129,20 +151,25 @@ pub(crate) fn generate_fps_filter(fps_arg: Option<f64>, fps_mult_arg: Option<f64
 	None
 }
 
-pub(crate) fn generate_color_sharpness_filters(brightness: f64, contrast: f64, saturation: f64, sharpness: f64) -> Option<String> {
+pub(crate) fn generate_color_sharpness_filters(
+	brightness: f64,
+	contrast: f64,
+	saturation: f64,
+	sharpness: f64,
+) -> Option<String> {
 	let mut filter_parts: Vec<String> = vec![];
 
 	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
 		let mut eq_args: Vec<String> = vec![];
 
 		if brightness != 0.0 {
-			eq_args.push(format!("brightness={brightness}"))
+			eq_args.push(format!("brightness={brightness}"));
 		}
 		if contrast != 1.0 {
-			eq_args.push(format!("contrast={contrast}"))
+			eq_args.push(format!("contrast={contrast}"));
 		}
 		if saturation != 1.0 {
-			eq_args.push(format!("saturation={saturation}"))
+			eq_args.push(format!("saturation={saturation}"));
 		}
 
 		filter_parts.push(format!("eq={}", eq_args.join(":")));
@@ -162,15 +189,15 @@ pub(crate) fn generate_color_sharpness_filters(brightness: f64, contrast: f64, s
 #[allow(clippy::too_many_arguments)]
 /// This function generates a chain of filters that should be appended to the very end of a filtergraph.
 pub(crate) fn generate_palette_filtergraph(
-	palette_file: &Option<PathBuf>,
-	palette_name: &Option<BuiltInPalette>,
+	palette_file: Option<&Path>,
+	palette_name: Option<&BuiltInPalette>,
 	num_colors: u16,
 	stats_mode: &StatsMode,
 	diff_rect: bool,
 	dither: &DitherMode,
 	bayer_scale: u8,
 ) -> Result<String> {
-	fn palette_filter_string(pal_string: String, paletteuse_args: String) -> String {
+	fn palette_filter_string(pal_string: &String, paletteuse_args: &String) -> String {
 		[
 			",setsar=1 [filtered]".to_string(),
 			format!("{pal_string} [pal]"),
@@ -189,12 +216,11 @@ pub(crate) fn generate_palette_filtergraph(
 			args.insert("diff_mode".to_string(), "rectangle".to_string());
 		}
 		if palette_file.is_none() && palette_name.is_none() {
-			let new = (stats_mode == &StatsMode::Single) as u8;
+			let new = u8::from(stats_mode == &StatsMode::Single);
 			args.insert("new".to_string(), format!("{new}"));
 		}
 
-		args
-			.into_iter()
+		args.into_iter()
 			.map(|(k, v)| format!("{k}={v}"))
 			.collect::<Vec<String>>()
 			.join(":")
@@ -205,14 +231,14 @@ pub(crate) fn generate_palette_filtergraph(
 			#[allow(clippy::needless_late_init)]
 			let pal_string: String;
 			match Palette::load_from_file(palette_file) {
-				Ok(pal) => pal_string = palette_to_ffmpeg(pal),
+				Ok(pal) => pal_string = palette_to_ffmpeg(&pal),
 				Err(e) => anyhow::bail!(e),
 			}
-			Ok(palette_filter_string(pal_string, paletteuse_args))
+			Ok(palette_filter_string(&pal_string, &paletteuse_args))
 		}
 		(None, Some(palette_name)) => {
-			let pal_string = palette_to_ffmpeg(get_builtin_palette(palette_name));
-			Ok(palette_filter_string(pal_string, paletteuse_args))
+			let pal_string = palette_to_ffmpeg(&get_builtin_palette(palette_name));
+			Ok(palette_filter_string(&pal_string, &paletteuse_args))
 		}
 		(None, None) => {
 			// no palette was given, so we'll use palettegen to create one
@@ -231,19 +257,18 @@ pub(crate) fn generate_palette_filtergraph(
 /// enabled if ffprobe can't find a duration the first time.
 pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
 	let p = ffprobe(&input, false)?;
-	match p.duration() {
-		Ok(_) => Ok(p),
-		Err(_) => {
-			#[cfg(debug_assertions)]
-			eprintln!("Running ffprobe again and counting frames…");
-			ffprobe(&input, true)
-		}
+	if p.duration().is_ok() {
+		return Ok(p);
 	}
+
+	#[cfg(debug_assertions)]
+	eprintln!("Running ffprobe again and counting frames…");
+	ffprobe(&input, true)
 }
 
 /// This is a small wrapper for [ffprobe] that repeats the invocation with frame counting
-/// enabled if nb_frames isn't set the first time.
-/// This relies on nb_frames being accurate, which might be a problem.
+/// enabled if `nb_frames` isn't set the first time.
+/// This relies on `nb_frames` being accurate, which might be a problem.
 /// We'll simply not worry about it :3
 pub(crate) fn ffprobe_frames<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
 	let p = ffprobe(&input, false)?;

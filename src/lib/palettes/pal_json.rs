@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
-use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
+use crate::palettes::palette::{Color, Palette, PaletteError};
 
 impl Palette {
 	fn from_json_internal<R: Read + BufRead>(reader: R) -> Result<Palette, PaletteError> {

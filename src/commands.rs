@@ -1,3 +1,5 @@
+#![allow(clippy::doc_markdown)]
+
 use clap::ArgAction;
 use clap::Parser;
 use clap::Subcommand;
@@ -50,6 +52,10 @@ pub(crate) struct AutoArgs {
 	/// Selects subtitle streams by index or ISO 639-2 language code.
 	#[arg(long, alias = "Ss")]
 	pub sub_streams: Vec<String>,
+
+	/// Burns the first specified subtitle stream into the output video stream. All further specified subtitle streams will be ignored.
+	#[arg(short = 'B', long, alias = "B")]
+	pub burn_subtitle: bool,
 
 	/// The start time offset.
 	#[arg(short = 's', long)]
@@ -134,10 +140,10 @@ pub(crate) struct AutoArgs {
 }
 
 impl AutoArgs {
-	pub(crate) fn audio_copy_possible(&self, input_codec_name: Option<String>) -> bool {
+	pub(crate) fn audio_copy_possible(&self, input_codec_name: Option<&str>) -> bool {
 		!self.mute
 			&& self.audio_channels.is_none()
-			&& input_codec_name == Some("aac".parse().unwrap())
+			&& input_codec_name == Some("aac")
 			&& self.audio_volume == 1.0
 			&& self.fade <= 0.0
 			&& self.fade_in <= 0.0
@@ -161,17 +167,14 @@ impl AutoArgs {
 	}
 
 	pub(crate) fn optimize_settings(&mut self) {
-		match self.optimize_target {
-			None => return,
-			_ => {
-				self.width = None;
-				self.height = None;
-				self.size = None;
-				self.tonemap = true; // none of the optimization targets support HDR media
-				self.faststart = true;
-				self.audio_channels = Some("2".parse().unwrap());
-				self.video_codec = VideoCodec::H264;
-			}
+		if self.optimize_target.is_some() {
+			self.width = None;
+			self.height = None;
+			self.size = None;
+			self.tonemap = true; // none of the optimization targets support HDR media
+			self.faststart = true;
+			self.audio_channels = Some("2".parse().unwrap());
+			self.video_codec = VideoCodec::H264;
 		}
 
 		match self.optimize_target {

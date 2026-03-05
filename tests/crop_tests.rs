@@ -6,13 +6,29 @@
 
 use ffauto_rs::ffmpeg::enums::Crop;
 
+#[rustfmt::skip]
 fn crop_valid() -> Vec<(String, Crop)> {
 	vec![
-		(String::from("1608"), Crop { height: 1608, ..Crop::default() }),
-		(String::from("3840x1608"), Crop { width: 3840, height: 1608, ..Crop::default() }),
-		(String::from("3840x1608;32x64"), Crop { width: 3840, height: 1608, x: 32, y: 64 }),
-		(String::from("3840x1608x32x64"), Crop { width: 3840, height: 1608, x: 32, y: 64 }),
-		(String::from("3840:1608:32:64"), Crop { width: 3840, height: 1608, x: 32, y: 64 }),
+		(
+			String::from("1608"),
+			Crop { height: 1608, ..Crop::default() },
+		),
+		(
+			String::from("3840x1608"),
+			Crop { width: 3840, height: 1608, ..Crop::default() },
+		),
+		(
+			String::from("3840x1608;32x64"),
+			Crop { width: 3840, height: 1608, x: 32, y: 64 },
+		),
+		(
+			String::from("3840x1608x32x64"),
+			Crop { width: 3840, height: 1608, x: 32, y: 64 },
+		),
+		(
+			String::from("3840:1608:32:64"),
+			Crop { width: 3840, height: 1608, x: 32, y: 64 },
+		),
 	]
 }
 

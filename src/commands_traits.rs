@@ -6,25 +6,29 @@ use std::time::Duration;
 
 impl CanSeek for AutoArgs {
 	fn parse_seek(&self) -> Option<Duration> {
-		parse_seek(&self.seek)
+		parse_seek(self.seek.as_deref())
 	}
 }
 
 impl CanSetDuration for AutoArgs {
 	fn parse_duration(&self) -> Option<Duration> {
-		parse_duration(&self.seek, &self.duration, &self.duration_to)
+		parse_duration(
+			self.seek.as_deref(),
+			self.duration.as_deref(),
+			self.duration_to.as_deref(),
+		)
 	}
 }
 
 impl CanCrop for AutoArgs {
 	fn generate_crop_filter(&self) -> Option<String> {
-		generate_crop_filter(&self.crop)
+		generate_crop_filter(self.crop.as_deref())
 	}
 }
 
 impl CanScale for AutoArgs {
 	fn generate_scale_filter(&self) -> Option<String> {
-		generate_scale_filter(self.width, self.height, &self.size, &self.scale_mode)
+		generate_scale_filter(self.width, self.height, self.size.as_deref(), &self.scale_mode)
 	}
 }
 
@@ -46,25 +50,29 @@ impl CanChangeFPS for AutoArgs {
 
 impl CanSeek for GIFArgs {
 	fn parse_seek(&self) -> Option<Duration> {
-		parse_seek(&self.seek)
+		parse_seek(self.seek.as_deref())
 	}
 }
 
 impl CanSetDuration for GIFArgs {
 	fn parse_duration(&self) -> Option<Duration> {
-		parse_duration(&self.seek, &self.duration, &self.duration_to)
+		parse_duration(
+			self.seek.as_deref(),
+			self.duration.as_deref(),
+			self.duration_to.as_deref(),
+		)
 	}
 }
 
 impl CanCrop for GIFArgs {
 	fn generate_crop_filter(&self) -> Option<String> {
-		generate_crop_filter(&self.crop)
+		generate_crop_filter(self.crop.as_deref())
 	}
 }
 
 impl CanScale for GIFArgs {
 	fn generate_scale_filter(&self) -> Option<String> {
-		generate_scale_filter(self.width, self.height, &self.size, &self.scale_mode)
+		generate_scale_filter(self.width, self.height, self.size.as_deref(), &self.scale_mode)
 	}
 }
 
@@ -73,7 +81,9 @@ impl CanChangeFPS for GIFArgs {
 		generate_fps_filter(self.framerate, self.framerate_mult, stream_fps)
 	}
 
-	fn generate_fps_filter_explicit(&self, _: Option<f64>, _: f64) -> Option<String> { None }
+	fn generate_fps_filter_explicit(&self, _: Option<f64>, _: f64) -> Option<String> {
+		None
+	}
 }
 
 impl CanColorFilter for GIFArgs {
@@ -85,8 +95,8 @@ impl CanColorFilter for GIFArgs {
 impl CanGeneratePalette for GIFArgs {
 	fn generate_palette_filters(&self) -> Result<String> {
 		generate_palette_filtergraph(
-			&self.palette_file,
-			&self.palette_name,
+			self.palette_file.as_deref(),
+			self.palette_name.as_ref(),
 			self.num_colors,
 			&self.stats_mode,
 			self.diff_rect,
@@ -98,19 +108,19 @@ impl CanGeneratePalette for GIFArgs {
 
 impl CanSeek for QuantArgs {
 	fn parse_seek(&self) -> Option<Duration> {
-		parse_seek(&self.seek)
+		parse_seek(self.seek.as_deref())
 	}
 }
 
 impl CanCrop for QuantArgs {
 	fn generate_crop_filter(&self) -> Option<String> {
-		generate_crop_filter(&self.crop)
+		generate_crop_filter(self.crop.as_deref())
 	}
 }
 
 impl CanScale for QuantArgs {
 	fn generate_scale_filter(&self) -> Option<String> {
-		generate_scale_filter(self.width, self.height, &self.size, &self.scale_mode)
+		generate_scale_filter(self.width, self.height, self.size.as_deref(), &self.scale_mode)
 	}
 }
 
@@ -123,8 +133,8 @@ impl CanColorFilter for QuantArgs {
 impl CanGeneratePalette for QuantArgs {
 	fn generate_palette_filters(&self) -> Result<String> {
 		generate_palette_filtergraph(
-			&self.palette_file,
-			&self.palette_name,
+			self.palette_file.as_deref(),
+			self.palette_name.as_ref(),
 			self.num_colors,
 			&StatsMode::default(),
 			false,

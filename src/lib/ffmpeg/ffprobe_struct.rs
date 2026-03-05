@@ -1,10 +1,10 @@
 use crate::ffmpeg::deserialize_bool_from_int;
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
+use colored::Color;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
-use colored::Color;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FFProbeOutput {
@@ -26,11 +26,18 @@ impl FFProbeOutput {
 		if let Some(stream_duration) = video_stream.duration.clone() {
 			// return first video stream duration
 			return Ok(Duration::from_secs_f64(
-				stream_duration.parse().map_err(|e| anyhow!("{e}: stream duration \"{stream_duration}\""))?,
+				stream_duration
+					.parse()
+					.map_err(|e| anyhow!("{e}: stream duration \"{stream_duration}\""))?,
 			));
 		}
 
-		if let Some(tags_duration) = video_stream.tags.clone().and_then(|t| t.duration).and_then(|s| parse_ffmpeg_duration(&s)) {
+		if let Some(tags_duration) = video_stream
+			.tags
+			.clone()
+			.and_then(|t| t.duration)
+			.and_then(|s| parse_ffmpeg_duration(&s))
+		{
 			// return first video stream tags duration
 			return Ok(tags_duration);
 		}
@@ -50,50 +57,66 @@ impl FFProbeOutput {
 		anyhow::bail!("ffprobe could not find a duration for the input file")
 	}
 
+	#[must_use]
 	pub fn get_stream(&self, index: usize) -> Option<&Stream> {
 		self.streams.get(index)
 	}
 
-	fn get_typed_stream(&self, index: usize, stream_type: StreamType) -> Option<&Stream> {
-		self.streams.iter().filter(|s| s.codec_type == stream_type).nth(index)
-	}
-
-	fn get_typed_stream_by_language<S: Into<String>>(&self, lang: S, stream_type: StreamType) -> Option<&Stream> {
-		let lang = lang.into();
+	fn get_typed_stream(&self, index: usize, stream_type: &StreamType) -> Option<&Stream> {
 		self.streams
 			.iter()
-			.find(|s| s.codec_type == stream_type && s.tags.as_ref().and_then(|t| t.language.as_ref()).map(|l| l == &lang).is_some_and(|x| x))
+			.filter(|s| s.codec_type == *stream_type)
+			.nth(index)
 	}
 
+	fn get_typed_stream_by_language<S: Into<String>>(&self, lang: S, stream_type: &StreamType) -> Option<&Stream> {
+		let lang = lang.into();
+		self.streams.iter().find(|s| {
+			s.codec_type == *stream_type
+				&& s.tags
+					.as_ref()
+					.and_then(|t| t.language.as_ref())
+					.map(|l| l == &lang)
+					.is_some_and(|x| x)
+		})
+	}
+
+	#[must_use]
 	pub fn get_video_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, StreamType::Video)
+		self.get_typed_stream(index, &StreamType::Video)
 	}
 
+	#[must_use]
 	pub fn get_audio_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, StreamType::Audio)
+		self.get_typed_stream(index, &StreamType::Audio)
 	}
 
+	#[must_use]
 	pub fn get_subtitle_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, StreamType::Subtitle)
+		self.get_typed_stream(index, &StreamType::Subtitle)
 	}
 
 	pub fn get_video_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
-		self.get_typed_stream_by_language(lang, StreamType::Video)
+		self.get_typed_stream_by_language(lang, &StreamType::Video)
 	}
 
-	pub fn checked_get_video_stream_by_index_or_language(&self, lang: &Option<String>, index: usize) -> Result<(Stream, String)> {
-		let (video_stream, video_stream_id) = match lang {
-			Some(language) => {
-				let stream = self
-					.get_video_stream_by_language(language)
-					.context(format!("No stream with language \"{language}\" found"))?
-					.clone();
-				(stream, format!("0:V:m:language:{language}"))
-			}
-			None => {
-				let stream = self.get_video_stream(index).context(format!("No stream with index {index} found"))?.clone();
-				(stream, format!("0:V:{index}"))
-			}
+	pub fn checked_get_video_stream_by_index_or_language(
+		&self,
+		lang: &Option<String>,
+		index: usize,
+	) -> Result<(Stream, String)> {
+		let (video_stream, video_stream_id) = if let Some(language) = lang {
+			let stream = self
+				.get_video_stream_by_language(language)
+				.context(format!("No stream with language \"{language}\" found"))?
+				.clone();
+			(stream, format!("0:V:m:language:{language}"))
+		} else {
+			let stream = self
+				.get_video_stream(index)
+				.context(format!("No stream with index {index} found"))?
+				.clone();
+			(stream, format!("0:V:{index}"))
 		};
 
 		match video_stream.height {
@@ -106,33 +129,45 @@ impl FFProbeOutput {
 	}
 
 	pub fn get_audio_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
-		self.get_typed_stream_by_language(lang, StreamType::Audio)
+		self.get_typed_stream_by_language(lang, &StreamType::Audio)
 	}
 
 	pub fn get_subtitle_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
-		self.get_typed_stream_by_language(lang, StreamType::Subtitle)
+		self.get_typed_stream_by_language(lang, &StreamType::Subtitle)
 	}
 
+	#[must_use]
 	pub fn get_first_video_stream(&self) -> Option<&Stream> {
-		self.streams.iter().find(|s| s.codec_type == StreamType::Video)
+		self.streams
+			.iter()
+			.find(|s| s.codec_type == StreamType::Video)
 	}
 
+	#[must_use]
 	pub fn get_first_audio_stream(&self) -> Option<&Stream> {
-		self.streams.iter().find(|s| s.codec_type == StreamType::Audio)
+		self.streams
+			.iter()
+			.find(|s| s.codec_type == StreamType::Audio)
 	}
 
+	#[must_use]
 	pub fn get_first_subtitle_stream(&self) -> Option<&Stream> {
-		self.streams.iter().find(|s| s.codec_type == StreamType::Subtitle)
+		self.streams
+			.iter()
+			.find(|s| s.codec_type == StreamType::Subtitle)
 	}
 
+	#[must_use]
 	pub fn has_video_streams(&self) -> bool {
 		self.get_first_video_stream().is_some()
 	}
 
+	#[must_use]
 	pub fn has_audio_streams(&self) -> bool {
 		self.get_first_audio_stream().is_some()
 	}
 
+	#[must_use]
 	pub fn has_subtitle_streams(&self) -> bool {
 		self.get_first_subtitle_stream().is_some()
 	}
@@ -149,6 +184,7 @@ pub enum StreamType {
 }
 
 impl StreamType {
+	#[must_use]
 	pub fn identifier(&self) -> &str {
 		match self {
 			StreamType::Audio => "a",
@@ -159,6 +195,7 @@ impl StreamType {
 		}
 	}
 
+	#[must_use]
 	pub fn color(&self) -> Color {
 		match self {
 			StreamType::Video => Color::Blue,
@@ -237,26 +274,65 @@ pub struct Disposition {
 }
 
 impl Disposition {
+	#[must_use]
 	pub fn any_true(&self) -> bool {
-		if self.default { return true }
-		if self.dub { return true }
-		if self.original { return true }
-		if self.comment { return true }
-		if self.lyrics { return true }
-		if self.karaoke { return true }
-		if self.forced { return true }
-		if self.hearing_impaired { return true }
-		if self.visual_impaired { return true }
-		if self.clean_effects { return true }
-		if self.attached_pic { return true }
-		if self.timed_thumbnails { return true }
-		if self.non_diegetic { return true }
-		if self.captions { return true }
-		if self.descriptions { return true }
-		if self.metadata { return true }
-		if self.dependent { return true }
-		if self.still_image { return true }
-		if self.multilayer { return true }
+		if self.default {
+			return true;
+		}
+		if self.dub {
+			return true;
+		}
+		if self.original {
+			return true;
+		}
+		if self.comment {
+			return true;
+		}
+		if self.lyrics {
+			return true;
+		}
+		if self.karaoke {
+			return true;
+		}
+		if self.forced {
+			return true;
+		}
+		if self.hearing_impaired {
+			return true;
+		}
+		if self.visual_impaired {
+			return true;
+		}
+		if self.clean_effects {
+			return true;
+		}
+		if self.attached_pic {
+			return true;
+		}
+		if self.timed_thumbnails {
+			return true;
+		}
+		if self.non_diegetic {
+			return true;
+		}
+		if self.captions {
+			return true;
+		}
+		if self.descriptions {
+			return true;
+		}
+		if self.metadata {
+			return true;
+		}
+		if self.dependent {
+			return true;
+		}
+		if self.still_image {
+			return true;
+		}
+		if self.multilayer {
+			return true;
+		}
 
 		false
 	}
@@ -266,25 +342,63 @@ impl Display for Disposition {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		let mut disposition: Vec<String> = Vec::with_capacity(19);
 
-		if self.default { disposition.push("default".into()) }
-		if self.dub { disposition.push("dub".into()) }
-		if self.original { disposition.push("original".into()) }
-		if self.comment { disposition.push("comment".into()) }
-		if self.lyrics { disposition.push("lyrics".into()) }
-		if self.karaoke { disposition.push("karaoke".into()) }
-		if self.forced { disposition.push("forced".into()) }
-		if self.hearing_impaired { disposition.push("hearing impaired".into()) }
-		if self.visual_impaired { disposition.push("visual impaired".into()) }
-		if self.clean_effects { disposition.push("clean effects".into()) }
-		if self.attached_pic { disposition.push("attached pic".into()) }
-		if self.timed_thumbnails { disposition.push("timed thumbnails".into()) }
-		if self.non_diegetic { disposition.push("non diegetic".into()) }
-		if self.captions { disposition.push("captions".into()) }
-		if self.descriptions { disposition.push("descriptions".into()) }
-		if self.metadata { disposition.push("metadata".into()) }
-		if self.dependent { disposition.push("dependent".into()) }
-		if self.still_image { disposition.push("still image".into()) }
-		if self.multilayer { disposition.push("multilayer".into()) }
+		if self.default {
+			disposition.push("default".into());
+		}
+		if self.dub {
+			disposition.push("dub".into());
+		}
+		if self.original {
+			disposition.push("original".into());
+		}
+		if self.comment {
+			disposition.push("comment".into());
+		}
+		if self.lyrics {
+			disposition.push("lyrics".into());
+		}
+		if self.karaoke {
+			disposition.push("karaoke".into());
+		}
+		if self.forced {
+			disposition.push("forced".into());
+		}
+		if self.hearing_impaired {
+			disposition.push("hearing impaired".into());
+		}
+		if self.visual_impaired {
+			disposition.push("visual impaired".into());
+		}
+		if self.clean_effects {
+			disposition.push("clean effects".into());
+		}
+		if self.attached_pic {
+			disposition.push("attached pic".into());
+		}
+		if self.timed_thumbnails {
+			disposition.push("timed thumbnails".into());
+		}
+		if self.non_diegetic {
+			disposition.push("non diegetic".into());
+		}
+		if self.captions {
+			disposition.push("captions".into());
+		}
+		if self.descriptions {
+			disposition.push("descriptions".into());
+		}
+		if self.metadata {
+			disposition.push("metadata".into());
+		}
+		if self.dependent {
+			disposition.push("dependent".into());
+		}
+		if self.still_image {
+			disposition.push("still image".into());
+		}
+		if self.multilayer {
+			disposition.push("multilayer".into());
+		}
 
 		if disposition.is_empty() {
 			write!(f, "")
@@ -336,14 +450,15 @@ pub struct Stream {
 }
 
 impl Stream {
+	#[must_use]
 	pub fn frame_rate(&self) -> Option<f64> {
 		match &self.r_frame_rate {
 			None => {
 				return None;
 			}
 			Some(fps) => {
-				if fps.contains("/") {
-					if let Some(split) = fps.split_once("/") {
+				if fps.contains('/') {
+					if let Some(split) = fps.split_once('/') {
 						let left = split.0.parse::<f64>().unwrap();
 						let right = split.1.parse::<f64>().unwrap();
 						return Some(left / right);
@@ -357,6 +472,7 @@ impl Stream {
 		None
 	}
 
+	#[must_use]
 	pub fn is_hdr(&self) -> bool {
 		if let Some(color_transfer) = &self.color_transfer {
 			return color_transfer.contains("smpte2084") || color_transfer.contains("arib-std-b67");
@@ -365,6 +481,7 @@ impl Stream {
 		false
 	}
 
+	#[must_use]
 	pub fn total_frames(&self) -> Option<u64> {
 		if let Some(nb_read_frames) = &self.nb_read_frames {
 			return nb_read_frames.parse().ok();

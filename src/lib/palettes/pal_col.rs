@@ -4,8 +4,8 @@ use std::path::Path;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use crate::palettes::palette::{Color, Palette, PaletteError};
 use crate::palettes::MAX_PALETTE_COLORS;
+use crate::palettes::palette::{Color, Palette, PaletteError};
 
 // https://github.com/aseprite/aseprite/blob/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/src/doc/file/col_file.cpp
 
@@ -39,6 +39,7 @@ impl Palette {
 
 			let magic = f.read_u16::<LittleEndian>()?;
 			if magic != PRO_MAGIC {
+				#[allow(clippy::cast_possible_truncation)]
 				return Err(PaletteError::InvalidBinaryData {
 					position: (f.stream_position().unwrap() - 2) as usize,
 					msg: format!("Invalid magic sequence {magic:#02X}"),
@@ -47,6 +48,7 @@ impl Palette {
 
 			let version = f.read_u16::<LittleEndian>()?;
 			if version != 0 {
+				#[allow(clippy::cast_possible_truncation)]
 				return Err(PaletteError::InvalidBinaryData {
 					position: (f.stream_position().unwrap() - 2) as usize,
 					msg: format!("Invalid version {version:#02X}"),

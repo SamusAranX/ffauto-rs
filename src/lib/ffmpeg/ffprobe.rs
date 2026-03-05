@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::ffmpeg::ffprobe_struct::FFProbeOutput;
 
@@ -29,7 +29,9 @@ pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOu
 		.spawn()
 		.expect("failed to run ffprobe");
 
-	let child_output = ffprobe.wait_with_output().expect("failed to wait for ffprobe");
+	let child_output = ffprobe
+		.wait_with_output()
+		.expect("failed to wait for ffprobe");
 	if !child_output.status.success() {
 		let stderr = String::from_utf8(child_output.stderr).expect("stderr contained corrupted data");
 		anyhow::bail!(stderr.trim().to_string())

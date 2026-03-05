@@ -10,11 +10,13 @@ use crate::vec_push_ext::PushStrExt;
 pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe(&args.input, false)?;
 
-	let (video_stream, video_stream_id) = probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
+	let (video_stream, video_stream_id) =
+		probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
 	let mut ffmpeg_args: Vec<String> = vec![
 		"-hide_banner".to_string(),
-		"-loglevel".to_string(), "error".to_string(),
+		"-loglevel".to_string(),
+		"error".to_string(),
 		"-y".to_string(),
 	];
 
@@ -65,7 +67,10 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	let video_filter_str = video_filter.join(",");
 	let palette_filters = args.generate_palette_filters()?;
-	ffmpeg_args.add_two("-filter_complex", format!("[{video_stream_id}]{video_filter_str}{palette_filters}"));
+	ffmpeg_args.add_two(
+		"-filter_complex",
+		format!("[{video_stream_id}]{video_filter_str}{palette_filters}"),
+	);
 
 	// endregion
 
