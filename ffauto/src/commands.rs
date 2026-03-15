@@ -7,7 +7,7 @@ use const_format::formatcp;
 use std::path::PathBuf;
 
 use crate::palettes::BuiltInPalette;
-use ffauto_rs::ffmpeg::enums::{BarcodeMode, DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
+use ffmpeg::ffmpeg::enums::{BarcodeMode, DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
 
 const GIT_HASH: &str = env!("GIT_HASH");
 const GIT_BRANCH: &str = env!("GIT_BRANCH");

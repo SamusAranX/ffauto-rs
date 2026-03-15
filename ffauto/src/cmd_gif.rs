@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 
 use crate::commands::GIFArgs;
 use crate::common::*;

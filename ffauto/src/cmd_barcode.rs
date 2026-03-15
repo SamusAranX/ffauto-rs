@@ -3,9 +3,9 @@ use anyhow::Result;
 use crate::commands::BarcodeArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
-use ffauto_rs::ffmpeg::enums::BarcodeMode;
-use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffmpeg::ffmpeg::enums::BarcodeMode;
+use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffprobe::ffprobe;
 
 pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	let probe = match args.video_frames {

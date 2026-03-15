@@ -6,9 +6,9 @@ use crate::commands::AutoArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::{Context, Result};
-use ffauto_rs::ffmpeg::enums::{OptimizeTarget, VideoCodec};
-use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
+use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
+use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
 use isolang::Language;
 
 fn fix_language_code(s: &str) -> &str {
@@ -19,7 +19,7 @@ fn fix_language_code(s: &str) -> &str {
 }
 
 #[derive(PartialEq)]
-enum UsedIndex {
+enum StreamIndex {
 	Index(usize),
 	Language(Language),
 }
@@ -30,7 +30,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	let first_video_stream = probe.get_first_video_stream();
 	let first_audio_stream = probe.get_first_audio_stream();
 
-	if !probe.has_video_streams() && probe.has_audio_streams() {
+	if !probe.has_video_streams() && !probe.has_audio_streams() {
 		anyhow::bail!("The input file contains no usable audio/video streams")
 	}
 
@@ -90,12 +90,12 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			_ => (),
 		}
 
-		let mut used_indices: Vec<UsedIndex> = vec![];
+		let mut used_indices: Vec<StreamIndex> = vec![];
 		for stream in streams {
 			let stream = stream.trim();
 			if let Ok(i) = stream.parse::<usize>() {
 				// value is a numeric stream ID
-				let used_idx = UsedIndex::Index(i);
+				let used_idx = StreamIndex::Index(i);
 				if used_indices.contains(&used_idx) {
 					continue;
 				}
@@ -117,7 +117,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 				used_indices.push(used_idx);
 			} else if let Ok(lang) = Language::from_str(stream) {
 				// value is a valid language code
-				let used_lang = UsedIndex::Language(lang);
+				let used_lang = StreamIndex::Language(lang);
 				if used_indices.contains(&used_lang) {
 					continue;
 				}

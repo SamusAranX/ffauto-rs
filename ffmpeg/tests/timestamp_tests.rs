@@ -1,4 +1,4 @@
-use ffauto_rs::ffmpeg::timestamps::{TimestampFormat, format_ffmpeg_timestamp, parse_ffmpeg_duration};
+use ffmpeg::ffmpeg::timestamps::{TimestampFormat, format_ffmpeg_timestamp, parse_ffmpeg_duration};
 use std::time::Duration;
 
 struct TimestampTest {

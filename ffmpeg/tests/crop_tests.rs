@@ -4,7 +4,7 @@
 //
 // 1234x5678,9;0
 
-use ffauto_rs::ffmpeg::enums::Crop;
+use ffmpeg::ffmpeg::enums::Crop;
 
 #[rustfmt::skip]
 fn crop_valid() -> Vec<(String, Crop)> {

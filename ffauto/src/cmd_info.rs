@@ -3,7 +3,7 @@ use crate::common::ffprobe_output;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use colored::Colorize;
-use ffauto_rs::ffmpeg::ffprobe_struct::StreamType;
+use ffmpeg::ffmpeg::ffprobe_struct::StreamType;
 
 pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;

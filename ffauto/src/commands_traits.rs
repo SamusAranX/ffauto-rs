@@ -1,7 +1,7 @@
 use crate::commands::{AutoArgs, GIFArgs, QuantArgs};
 use crate::common::*;
 use anyhow::Result;
-use ffauto_rs::ffmpeg::enums::StatsMode;
+use ffmpeg::ffmpeg::enums::StatsMode;
 use std::time::Duration;
 
 impl CanSeek for AutoArgs {

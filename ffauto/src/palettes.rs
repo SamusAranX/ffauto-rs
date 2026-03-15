@@ -1,4 +1,4 @@
-use ffauto_rs::palettes::palette::Palette;
+use ffmpeg::palettes::palette::Palette;
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
 pub enum BuiltInPalette {

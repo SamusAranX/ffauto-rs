@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use ffauto_rs::ffmpeg::ffmpeg::ffmpeg;
-use ffauto_rs::ffmpeg::ffprobe::ffprobe;
+use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffprobe::ffprobe;
 
 use crate::commands::QuantArgs;
 use crate::common::*;

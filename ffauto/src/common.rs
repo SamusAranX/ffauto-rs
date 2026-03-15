@@ -1,11 +1,11 @@
 use crate::palettes::{BuiltInPalette, get_builtin_palette};
 use anyhow::Result;
-use ffauto_rs::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
-use ffauto_rs::ffmpeg::ffprobe::ffprobe;
-use ffauto_rs::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
-use ffauto_rs::ffmpeg::size::parse_ffmpeg_size;
-use ffauto_rs::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffauto_rs::palettes::palette::{Color, Palette};
+use ffmpeg::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
+use ffmpeg::ffmpeg::ffprobe::ffprobe;
+use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
+use ffmpeg::ffmpeg::size::parse_ffmpeg_size;
+use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
+use ffmpeg::palettes::palette::{Color, Palette};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::Path;

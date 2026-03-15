@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
+use ffmpeg::palettes::palette::{Palette, PaletteFormat};
 
 static FILE_FORMATS: [PaletteFormat; 6] = [
 	PaletteFormat::AdobeAct,
