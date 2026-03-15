@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use ffauto_rs::palettes::palette::{Palette, PaletteFormat};
 
-const FILE_FORMATS: [PaletteFormat; 6] = [
+static FILE_FORMATS: [PaletteFormat; 6] = [
 	PaletteFormat::AdobeAct,
 	PaletteFormat::AnimatorProCol,
 	PaletteFormat::Gpl,
@@ -11,7 +11,7 @@ const FILE_FORMATS: [PaletteFormat; 6] = [
 	PaletteFormat::Json,
 	PaletteFormat::Pal,
 ];
-const TEXT_FORMATS: [PaletteFormat; 4] = [
+static TEXT_FORMATS: [PaletteFormat; 4] = [
 	PaletteFormat::Gpl,
 	PaletteFormat::Hex,
 	PaletteFormat::Json,
