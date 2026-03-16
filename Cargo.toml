@@ -1,5 +1,5 @@
 [workspace]
-members = ["ffauto", "ffmpeg"]
+members = ["ffauto", "ffmpeg", "ffmpeg-macro"]
 default-members = ["ffauto"]
 resolver = "3"
 
