@@ -1,9 +1,8 @@
 mod fade;
+mod palettegen;
 
 use std::fmt::Display;
 
-trait FFmpegFilter: Display {
+pub trait FFmpegFilter: Display {
 	const NAME: &str;
-
-	fn to_filter_string(&self) -> String;
 }

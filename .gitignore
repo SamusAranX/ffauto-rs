@@ -16,4 +16,7 @@ Cargo.lock
 # JetBrains IDE stuff
 .idea/
 
+# Garbage
 .DS_Store
+/*.md
+!/README.md

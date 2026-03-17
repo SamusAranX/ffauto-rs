@@ -1,8 +1,9 @@
-use std::fmt::{Display, Formatter};
 use crate::filters::FFmpegFilter;
+use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum FadeType {
+	#[default]
 	In,
 	Out,
 }
@@ -68,16 +69,22 @@ impl Default for Fade {
 	}
 }
 
-impl Display for Fade {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", Self::NAME)
-	}
-}
-
 impl FFmpegFilter for Fade {
 	const NAME: &str = "fade";
+}
 
-	fn to_filter_string(&self) -> String {
-		"placeholder".to_string()
+impl Display for Fade {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		let output: Vec<String> = vec![
+			format!("{}={}", "type", self.r#type.to_string()),
+			format!("{}={}", "start_frame", self.start_frame.to_string()),
+			format!("{}={}", "nb_frames", self.nb_frames.to_string()),
+			format!("{}={}", "alpha", self.alpha.to_string()),
+			format!("{}={}", "start_time", self.start_time.to_string()),
+			format!("{}={}", "duration", self.duration.to_string()),
+			format!("{}={}", "color", self.color.clone()),
+		];
+
+		write!(f, "{}={}", Self::NAME, output.join(":"))
 	}
 }

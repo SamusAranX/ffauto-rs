@@ -1,12 +1,12 @@
 [workspace]
-members = ["ffauto", "ffmpeg", "ffmpeg-macro"]
+members = ["ffauto", "ffmpeg"]
 default-members = ["ffauto"]
 resolver = "3"
 
 [workspace.package]
 repository = "https://github.com/SamusAranX/ffauto-rs"
 edition = "2024"
-rust-version = "1.93"
+rust-version = "1.94"
 publish = false
 
 [profile.release]
