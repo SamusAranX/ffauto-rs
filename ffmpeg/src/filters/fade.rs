@@ -2,19 +2,13 @@ use crate::filters::FFmpegFilter;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(strum::Display, strum::EnumString)]
 pub enum FadeType {
 	#[default]
+	#[strum(serialize = "in")]
 	In,
+	#[strum(serialize = "out")]
 	Out,
-}
-
-impl Display for FadeType {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		match self {
-			FadeType::In => write!(f, "in"),
-			FadeType::Out => write!(f, "out"),
-		}
-	}
 }
 
 /// Apply a fade-in/out effect to the input video.

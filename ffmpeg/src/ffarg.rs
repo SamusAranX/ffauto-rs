@@ -1,5 +1,3 @@
-type ArgFlags = Vec<String>;
-
 trait FFArg {
 	fn to_arg(&self) -> String;
 }
@@ -32,6 +30,8 @@ impl FFArg for bool {
 		.to_string()
 	}
 }
+
+type ArgFlags = Vec<String>;
 
 impl FFArg for ArgFlags {
 	fn to_arg(&self) -> String {
