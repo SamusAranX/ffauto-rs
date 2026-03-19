@@ -8,26 +8,30 @@ use syn::{Expr, Field, ItemStruct, LitStr, Token, Type};
 // ffarg helpers
 /////
 
-/// Types that implement the `FFArg` trait and should use `.to_arg()`.
-/// All other types are assumed to implement Display already, so we use `.to_string()` for those.
+/// Types that implement Display and thus can use .to_string() directly.
 #[rustfmt::skip]
-const FFARG_TYPES: &[&str] = &[
+const DISPLAY_TYPES: &[&str] = &[
 	"i8", "i16", "i32", "i64", "i128", "isize",
 	"u8", "u16", "u32", "u64", "u128", "usize",
 	"f32", "f64",
-	"String", "&str", "bool",
+	"String", "&str",
 ];
 
 /// Arguments for the `#[ffarg(name = "string", default = <expr>)]` field attribute.
+#[derive(Default)]
 struct FFArgArgs {
 	name: Option<String>,
 	default: Option<Expr>,
+	separator: Option<String>,
+	extra_flags: Vec<String>,
 }
 
 impl Parse for FFArgArgs {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
 		let mut name: Option<String> = None;
 		let mut default: Option<Expr> = None;
+		let mut separator: Option<String> = None;
+		let mut extra_flags: Vec<String> = Vec::new();
 
 		while !input.is_empty() {
 			let key: syn::Ident = input.parse()?;
@@ -44,6 +48,21 @@ impl Parse for FFArgArgs {
 					// `#[ffarg(default = "black")]` instead of `#[ffarg(default = "black".to_string())]`
 					default = Some(add_to_string_if_needed(expr));
 				}
+				"separator" => {
+					let lit: LitStr = input.parse()?;
+					separator = Some(lit.value());
+				}
+				"extra_flags" => {
+					let content;
+					syn::bracketed!(content in input);
+					while !content.is_empty() {
+						let lit: LitStr = content.parse()?;
+						extra_flags.push(lit.value());
+						if content.peek(Token![,]) {
+							content.parse::<Token![,]>()?;
+						}
+					}
+				}
 				other => return Err(syn::Error::new(key.span(), format!("Unknown ffarg argument: {other}"))),
 			}
 
@@ -52,7 +71,7 @@ impl Parse for FFArgArgs {
 			}
 		}
 
-		Ok(FFArgArgs { name, default })
+		Ok(FFArgArgs { name, default, separator, extra_flags })
 	}
 }
 
@@ -72,16 +91,26 @@ fn get_ffarg_args(field: &Field) -> syn::Result<FFArgArgs> {
 			return attr.parse_args::<FFArgArgs>();
 		}
 	}
-	Ok(FFArgArgs { name: None, default: None })
+	Ok(FFArgArgs::default())
 }
 
-/// Returns `true` if the type is known to implement FFArg. (see also `FFARG_TYPES`)
-fn is_ffarg_type(ty: &Type) -> bool {
+/// Returns `true` if the type is a Vec of some kind.
+fn is_vec_type(ty: &Type) -> bool {
 	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.last()
+		&& let Some(segment) = type_path.path.segments.first()
+	{
+		return segment.ident == "Vec";
+	}
+	false
+}
+
+/// Returns `true` if the type is known to implement Display.
+fn is_display_type(ty: &Type) -> bool {
+	if let Type::Path(type_path) = ty
+		&& let Some(segment) = type_path.path.segments.first()
 	{
 		let name = segment.ident.to_string();
-		return FFARG_TYPES.contains(&name.as_str());
+		return DISPLAY_TYPES.contains(&name.as_str());
 	}
 	false
 }
@@ -161,11 +190,25 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		let name = field_name(ident, &ffarg);
 
 		// The field value.
-		// Calls `.to_arg()` types that implement FFArg, `.to_string()` for the rest.
-		// TODO: this assumes everything else implements Display. maybe get rid of the FFArg trait entirely
-		let value_expr = if is_ffarg_type(ty) {
-			quote! { self.#ident.to_arg() }
+		let value_expr = if is_display_type(ty) {
+			quote! { self.#ident.to_string() }
+		} else if is_vec_type(ty) {
+			let sep = ffarg.separator.clone().unwrap_or(":".to_string());
+			let flags = &ffarg.extra_flags;
+			if flags.is_empty() {
+				quote! { self.#ident.join(#sep) }
+			} else {
+				quote! {
+					{
+						let mut v = self.#ident.clone();
+						v.extend([#(#flags.to_string()),*]);
+						v.dedup();
+						v.join(#sep)
+					}
+				}
+			}
 		} else {
+			// TODO: this assumes everything else implements Display. return an error here?
 			quote! { self.#ident.to_string() }
 		};
 
@@ -194,7 +237,7 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		#item
 
 		const _: () = {
-			use crate::filters::FFArg;
+			// use crate::filters::FFArg;
 			use crate::filters::FFmpegFilter;
 
 			impl Default for #struct_ident {
