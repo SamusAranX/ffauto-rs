@@ -1,6 +1,6 @@
 [package]
 name = "ffmpeg"
-version = "1.11.0"
+version.workspace = true
 repository.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -16,6 +16,7 @@ wildcard_imports = "allow"
 
 [dependencies]
 anyhow = "1.0"
+ffmpeg-macro = { path = "../ffmpeg-macro" }
 byteorder = "1.5"
 clap = { version = "4.6", features = ["derive"] }
 colored = "3.1"
