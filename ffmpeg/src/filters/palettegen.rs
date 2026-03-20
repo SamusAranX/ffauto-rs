@@ -23,20 +23,20 @@ pub struct Palettegen {
 	/// Set the maximum number of colors to quantize in the palette.
 	/// Note: the palette will still contain 256 colors; the unused palette entries will be black.
 	#[ffarg(default = 256)]
-	pub max_colors: u64,
+	pub max_colors: u16,
 
 	/// Create a palette of 255 colors maximum and reserve the last one for transparency.
 	/// Reserving the transparency color is useful for GIF optimization.
 	/// If not set, the maximum of colors in the palette will be 256.
 	/// You probably want to disable this option for a standalone image. Set by default.
-	#[ffarg(default = true)]
+	#[ffarg(default = true, omit_default)]
 	pub reserve_transparent: bool,
 
 	/// Set the color that will be used as background for transparency.
-	#[ffarg(default = "lime")]
+	#[ffarg(default = "lime", omit_default)]
 	pub transparency_color: String,
 
 	/// Set statistics mode.
-	#[ffarg(default = StatsMode::Full)]
+	#[ffarg(default = StatsMode::Full, omit_default)]
 	pub stats_mode: StatsMode,
 }

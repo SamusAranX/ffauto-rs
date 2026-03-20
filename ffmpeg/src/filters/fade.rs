@@ -32,13 +32,13 @@ pub struct Fade {
 
 	/// If set to true, fade only alpha channel, if one exists on the input.
 	/// Default value is false.
-	#[ffarg(default = false)]
+	#[ffarg(default = false, omit_default)]
 	pub alpha: bool,
 
 	/// Specify the timestamp (in seconds) of the frame to start to apply the fade effect.
 	/// If both `start_frame` and `start_time` are specified, the fade will start at whichever comes last.
 	/// Default is 0.
-	#[ffarg(default = 0.0)]
+	#[ffarg(default = 0.0, omit_default)]
 	pub start_time: f64,
 
 	/// The number of seconds for which the fade effect has to last.
@@ -46,11 +46,11 @@ pub struct Fade {
 	/// at the end of the fade-out transition the output video will be filled with the selected color.
 	/// If both `duration` and `nb_frames` are specified, `duration` is used.
 	/// Default is 0 (`nb_frames` is used by default).
-	#[ffarg(default = 0.0)]
+	#[ffarg(default = 0.0, omit_default)]
 	pub duration: f64,
 
 	/// Specify the color of the fade.
 	/// Default is "black".
-	#[ffarg(default = "black")]
+	#[ffarg(default = "black", omit_default)]
 	pub color: String,
 }

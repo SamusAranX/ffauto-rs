@@ -24,6 +24,7 @@ struct FFArgArgs {
 	default: Option<Expr>,
 	separator: Option<String>,
 	extra_flags: Vec<String>,
+	omit_default: bool,
 }
 
 impl Parse for FFArgArgs {
@@ -32,38 +33,47 @@ impl Parse for FFArgArgs {
 		let mut default: Option<Expr> = None;
 		let mut separator: Option<String> = None;
 		let mut extra_flags: Vec<String> = Vec::new();
+		let mut omit_default = false;
 
 		while !input.is_empty() {
 			let key: syn::Ident = input.parse()?;
-			input.parse::<Token![=]>()?;
 
 			match key.to_string().as_str() {
-				"name" => {
-					let lit: LitStr = input.parse()?;
-					name = Some(lit.value());
+				"omit_default" => {
+					omit_default = true;
 				}
-				"default" => {
-					let expr: Expr = input.parse()?;
-					// Wrap bare string literals in .to_string() so users can write
-					// `#[ffarg(default = "black")]` instead of `#[ffarg(default = "black".to_string())]`
-					default = Some(add_to_string_if_needed(expr));
-				}
-				"separator" => {
-					let lit: LitStr = input.parse()?;
-					separator = Some(lit.value());
-				}
-				"extra_flags" => {
-					let content;
-					syn::bracketed!(content in input);
-					while !content.is_empty() {
-						let lit: LitStr = content.parse()?;
-						extra_flags.push(lit.value());
-						if content.peek(Token![,]) {
-							content.parse::<Token![,]>()?;
+				_ => {
+					input.parse::<Token![=]>()?;
+
+					match key.to_string().as_str() {
+						"name" => {
+							let lit: LitStr = input.parse()?;
+							name = Some(lit.value());
 						}
+						"default" => {
+							let expr: Expr = input.parse()?;
+							// Wrap bare string literals in .to_string() so users can write
+							// `#[ffarg(default = "black")]` instead of `#[ffarg(default = "black".to_string())]`
+							default = Some(add_to_string_if_needed(expr));
+						}
+						"separator" => {
+							let lit: LitStr = input.parse()?;
+							separator = Some(lit.value());
+						}
+						"extra_flags" => {
+							let content;
+							syn::bracketed!(content in input);
+							while !content.is_empty() {
+								let lit: LitStr = content.parse()?;
+								extra_flags.push(lit.value());
+								if content.peek(Token![,]) {
+									content.parse::<Token![,]>()?;
+								}
+							}
+						}
+						other => return Err(syn::Error::new(key.span(), format!("Unknown ffarg argument: {other}"))),
 					}
 				}
-				other => return Err(syn::Error::new(key.span(), format!("Unknown ffarg argument: {other}"))),
 			}
 
 			if input.peek(Token![,]) {
@@ -71,7 +81,13 @@ impl Parse for FFArgArgs {
 			}
 		}
 
-		Ok(FFArgArgs { name, default, separator, extra_flags })
+		Ok(FFArgArgs {
+			name,
+			default,
+			separator,
+			extra_flags,
+			omit_default,
+		})
 	}
 }
 
@@ -94,16 +110,6 @@ fn get_ffarg_args(field: &Field) -> syn::Result<FFArgArgs> {
 	Ok(FFArgArgs::default())
 }
 
-/// Returns `true` if the type is a Vec of some kind.
-fn is_vec_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "Vec";
-	}
-	false
-}
-
 /// Returns `true` if the type is known to implement Display.
 fn is_display_type(ty: &Type) -> bool {
 	if let Type::Path(type_path) = ty
@@ -111,6 +117,26 @@ fn is_display_type(ty: &Type) -> bool {
 	{
 		let name = segment.ident.to_string();
 		return DISPLAY_TYPES.contains(&name.as_str());
+	}
+	false
+}
+
+/// Returns `true` if the type is bool.
+fn is_bool_type(ty: &Type) -> bool {
+	if let Type::Path(type_path) = ty
+		&& let Some(segment) = type_path.path.segments.first()
+	{
+		return segment.ident == "bool";
+	}
+	false
+}
+
+/// Returns `true` if the type is a Vec of some kind.
+fn is_vec_type(ty: &Type) -> bool {
+	if let Type::Path(type_path) = ty
+		&& let Some(segment) = type_path.path.segments.first()
+	{
+		return segment.ident == "Vec";
 	}
 	false
 }
@@ -192,6 +218,8 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		// The field value.
 		let value_expr = if is_display_type(ty) {
 			quote! { self.#ident.to_string() }
+		} else if is_bool_type(ty) {
+			quote! { u8::from(self.#ident).to_string() }
 		} else if is_vec_type(ty) {
 			let sep = ffarg.separator.clone().unwrap_or(":".to_string());
 			let flags = &ffarg.extra_flags;
@@ -208,13 +236,31 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 				}
 			}
 		} else {
-			// TODO: this assumes everything else implements Display. return an error here?
+			// enums fall into this branch (along with everything else) but
+			// the enums used for filters generally implement Display thanks to strum.
+			// if we get here with a field of a type that doesn't implement Display,
+			// this'll result in a compile-time error.
+
 			quote! { self.#ident.to_string() }
 		};
 
-		display_entries.push(quote! {
-			format!("{}={}", #name, #value_expr)
-		});
+		if ffarg.omit_default {
+			let default_val = match &ffarg.default {
+				Some(expr) => quote! { #expr },
+				None => quote! { <#ty as Default>::default() },
+			};
+			display_entries.push(quote! {
+				if self.#ident != #default_val {
+					Some(format!("{}={}", #name, #value_expr))
+				} else {
+					None
+				}
+			});
+		} else {
+			display_entries.push(quote! {
+				Some(format!("{}={}", #name, #value_expr))
+			});
+		}
 
 		// The default value for this field. Uses the ffarg `default` argument when specified, else Default::default().
 		// TODO: this assumes everything implements Default. proooobably reasonable but check back after adding more filters
@@ -254,9 +300,9 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 
 			impl ::std::fmt::Display for #struct_ident {
 				fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-					let output: Vec<String> = vec![
+					let output: Vec<String> = [
 						#(#display_entries,)*
-					];
+					].into_iter().flatten().collect();
 					write!(f, "{}={}", <Self as FFmpegFilter>::NAME, output.join(":"))
 				}
 			}
