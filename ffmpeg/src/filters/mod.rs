@@ -1,14 +1,11 @@
-mod crop;
-mod fade;
-mod palettegen;
-mod scale;
-mod tonemap;
+mod audio;
+mod video;
 
-pub use crop::{Crop};
-pub use fade::{Fade, FadeType};
-pub use palettegen::{Palettegen, StatsMode};
-pub use scale::{Scale};
-pub use tonemap::{Tonemap};
+pub use video::crop::{Crop};
+pub use video::fade::{Fade, FadeType};
+pub use video::palettegen::{Palettegen, StatsMode};
+pub use video::scale::{Scale};
+pub use video::tonemap::{Tonemap};
 
 use std::fmt::Display;
 
