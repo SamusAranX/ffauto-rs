@@ -7,3 +7,6 @@ pub(crate) mod tonemap;
 pub(crate) mod zscale;
 mod format;
 mod eq;
+mod unsharp;
+mod paletteuse;
+mod color;
