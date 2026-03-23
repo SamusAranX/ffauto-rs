@@ -1,8 +1,11 @@
+mod helpers;
+
+use crate::helpers::{add_to_string_if_needed, field_name, is_bool_type, is_display_type, is_vec_type};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
-use syn::{Expr, Field, ItemStruct, LitStr, Token, Type};
+use syn::{Expr, Field, ItemStruct, LitStr, Token};
 
 /////
 // ffarg helpers
@@ -25,12 +28,14 @@ struct FFArgArgs {
 	separator: Option<String>,
 	extra_flags: Vec<String>,
 	omit_default: bool,
+	default_from: Option<syn::Ident>,
 }
 
 impl Parse for FFArgArgs {
 	fn parse(input: ParseStream) -> syn::Result<Self> {
 		let mut name: Option<String> = None;
 		let mut default: Option<Expr> = None;
+		let mut default_from: Option<syn::Ident> = None;
 		let mut separator: Option<String> = None;
 		let mut extra_flags: Vec<String> = Vec::new();
 		let mut omit_default = false;
@@ -55,6 +60,10 @@ impl Parse for FFArgArgs {
 							// Wrap bare string literals in .to_string() so users can write
 							// `#[ffarg(default = "black")]` instead of `#[ffarg(default = "black".to_string())]`
 							default = Some(add_to_string_if_needed(expr));
+						}
+						"default_from" => {
+							let ident: syn::Ident = input.parse()?;
+							default_from = Some(ident);
 						}
 						"separator" => {
 							let lit: LitStr = input.parse()?;
@@ -87,16 +96,8 @@ impl Parse for FFArgArgs {
 			separator,
 			extra_flags,
 			omit_default,
+			default_from,
 		})
-	}
-}
-
-/// Adds `.to_string()` inside of the macro if `expr` is a string literal.
-fn add_to_string_if_needed(expr: Expr) -> Expr {
-	if matches!(&expr, Expr::Lit(lit) if matches!(&lit.lit, syn::Lit::Str(_))) {
-		syn::parse2(quote! { #expr.to_string() }).unwrap()
-	} else {
-		expr
 	}
 }
 
@@ -108,47 +109,6 @@ fn get_ffarg_args(field: &Field) -> syn::Result<FFArgArgs> {
 		}
 	}
 	Ok(FFArgArgs::default())
-}
-
-/// Returns `true` if the type is known to implement Display.
-fn is_display_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		let name = segment.ident.to_string();
-		return DISPLAY_TYPES.contains(&name.as_str());
-	}
-	false
-}
-
-/// Returns `true` if the type is bool.
-fn is_bool_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "bool";
-	}
-	false
-}
-
-/// Returns `true` if the type is a Vec of some kind.
-fn is_vec_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "Vec";
-	}
-	false
-}
-
-/// Returns the display key for a field: the `name` from `#[ffarg(name = "...")]`,
-/// or the field identifier with any `r#` prefix stripped.
-fn field_name(ident: &syn::Ident, ffarg: &FFArgArgs) -> String {
-	if let Some(ref name) = ffarg.name {
-		return name.clone();
-	}
-	let s = ident.to_string();
-	s.strip_prefix("r#").unwrap_or(&s).to_string()
 }
 
 /////
@@ -206,11 +166,35 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 	let mut display_entries = Vec::new();
 	let mut default_entries = Vec::new();
 
+	// Collect the set of field names referenced by `default_from`, these are skipped in Display.
+	let mut referenced_fields: std::collections::HashSet<String> = std::collections::HashSet::new();
+	for field in fields.iter() {
+		let ffarg = get_ffarg_args(field)?;
+		if let Some(ref source) = ffarg.default_from {
+			referenced_fields.insert(source.to_string());
+		}
+	}
+
 	for field in fields.iter() {
 		let ident = field.ident.as_ref().unwrap();
 		let ty = &field.ty;
 
 		let ffarg = get_ffarg_args(field)?;
+
+		// The default value for this field. Uses the ffarg `default` argument when specified, else Default::default().
+		// TODO: this assumes everything implements Default. proooobably reasonable but check back after adding more filters
+		let default_val = match &ffarg.default {
+			Some(expr) => quote! { #expr },
+			None => quote! { Default::default() },
+		};
+		default_entries.push(quote! { #ident: #default_val });
+
+		// Fields referenced by another field's `default_from` are skipped in Display,
+		// their value is added to the referencing field's value instead.
+		let skip_display = referenced_fields.contains(&ident.to_string());
+		if skip_display {
+			continue;
+		}
 
 		// The field name. Either pulled from the ffarg `name` argument or the field name, verbatim.
 		let name = field_name(ident, &ffarg);
@@ -223,13 +207,25 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		} else if is_vec_type(ty) {
 			let sep = ffarg.separator.clone().unwrap_or(":".to_string());
 			let flags = &ffarg.extra_flags;
-			if flags.is_empty() {
+
+			// If this field has `default_from`, inject the source field's value (when non-default).
+			let default_from_extend = ffarg.default_from.as_ref().map(|source| {
+				quote! { v.push(self.#source.to_string()); }
+			});
+
+			if flags.is_empty() && default_from_extend.is_none() {
 				quote! { self.#ident.join(#sep) }
 			} else {
+				let extra_extends = if flags.is_empty() {
+					quote! {}
+				} else {
+					quote! { v.extend([#(#flags.to_string()),*]); }
+				};
 				quote! {
 					{
 						let mut v = self.#ident.clone();
-						v.extend([#(#flags.to_string()),*]);
+						#default_from_extend
+						#extra_extends
 						v.dedup();
 						v.join(#sep)
 					}
@@ -261,14 +257,6 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 				Some(format!("{}={}", #name, #value_expr))
 			});
 		}
-
-		// The default value for this field. Uses the ffarg `default` argument when specified, else Default::default().
-		// TODO: this assumes everything implements Default. proooobably reasonable but check back after adding more filters
-		let default_val = match ffarg.default {
-			Some(expr) => quote! { #expr },
-			None => quote! { Default::default() },
-		};
-		default_entries.push(quote! { #ident: #default_val });
 	}
 
 	// Strip #[ffarg] attributes from every field before outputting it
@@ -298,6 +286,7 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 			}
 
 			impl ::std::fmt::Display for #struct_ident {
+				#[allow(clippy::float_cmp, clippy::cmp_owned)]
 				fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
 					let output: Vec<String> = [
 						#(#display_entries,)*

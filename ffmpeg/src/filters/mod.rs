@@ -1,3 +1,5 @@
+#![allow(clippy::doc_markdown)]
+
 mod audio;
 mod video;
 

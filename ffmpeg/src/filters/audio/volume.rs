@@ -42,9 +42,9 @@ pub enum VolumeReplayGain {
 /// Output values are clipped to the maximum value.
 #[filter(name = "volume")]
 pub struct Volume {
-	/// Set audio volume expression. The default value is "1.0".
-	#[ffarg(name = "volume", default = "1.0")]
-	pub volume: String,
+	/// Set audio volume expression. The default value is 1.0.
+	#[ffarg(name = "volume", default = 1.0)]
+	pub volume: f64,
 
 	/// The mathematical precision, which determines which input sample formats will be allowed,
 	/// affecting the precision of the volume scaling.

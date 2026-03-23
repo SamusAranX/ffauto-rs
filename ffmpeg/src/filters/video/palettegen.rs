@@ -40,3 +40,23 @@ pub struct Palettegen {
 	#[ffarg(default = PalettegenStatsMode::Full, omit_default)]
 	pub stats_mode: PalettegenStatsMode,
 }
+
+#[test]
+fn filter_palettegen() {
+	let filter = Palettegen::default();
+	assert_eq!(filter.to_string(), "palettegen=max_colors=256");
+}
+
+#[test]
+fn filter_palettegen_params() {
+	let filter = Palettegen {
+		max_colors: 64,
+		reserve_transparent: false,
+		stats_mode: PalettegenStatsMode::Single,
+		..Default::default()
+	};
+	assert_eq!(
+		filter.to_string(),
+		"palettegen=max_colors=64:reserve_transparent=0:stats_mode=single"
+	);
+}

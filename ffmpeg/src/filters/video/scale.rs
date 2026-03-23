@@ -86,12 +86,12 @@ pub struct Scale {
 	#[ffarg(name = "h")]
 	pub height: i32,
 
-	// /// Set the video size (width and height together).
-	// #[ffarg(name = "s")]
-	// pub size: String,
+	/// Set the video scaling algorithm.
+	#[ffarg()]
+	pub scale_algorithm: ScaleAlgorithm,
 
 	/// Set libswscale scaling flags. If not explicitly specified the filter applies the default flags.
-	#[ffarg(separator = "+", extra_flags = ["accurate_rnd", "full_chroma_int", "full_chroma_inp"])]
+	#[ffarg(separator = "+", default_from = scale_algorithm, extra_flags = ["accurate_rnd", "full_chroma_int", "full_chroma_inp"])]
 	pub flags: Vec<String>,
 
 	/// Set libswscale input parameters for scaling algorithms that need them. If not explicitly
@@ -123,4 +123,28 @@ pub struct Scale {
 	/// pixels.
 	#[ffarg(omit_default)]
 	pub reset_sar: bool,
+}
+
+#[test]
+fn filter_scale() {
+	let filter = Scale::default();
+	assert_eq!(
+		filter.to_string(),
+		"scale=w=0:h=0:flags=bicubic+accurate_rnd+full_chroma_int+full_chroma_inp"
+	);
+}
+
+#[test]
+fn filter_scale_params() {
+	let filter = Scale {
+		width: 1920,
+		height: 1080,
+		scale_algorithm: ScaleAlgorithm::Spline,
+		force_divisible_by: 2,
+		..Default::default()
+	};
+	assert_eq!(
+		filter.to_string(),
+		"scale=w=1920:h=1080:flags=spline+accurate_rnd+full_chroma_int+full_chroma_inp:force_divisible_by=2"
+	);
 }

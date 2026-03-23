@@ -180,65 +180,61 @@ pub struct Zscale {
 	/// zscale filter will use a value that maintains the aspect ratio of the input image,
 	/// calculated from the other specified dimension, divisible by n.
 	#[ffarg(name = "w")]
-	pub width: String,
+	pub width: f64,
 
 	/// The output video height expression. Default value is the input dimension. If the value is
 	/// 0, the input height is used for the output. If one and only one of w/h is -n with n >= 1,
 	/// the zscale filter will use a value that maintains the aspect ratio of the input image,
 	/// calculated from the other specified dimension, divisible by n.
 	#[ffarg(name = "h")]
-	pub height: String,
-
-	/// Set the video size (width and height together).
-	#[ffarg(name = "s")]
-	pub size: String,
+	pub height: f64,
 
 	/// Set the dither type.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub dither: ZscaleDither,
 
 	/// Set the resize filter type.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub filter: ZscaleFilter,
 
 	/// Set the output color range.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub range: ZscaleRange,
 
 	/// Set the output color primaries.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub primaries: ZscalePrimaries,
 
 	/// Set the output transfer characteristics.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub transfer: ZscaleTransfer,
 
 	/// Set the output colorspace matrix.
-	#[ffarg()]
+	#[ffarg(omit_default)]
 	pub matrix: ZscaleMatrix,
 
 	/// Set the input color range.
-	#[ffarg(name = "rangein")]
+	#[ffarg(name = "rangein", omit_default)]
 	pub range_in: ZscaleRange,
 
 	/// Set the input color primaries.
-	#[ffarg(name = "primariesin")]
+	#[ffarg(name = "primariesin", omit_default)]
 	pub primaries_in: ZscalePrimaries,
 
 	/// Set the input transfer characteristics.
-	#[ffarg(name = "transferin")]
+	#[ffarg(name = "transferin", omit_default)]
 	pub transfer_in: ZscaleTransfer,
 
 	/// Set the input colorspace matrix.
-	#[ffarg(name = "matrixin")]
+	#[ffarg(name = "matrixin", omit_default)]
 	pub matrix_in: ZscaleMatrix,
 
 	/// Set the output chroma location.
-	#[ffarg(name = "chromal")]
+	#[ffarg(name = "chromal", omit_default)]
 	pub chroma_loc: ZscaleChromaLoc,
 
 	/// Set the input chroma location.
-	#[ffarg(name = "chromalin")]
+	#[ffarg(name = "chromalin", omit_default)]
 	pub chroma_loc_in: ZscaleChromaLoc,
 
 	/// Set the nominal peak luminance.

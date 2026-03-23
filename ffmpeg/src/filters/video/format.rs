@@ -22,6 +22,7 @@ pub struct Format {
 }
 
 impl Format {
+	#[must_use]
 	pub fn new(pix_fmt: String) -> Self {
 		Self {
 			pix_fmts: vec![pix_fmt],

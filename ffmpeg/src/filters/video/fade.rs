@@ -1,7 +1,6 @@
 use ffmpeg_macro::filter;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-#[derive(strum::Display, strum::EnumString)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, strum::Display, strum::EnumString)]
 pub enum FadeType {
 	#[default]
 	#[strum(serialize = "in")]
@@ -18,18 +17,7 @@ pub struct Fade {
 	#[ffarg(name = "type", default = FadeType::In)]
 	pub r#type: FadeType,
 
-	/// Specify the number of the frame to start applying the fade effect at.
-	/// Default is 0.
-	#[ffarg(default = 0)]
-	pub start_frame: u32,
-
-	/// The number of frames that the fade effect lasts.
-	/// At the end of the fade-in effect, the output video will have the same intensity as the input video.
-	/// At the end of the fade-out transition, the output video will be filled with the selected color.
-	/// Default is 25.
-	#[ffarg(default = 25)]
-	pub nb_frames: u32,
-
+	// we're not using the sample-based timings so these are elided here
 	/// If set to true, fade only alpha channel, if one exists on the input.
 	/// Default value is false.
 	#[ffarg(default = false, omit_default)]
@@ -53,4 +41,32 @@ pub struct Fade {
 	/// Default is "black".
 	#[ffarg(default = "black", omit_default)]
 	pub color: String,
+}
+
+#[test]
+fn filter_fade() {
+	let filter = Fade::default();
+	assert_eq!(filter.to_string(), "fade=type=in");
+}
+
+#[test]
+fn filter_fade_in_params() {
+	let filter = Fade {
+		r#type: FadeType::In,
+		start_time: 2.0,
+		duration: 5.0,
+		..Default::default()
+	};
+	assert_eq!(filter.to_string(), "fade=type=in:start_time=2:duration=5");
+}
+
+#[test]
+fn filter_fade_out_params() {
+	let filter = Fade {
+		r#type: FadeType::Out,
+		start_time: 2.0,
+		duration: 5.0,
+		..Default::default()
+	};
+	assert_eq!(filter.to_string(), "fade=type=out:start_time=2:duration=5");
 }

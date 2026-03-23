@@ -35,13 +35,30 @@ pub struct Crop {
 }
 
 impl Crop {
+	#[must_use]
 	pub fn new(width: i32, height: i32, x: i32, y: i32) -> Self {
-		Self {
-			width,
-			height,
-			x,
-			y,
-			..Default::default()
-		}
+		Self { width, height, x, y, ..Default::default() }
 	}
+}
+
+#[test]
+fn filter_crop() {
+	let filter = Crop::default();
+	assert_eq!(filter.to_string(), "crop=out_w=0:out_h=0:x=0:y=0");
+}
+
+#[test]
+fn filter_crop_params() {
+	let filter = Crop {
+		width: 800,
+		height: 480,
+		x: 560,
+		y: 300,
+		keep_aspect: true,
+		exact: true,
+	};
+	assert_eq!(
+		filter.to_string(),
+		"crop=out_w=800:out_h=480:x=560:y=300:keep_aspect=1:exact=1"
+	);
 }

@@ -65,3 +65,19 @@ pub struct Tonemap {
 	#[ffarg(omit_default)]
 	pub peak: f64,
 }
+
+#[test]
+fn filter_tonemap() {
+	let filter = Tonemap::default();
+	assert_eq!(filter.to_string(), "tonemap");
+}
+
+#[test]
+fn filter_tonemap_params() {
+	let filter = Tonemap {
+		algorithm: TonemapAlgorithm::Reinhard,
+		desat: 5.0,
+		peak: 1000.0,
+	};
+	assert_eq!(filter.to_string(), "tonemap=tonemap=reinhard:desat=5:peak=1000");
+}
