@@ -16,6 +16,7 @@ pub use video::fps::Fps;
 pub use video::palettegen::{Palettegen, PalettegenStatsMode};
 pub use video::paletteuse::{Paletteuse, PaletteuseDiffMode, PaletteuseDither};
 pub use video::scale::{Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio};
+pub use video::subtitles::Subtitles;
 pub use video::tonemap::{Tonemap, TonemapAlgorithm};
 pub use video::unsharp::Unsharp;
 pub use video::zscale::{

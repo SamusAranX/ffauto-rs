@@ -7,6 +7,7 @@ pub(crate) mod fps;
 pub(crate) mod palettegen;
 pub(crate) mod paletteuse;
 pub(crate) mod scale;
+pub(crate) mod subtitles;
 pub(crate) mod tonemap;
 pub(crate) mod unsharp;
 pub(crate) mod zscale;
