@@ -27,7 +27,7 @@ fn filter_crop() {
 #[test]
 fn filter_tonemap() {
 	let filter = Tonemap::default();
-	assert_eq!(filter.to_string(), "tonemap=tonemap=none");
+	assert_eq!(filter.to_string(), "tonemap");
 }
 
 #[test]

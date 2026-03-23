@@ -48,7 +48,7 @@ pub enum TonemapAlgorithm {
 #[filter(name = "tonemap")]
 pub struct Tonemap {
 	/// Set the tone map algorithm to use.
-	#[ffarg(name = "tonemap")]
+	#[ffarg(name = "tonemap", omit_default)]
 	pub algorithm: TonemapAlgorithm,
 
 	/// Apply desaturation for highlights that exceed this level of brightness. The higher the

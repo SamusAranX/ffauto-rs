@@ -283,7 +283,6 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		#item
 
 		const _: () = {
-			// use crate::filters::FFArg;
 			use crate::filters::FFmpegFilter;
 
 			impl Default for #struct_ident {
@@ -303,7 +302,12 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 					let output: Vec<String> = [
 						#(#display_entries,)*
 					].into_iter().flatten().collect();
-					write!(f, "{}={}", <Self as FFmpegFilter>::NAME, output.join(":"))
+
+					if output.is_empty() {
+						write!(f, "{}", <Self as FFmpegFilter>::NAME)
+					} else {
+						write!(f, "{}={}", <Self as FFmpegFilter>::NAME, output.join(":"))
+					}
 				}
 			}
 		};

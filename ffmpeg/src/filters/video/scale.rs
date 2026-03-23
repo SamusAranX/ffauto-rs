@@ -86,7 +86,7 @@ pub struct Scale {
 	#[ffarg(name = "h")]
 	pub height: i32,
 
-	/// Set the video size (width and height together).
+	// /// Set the video size (width and height together).
 	// #[ffarg(name = "s")]
 	// pub size: String,
 
