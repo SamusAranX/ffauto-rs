@@ -3,7 +3,7 @@ mod video;
 
 pub use audio::afade::{Afade, AfadeCurve, AfadeType};
 pub use audio::loudnorm::{Loudnorm, LoudnormPrintFormat};
-pub use audio::volume::{Volume, VolumePrecision, VolumeReplaygain};
+pub use audio::volume::{Volume, VolumePrecision, VolumeReplayGain};
 
 pub use video::color::Color;
 pub use video::crop::Crop;

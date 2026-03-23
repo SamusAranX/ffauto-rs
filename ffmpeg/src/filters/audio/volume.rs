@@ -17,7 +17,7 @@ pub enum VolumePrecision {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum VolumeReplaygain {
+pub enum VolumeReplayGain {
 	/// Remove ReplayGain side data, ignoring its contents.
 	#[strum(serialize = "drop")]
 	#[default]
@@ -53,7 +53,7 @@ pub struct Volume {
 
 	/// Choose the behaviour on encountering ReplayGain side data in input frames.
 	#[ffarg(omit_default)]
-	pub replaygain: VolumeReplaygain,
+	pub replaygain: VolumeReplayGain,
 
 	/// Pre-amplification gain in dB to apply to the selected replaygain gain.
 	#[ffarg(omit_default)]
