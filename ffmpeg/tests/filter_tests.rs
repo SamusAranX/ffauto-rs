@@ -1,4 +1,4 @@
-use ffmpeg::filters::{Crop, Fade, Palettegen, Scale, Tonemap};
+use ffmpeg::filters::{Crop, Fade, Palettegen, Scale, Tonemap, TonemapAlgorithm};
 
 #[test]
 fn filter_fade() {
@@ -28,4 +28,14 @@ fn filter_crop() {
 fn filter_tonemap() {
 	let filter = Tonemap::default();
 	assert_eq!(filter.to_string(), "tonemap=tonemap=none");
+}
+
+#[test]
+fn filter_tonemap_params() {
+	let filter = Tonemap {
+		algorithm: TonemapAlgorithm::Reinhard,
+		desat: 5.0,
+		peak: 1000.0,
+	};
+	assert_eq!(filter.to_string(), "tonemap=tonemap=reinhard:desat=5:peak=1000");
 }

@@ -1,5 +1,7 @@
 use ffmpeg_macro::filter;
 
+// TODO: tie scale algorithm into the filter struct somehow
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
 pub enum ScaleAlgorithm {
 	/// Fast bilinear scaling algorithm.

@@ -103,40 +103,17 @@ pub enum ZscaleTransfer {
 	#[strum(serialize = "2020_12")]
 	Bt202012,
 
+	/// Not usable for transfer_in.
 	#[strum(serialize = "smpte2084")]
 	Smpte2084,
 
+	/// Not usable for transfer_in.
 	#[strum(serialize = "iec61966-2-1")]
 	Iec6196621,
 
+	/// Not usable for transfer_in.
 	#[strum(serialize = "arib-std-b67")]
 	AribStdB67,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleTransferIn {
-	/// Same as input.
-	#[strum(serialize = "input")]
-	#[default]
-	Input,
-
-	#[strum(serialize = "709")]
-	Bt709,
-
-	#[strum(serialize = "unspecified")]
-	Unspecified,
-
-	#[strum(serialize = "601")]
-	Bt601,
-
-	#[strum(serialize = "linear")]
-	Linear,
-
-	#[strum(serialize = "2020_10")]
-	Bt202010,
-
-	#[strum(serialize = "2020_12")]
-	Bt202012,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
@@ -250,7 +227,7 @@ pub struct Zscale {
 
 	/// Set the input transfer characteristics.
 	#[ffarg(name = "transferin")]
-	pub transfer_in: ZscaleTransferIn,
+	pub transfer_in: ZscaleTransfer,
 
 	/// Set the input colorspace matrix.
 	#[ffarg(name = "matrixin")]
