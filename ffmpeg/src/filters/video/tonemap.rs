@@ -62,8 +62,7 @@ pub struct Tonemap {
 	/// Override signal/nominal/reference peak with this value. Useful when the embedded peak
 	/// information in display metadata is not reliable or when tone mapping from a lower range to
 	/// a higher range.
-	#[ffarg(omit_default)]
-	pub peak: f64,
+	pub peak: Option<f64>,
 }
 
 #[test]
@@ -77,7 +76,7 @@ fn filter_tonemap_params() {
 	let filter = Tonemap {
 		algorithm: TonemapAlgorithm::Reinhard,
 		desat: 5.0,
-		peak: 1000.0,
+		peak: Some(1000.0),
 	};
 	assert_eq!(filter.to_string(), "tonemap=tonemap=reinhard:desat=5:peak=1000");
 }

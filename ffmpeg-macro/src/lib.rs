@@ -1,8 +1,7 @@
 mod helpers;
 
-use crate::helpers::{add_to_string_if_needed, field_name, is_bool_type, is_display_type, is_vec_type};
-use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use crate::helpers::{add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type, is_option_type, is_vec_type, vec_value_expr};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::{Expr, Field, ItemStruct, LitStr, Token};
@@ -146,7 +145,7 @@ impl Parse for FilterArgs {
 	}
 }
 
-fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStream2> {
+fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
 	let filter_args: FilterArgs = syn::parse2(args)?;
 
 	let mut item: ItemStruct = syn::parse2(input)?;
@@ -180,12 +179,31 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		let ty = &field.ty;
 
 		let ffarg = get_ffarg_args(field)?;
+		let is_option = is_option_type(ty);
+
+		// Validate that incompatible ffarg parameters are not used on Option fields.
+		if is_option {
+			if ffarg.omit_default {
+				return Err(syn::Error::new_spanned(
+					field,
+					"Optional types are already omitted when None",
+				));
+			}
+			let inner_is_vec = extract_option_inner_type(ty).is_some_and(|inner| is_vec_type(inner));
+			if ffarg.default.is_some() || (ffarg.default_from.is_some() && !inner_is_vec) {
+				return Err(syn::Error::new_spanned(field, "Optional types always default to None"));
+			}
+		}
 
 		// The default value for this field. Uses the ffarg `default` argument when specified, else Default::default().
 		// TODO: this assumes everything implements Default. proooobably reasonable but check back after adding more filters
-		let default_val = match &ffarg.default {
-			Some(expr) => quote! { #expr },
-			None => quote! { Default::default() },
+		let default_val = if is_option {
+			quote! { None }
+		} else {
+			match &ffarg.default {
+				Some(expr) => quote! { #expr },
+				None => quote! { Default::default() },
+			}
 		};
 		default_entries.push(quote! { #ident: #default_val });
 
@@ -199,38 +217,43 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 		// The field name. Either pulled from the ffarg `name` argument or the field name, verbatim.
 		let name = field_name(ident, &ffarg);
 
+		// Option<T> fields: only included in Display when Some.
+		if is_option {
+			let inner_ty = extract_option_inner_type(ty).unwrap();
+			let value_expr = if is_vec_type(inner_ty) {
+				let default_from_extend = ffarg.default_from.as_ref().map(|source| {
+					quote! { v.push(self.#source.to_string()); }
+				});
+				vec_value_expr(quote! { val }, &ffarg, default_from_extend)
+			} else if is_display_type(inner_ty) {
+				quote! { val.to_string() }
+			} else if is_bool_type(inner_ty) {
+				quote! { u8::from(*val).to_string() }
+			} else {
+				quote! { val.to_string() }
+			};
+			display_entries.push(quote! {
+				if let Some(val) = &self.#ident {
+					Some(format!("{}={}", #name, #value_expr))
+				} else {
+					None
+				}
+			});
+			continue;
+		}
+
 		// The field value.
 		let value_expr = if is_display_type(ty) {
 			quote! { self.#ident.to_string() }
 		} else if is_bool_type(ty) {
 			quote! { u8::from(self.#ident).to_string() }
 		} else if is_vec_type(ty) {
-			let sep = ffarg.separator.clone().unwrap_or(":".to_string());
-			let flags = &ffarg.extra_flags;
-
 			// If this field has `default_from`, inject the source field's value (when non-default).
 			let default_from_extend = ffarg.default_from.as_ref().map(|source| {
 				quote! { v.push(self.#source.to_string()); }
 			});
 
-			if flags.is_empty() && default_from_extend.is_none() {
-				quote! { self.#ident.join(#sep) }
-			} else {
-				let extra_extends = if flags.is_empty() {
-					quote! {}
-				} else {
-					quote! { v.extend([#(#flags.to_string()),*]); }
-				};
-				quote! {
-					{
-						let mut v = self.#ident.clone();
-						#default_from_extend
-						#extra_extends
-						v.dedup();
-						v.join(#sep)
-					}
-				}
-			}
+			vec_value_expr(quote! { self.#ident }, &ffarg, default_from_extend)
 		} else {
 			// enums fall into this branch (along with everything else) but
 			// the enums used for filters generally implement Display thanks to strum.
@@ -304,7 +327,7 @@ fn filter_macro(args: TokenStream2, input: TokenStream2) -> syn::Result<TokenStr
 }
 
 #[proc_macro_attribute]
-pub fn filter(args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn filter(args: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 	match filter_macro(args.into(), input.into()) {
 		Ok(tokens) => tokens.into(),
 		Err(e) => e.into_compile_error().into(),

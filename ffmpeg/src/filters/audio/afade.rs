@@ -132,7 +132,7 @@ pub struct Afade {
 	pub duration: f64,
 
 	/// Set curve for fade transition.
-	#[ffarg()]
+
 	pub curve: AfadeCurve,
 
 	/// Set the initial gain for fade-in or final gain for fade-out.

@@ -61,7 +61,6 @@ pub enum PaletteuseDiffMode {
 #[filter(name = "paletteuse")]
 pub struct Paletteuse {
 	/// Select dithering mode.
-	#[ffarg()]
 	pub dither: PaletteuseDither,
 
 	/// When bayer dithering is selected, this option defines the scale of the pattern (how much

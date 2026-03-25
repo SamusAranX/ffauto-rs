@@ -4,13 +4,11 @@ use ffmpeg_macro::filter;
 #[filter(name = "subtitles")]
 pub struct Subtitles {
 	/// Set the filename of the subtitle file to read. It must be specified.
-	#[ffarg()]
 	pub filename: String,
 
 	/// Specify the size of the original video, the video for which the ASS file was composed.
 	/// Due to a misdesign in ASS aspect ratio arithmetic, this is necessary to correctly scale the
 	/// fonts if the aspect ratio has been changed.
-	#[ffarg()]
 	pub original_size: String,
 
 	/// Set a directory path containing fonts that can be used by the filter. These fonts will be

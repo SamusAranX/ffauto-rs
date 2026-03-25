@@ -15,12 +15,10 @@ pub struct Crop {
 
 	/// The horizontal position, in the input video, of the left edge of the output video.
 	/// This expression is evaluated per-frame.
-	#[ffarg()]
 	pub x: i32,
 
 	/// The vertical position, in the input video, of the top edge of the output video.
 	/// This expression is evaluated per-frame.
-	#[ffarg()]
 	pub y: i32,
 
 	/// If set to `true` will force the output display aspect ratio to be the same of the input,

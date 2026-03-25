@@ -1,4 +1,5 @@
 pub(crate) mod color;
+pub(crate) mod colorspace;
 pub(crate) mod crop;
 pub(crate) mod eq;
 pub(crate) mod fade;
@@ -8,6 +9,7 @@ pub(crate) mod palettegen;
 pub(crate) mod paletteuse;
 pub(crate) mod scale;
 pub(crate) mod subtitles;
+pub(crate) mod tile;
 pub(crate) mod tonemap;
 pub(crate) mod unsharp;
 pub(crate) mod zscale;

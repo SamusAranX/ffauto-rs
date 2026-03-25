@@ -51,7 +51,6 @@ pub struct Loudnorm {
 	pub measured_thresh: f64,
 
 	/// Set offset gain. Gain is applied before the true-peak limiter. Range is -99.0 - +99.0.
-	#[ffarg()]
 	pub offset: f64,
 
 	/// Normalize by linearly scaling the source audio. measured_I, measured_LRA, measured_TP, and
@@ -69,11 +68,9 @@ pub struct Loudnorm {
 	pub dual_mono: bool,
 
 	/// Set print format for stats.
-	#[ffarg()]
 	pub print_format: LoudnormPrintFormat,
 
 	/// Write stats to specified file. Format is controlled by print_format, which must be set.
 	/// Specify "-" to write to standard output.
-	#[ffarg()]
 	pub stats_file: String,
 }

@@ -87,7 +87,6 @@ pub struct Scale {
 	pub height: i32,
 
 	/// Set the video scaling algorithm.
-	#[ffarg()]
 	pub scale_algorithm: ScaleAlgorithm,
 
 	/// Set libswscale scaling flags. If not explicitly specified the filter applies the default flags.
