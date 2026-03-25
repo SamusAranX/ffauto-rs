@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum LoudnormPrintFormat {
+pub enum PrintFormat {
 	/// Print a human-readable summary.
 	#[strum(serialize = "summary")]
 	Summary,
@@ -68,7 +68,7 @@ pub struct Loudnorm {
 	pub dual_mono: bool,
 
 	/// Set print format for stats.
-	pub print_format: LoudnormPrintFormat,
+	pub print_format: PrintFormat,
 
 	/// Write stats to specified file. Format is controlled by print_format, which must be set.
 	/// Specify "-" to write to standard output.

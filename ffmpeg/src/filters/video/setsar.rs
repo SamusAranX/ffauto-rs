@@ -17,10 +17,9 @@ pub struct SetSar {
 }
 
 impl SetSar {
+	#[must_use]
 	pub fn new(sar: f64) -> Self {
-		Self {
-			sar
-		}
+		Self { sar }
 	}
 }
 

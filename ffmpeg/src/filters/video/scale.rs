@@ -3,7 +3,7 @@ use ffmpeg_macro::filter;
 // TODO: tie scale algorithm into the filter struct somehow
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ScaleAlgorithm {
+pub enum Algorithm {
 	/// Fast bilinear scaling algorithm.
 	#[strum(serialize = "fast_bilinear")]
 	FastBilinear,
@@ -48,7 +48,7 @@ pub enum ScaleAlgorithm {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, strum::Display, strum::EnumString)]
-pub enum ScaleForceOriginalAspectRatio {
+pub enum ForceOriginalAspectRatio {
 	/// Scale the video as specified and disable this feature.
 	#[strum(serialize = "disable")]
 	#[default]
@@ -87,7 +87,7 @@ pub struct Scale {
 	pub height: i32,
 
 	/// Set the video scaling algorithm.
-	pub scale_algorithm: ScaleAlgorithm,
+	pub scale_algorithm: Algorithm,
 
 	/// Set libswscale scaling flags. If not explicitly specified the filter applies the default flags.
 	#[ffarg(separator = "+", default_from = scale_algorithm, extra_flags = ["accurate_rnd", "full_chroma_int", "full_chroma_inp"])]
@@ -106,7 +106,7 @@ pub struct Scale {
 	/// Enable decreasing or increasing output video width or height if necessary to keep the
 	/// original aspect ratio.
 	#[ffarg(omit_default)]
-	pub force_original_aspect_ratio: ScaleForceOriginalAspectRatio,
+	pub force_original_aspect_ratio: ForceOriginalAspectRatio,
 
 	/// Ensures that both the output dimensions, width and height, are divisible by the given integer
 	/// when used together with force_original_aspect_ratio. This works similar to using -n in the w and h options.
@@ -138,7 +138,7 @@ fn filter_scale_params() {
 	let filter = Scale {
 		width: 1920,
 		height: 1080,
-		scale_algorithm: ScaleAlgorithm::Spline,
+		scale_algorithm: Algorithm::Spline,
 		force_divisible_by: 2,
 		..Default::default()
 	};

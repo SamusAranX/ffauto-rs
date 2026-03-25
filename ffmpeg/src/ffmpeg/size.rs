@@ -9,7 +9,7 @@ pub struct Size {
 }
 
 impl Size {
-	#[must_use] 
+	#[must_use]
 	pub fn new(width: u64, height: u64) -> Self {
 		Size { width, height }
 	}

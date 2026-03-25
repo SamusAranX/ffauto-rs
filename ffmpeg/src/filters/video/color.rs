@@ -8,7 +8,6 @@ pub struct Color {
 	pub color: String,
 
 	// TODO: investigate how to have width/height fields that are synthesized into one size field at Display time
-
 	/// Specify the size of the sourced video. The default value is 320x240.
 	#[ffarg(name = "size", default = "320x240")]
 	pub size: String,
@@ -45,5 +44,8 @@ fn filter_color_params() {
 		duration: 10.0,
 		..Default::default()
 	};
-	assert_eq!(filter.to_string(), "color=color=black:size=1920x1080:rate=60:duration=10");
+	assert_eq!(
+		filter.to_string(),
+		"color=color=black:size=1920x1080:rate=60:duration=10"
+	);
 }

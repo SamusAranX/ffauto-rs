@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleDither {
+pub enum Dither {
 	#[strum(serialize = "none")]
 	#[default]
 	None,
@@ -17,7 +17,7 @@ pub enum ZscaleDither {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleFilter {
+pub enum Filter {
 	#[strum(serialize = "point")]
 	Point,
 
@@ -42,7 +42,7 @@ pub enum ZscaleFilter {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleRange {
+pub enum Range {
 	/// Same as input.
 	#[strum(serialize = "input")]
 	#[default]
@@ -56,7 +56,7 @@ pub enum ZscaleRange {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscalePrimaries {
+pub enum Primaries {
 	/// Same as input.
 	#[strum(serialize = "input")]
 	#[default]
@@ -79,7 +79,7 @@ pub enum ZscalePrimaries {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleTransfer {
+pub enum Transfer {
 	/// Same as input.
 	#[strum(serialize = "input")]
 	#[default]
@@ -117,7 +117,7 @@ pub enum ZscaleTransfer {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleMatrix {
+pub enum Matrix {
 	/// Same as input.
 	#[strum(serialize = "input")]
 	#[default]
@@ -143,7 +143,7 @@ pub enum ZscaleMatrix {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ZscaleChromaLoc {
+pub enum ChromaLoc {
 	/// Same as input.
 	#[strum(serialize = "input")]
 	#[default]
@@ -191,51 +191,51 @@ pub struct Zscale {
 
 	/// Set the dither type.
 	#[ffarg(omit_default)]
-	pub dither: ZscaleDither,
+	pub dither: Dither,
 
 	/// Set the resize filter type.
 	#[ffarg(omit_default)]
-	pub filter: ZscaleFilter,
+	pub filter: Filter,
 
 	/// Set the output color range.
 	#[ffarg(omit_default)]
-	pub range: ZscaleRange,
+	pub range: Range,
 
 	/// Set the output color primaries.
 	#[ffarg(omit_default)]
-	pub primaries: ZscalePrimaries,
+	pub primaries: Primaries,
 
 	/// Set the output transfer characteristics.
 	#[ffarg(omit_default)]
-	pub transfer: ZscaleTransfer,
+	pub transfer: Transfer,
 
 	/// Set the output colorspace matrix.
 	#[ffarg(omit_default)]
-	pub matrix: ZscaleMatrix,
+	pub matrix: Matrix,
 
 	/// Set the input color range.
 	#[ffarg(name = "rangein", omit_default)]
-	pub range_in: ZscaleRange,
+	pub range_in: Range,
 
 	/// Set the input color primaries.
 	#[ffarg(name = "primariesin", omit_default)]
-	pub primaries_in: ZscalePrimaries,
+	pub primaries_in: Primaries,
 
 	/// Set the input transfer characteristics.
 	#[ffarg(name = "transferin", omit_default)]
-	pub transfer_in: ZscaleTransfer,
+	pub transfer_in: Transfer,
 
 	/// Set the input colorspace matrix.
 	#[ffarg(name = "matrixin", omit_default)]
-	pub matrix_in: ZscaleMatrix,
+	pub matrix_in: Matrix,
 
 	/// Set the output chroma location.
 	#[ffarg(name = "chromal", omit_default)]
-	pub chroma_loc: ZscaleChromaLoc,
+	pub chroma_loc: ChromaLoc,
 
 	/// Set the input chroma location.
 	#[ffarg(name = "chromalin", omit_default)]
-	pub chroma_loc_in: ZscaleChromaLoc,
+	pub chroma_loc_in: ChromaLoc,
 
 	/// Set the nominal peak luminance.
 	#[ffarg(omit_default)]

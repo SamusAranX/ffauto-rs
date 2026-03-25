@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceAll {
+pub enum All {
 	/// BT.470M
 	#[strum(serialize = "bt470m")]
 	Bt470m,
@@ -36,7 +36,7 @@ pub enum ColorspaceAll {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceSpace {
+pub enum Space {
 	/// BT.709
 	#[strum(serialize = "bt709")]
 	Bt709,
@@ -67,7 +67,7 @@ pub enum ColorspaceSpace {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceTransfer {
+pub enum Transfer {
 	/// BT.709
 	#[strum(serialize = "bt709")]
 	Bt709,
@@ -122,7 +122,7 @@ pub enum ColorspaceTransfer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspacePrimaries {
+pub enum Primaries {
 	/// BT.709
 	#[strum(serialize = "bt709")]
 	Bt709,
@@ -165,7 +165,7 @@ pub enum ColorspacePrimaries {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceRange {
+pub enum Range {
 	/// TV (restricted) range
 	#[strum(serialize = "tv")]
 	Tv,
@@ -184,7 +184,7 @@ pub enum ColorspaceRange {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceFormat {
+pub enum Format {
 	/// YUV 4:2:0 planar 8-bits
 	#[strum(serialize = "yuv420p")]
 	Yuv420p,
@@ -223,7 +223,7 @@ pub enum ColorspaceFormat {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceDither {
+pub enum Dither {
 	/// No dithering
 	#[strum(serialize = "none")]
 	None,
@@ -234,7 +234,7 @@ pub enum ColorspaceDither {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceWhitepointAdapt {
+pub enum WhitepointAdapt {
 	/// Bradford whitepoint adaptation
 	#[strum(serialize = "bradford")]
 	Bradford,
@@ -249,7 +249,7 @@ pub enum ColorspaceWhitepointAdapt {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum ColorspaceClipGamut {
+pub enum ClipGamut {
 	/// No clipping of out of gamut colors.
 	#[strum(serialize = "none")]
 	None,
@@ -263,23 +263,23 @@ pub enum ColorspaceClipGamut {
 #[filter(name = "colorspace")]
 pub struct Colorspace {
 	/// Specify all color properties at once.
-	pub all: Option<ColorspaceAll>,
+	pub all: Option<All>,
 
 	/// Specify output colorspace.
-	pub space: Option<ColorspaceSpace>,
+	pub space: Option<Space>,
 
 	/// Specify output transfer characteristics.
 	#[ffarg(name = "trc")]
-	pub transfer: Option<ColorspaceTransfer>,
+	pub transfer: Option<Transfer>,
 
 	/// Specify output color primaries.
-	pub primaries: Option<ColorspacePrimaries>,
+	pub primaries: Option<Primaries>,
 
 	/// Specify output color range.
-	pub range: Option<ColorspaceRange>,
+	pub range: Option<Range>,
 
 	/// Specify output color format.
-	pub format: Option<ColorspaceFormat>,
+	pub format: Option<Format>,
 
 	/// Do a fast conversion, which skips gamma/primary correction. This will take significantly
 	/// less CPU, but will be mathematically incorrect. To get output compatible with that produced
@@ -288,35 +288,35 @@ pub struct Colorspace {
 	pub fast: bool,
 
 	/// Specify dithering mode.
-	pub dither: Option<ColorspaceDither>,
+	pub dither: Option<Dither>,
 
 	/// Whitepoint adaptation mode.
 	#[ffarg(name = "wpadapt")]
-	pub whitepoint_adapt: Option<ColorspaceWhitepointAdapt>,
+	pub whitepoint_adapt: Option<WhitepointAdapt>,
 
 	/// Controls how to clip out-of-gamut colors that arise as a result of colorspace conversion.
 	#[ffarg(name = "clip_gamit")]
-	pub clip_gamut: Option<ColorspaceClipGamut>,
+	pub clip_gamut: Option<ClipGamut>,
 
 	/// Override all input properties at once. Same accepted values as all.
 	#[ffarg(name = "iall")]
-	pub input_all: Option<ColorspaceAll>,
+	pub input_all: Option<All>,
 
 	/// Override input colorspace. Same accepted values as space.
 	#[ffarg(name = "ispace")]
-	pub input_space: Option<ColorspaceSpace>,
+	pub input_space: Option<Space>,
 
 	/// Override input color primaries. Same accepted values as primaries.
 	#[ffarg(name = "iprimaries")]
-	pub input_primaries: Option<ColorspacePrimaries>,
+	pub input_primaries: Option<Primaries>,
 
 	/// Override input transfer characteristics. Same accepted values as trc.
 	#[ffarg(name = "itrc")]
-	pub input_transfer: Option<ColorspaceTransfer>,
+	pub input_transfer: Option<Transfer>,
 
 	/// Override input color range. Same accepted values as range.
 	#[ffarg(name = "irange")]
-	pub input_range: Option<ColorspaceRange>,
+	pub input_range: Option<Range>,
 }
 
 #[test]
@@ -328,10 +328,10 @@ fn filter_colorspace() {
 #[test]
 fn filter_colorspace_params() {
 	let filter = Colorspace {
-		all: Some(ColorspaceAll::Bt709),
-		transfer: Some(ColorspaceTransfer::Srgb),
-		range: Some(ColorspaceRange::Pc),
-		dither: Some(ColorspaceDither::FloydSteinberg),
+		all: Some(All::Bt709),
+		transfer: Some(Transfer::Srgb),
+		range: Some(Range::Pc),
+		dither: Some(Dither::FloydSteinberg),
 		..Default::default()
 	};
 	assert_eq!(filter.to_string(), "colorspace=all=bt709:trc=srgb:range=pc:dither=fsb");

@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum BlendMode {
+pub enum Mode {
 	#[strum(serialize = "addition")]
 	Addition,
 
@@ -132,24 +132,24 @@ pub enum BlendMode {
 #[filter(name = "blend")]
 pub struct Blend {
 	/// Set blend mode for pixel component 0. Default value is normal.
-	#[ffarg(default = BlendMode::Normal, omit_default)]
-	pub c0_mode: BlendMode,
+	#[ffarg(default = Mode::Normal, omit_default)]
+	pub c0_mode: Mode,
 
 	/// Set blend mode for pixel component 1. Default value is normal.
-	#[ffarg(default = BlendMode::Normal, omit_default)]
-	pub c1_mode: BlendMode,
+	#[ffarg(default = Mode::Normal, omit_default)]
+	pub c1_mode: Mode,
 
 	/// Set blend mode for pixel component 2. Default value is normal.
-	#[ffarg(default = BlendMode::Normal, omit_default)]
-	pub c2_mode: BlendMode,
+	#[ffarg(default = Mode::Normal, omit_default)]
+	pub c2_mode: Mode,
 
 	/// Set blend mode for pixel component 3. Default value is normal.
-	#[ffarg(default = BlendMode::Normal, omit_default)]
-	pub c3_mode: BlendMode,
+	#[ffarg(default = Mode::Normal, omit_default)]
+	pub c3_mode: Mode,
 
 	/// Set blend mode for all pixel components. Default value is normal.
-	#[ffarg(default = BlendMode::Normal, omit_default)]
-	pub all_mode: BlendMode,
+	#[ffarg(default = Mode::Normal, omit_default)]
+	pub all_mode: Mode,
 
 	/// Set blend opacity for pixel component 0. Only used in combination with pixel component
 	/// blend modes.
@@ -173,11 +173,9 @@ pub struct Blend {
 }
 
 impl Blend {
-	pub fn new(mode: BlendMode) -> Self {
-		Self {
-			all_mode: mode,
-			..Default::default()
-		}
+	#[must_use]
+	pub fn new(mode: Mode) -> Self {
+		Self { all_mode: mode, ..Default::default() }
 	}
 }
 
@@ -189,6 +187,6 @@ fn filter_blend() {
 
 #[test]
 fn filter_blend_oarams() {
-	let filter = Blend::new(BlendMode::SoftLight);
+	let filter = Blend::new(Mode::SoftLight);
 	assert_eq!(filter.to_string(), "blend=all_mode=softlight");
 }

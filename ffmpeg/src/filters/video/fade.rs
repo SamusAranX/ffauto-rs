@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, strum::Display, strum::EnumString)]
-pub enum FadeType {
+pub enum Type {
 	#[default]
 	#[strum(serialize = "in")]
 	In,
@@ -12,10 +12,10 @@ pub enum FadeType {
 /// Apply a fade-in/out effect to the input video.
 #[filter(name = "fade")]
 pub struct Fade {
-	/// The effect type can be either `FadeType::In` for a fade-in, or `FadeType::Out` for a fade-out effect.
-	/// Default is `FadeType::In`.
-	#[ffarg(name = "type", default = FadeType::In)]
-	pub r#type: FadeType,
+	/// The effect type can be either `Type::In` for a fade-in, or `Type::Out` for a fade-out effect.
+	/// Default is `Type::In`.
+	#[ffarg(name = "type", default = Type::In)]
+	pub r#type: Type,
 
 	// we're not using the sample-based timings so these are elided here
 	/// If set to true, fade only alpha channel, if one exists on the input.
@@ -52,7 +52,7 @@ fn filter_fade() {
 #[test]
 fn filter_fade_in_params() {
 	let filter = Fade {
-		r#type: FadeType::In,
+		r#type: Type::In,
 		start_time: 2.0,
 		duration: 5.0,
 		..Default::default()
@@ -63,7 +63,7 @@ fn filter_fade_in_params() {
 #[test]
 fn filter_fade_out_params() {
 	let filter = Fade {
-		r#type: FadeType::Out,
+		r#type: Type::Out,
 		start_time: 2.0,
 		duration: 5.0,
 		..Default::default()

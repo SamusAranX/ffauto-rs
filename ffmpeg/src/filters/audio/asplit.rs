@@ -10,6 +10,7 @@ pub struct Asplit {
 }
 
 impl Asplit {
+	#[must_use]
 	pub fn new(outputs: u32) -> Self {
 		Self { outputs }
 	}

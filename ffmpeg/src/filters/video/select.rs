@@ -19,10 +19,7 @@ pub struct Select {
 
 impl Select {
 	pub fn new<S: Into<String>>(expr: S, outputs: u32) -> Self {
-		Self {
-			expr: expr.into(),
-			outputs
-		}
+		Self { expr: expr.into(), outputs }
 	}
 }
 

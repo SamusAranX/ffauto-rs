@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum VolumePrecision {
+pub enum Precision {
 	/// 8-bit fixed-point; this limits input sample format to U8, S16, and S32.
 	#[strum(serialize = "fixed")]
 	Fixed,
@@ -17,7 +17,7 @@ pub enum VolumePrecision {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum VolumeReplayGain {
+pub enum ReplayGain {
 	/// Remove ReplayGain side data, ignoring its contents.
 	#[strum(serialize = "drop")]
 	#[default]
@@ -49,11 +49,11 @@ pub struct Volume {
 	/// The mathematical precision, which determines which input sample formats will be allowed,
 	/// affecting the precision of the volume scaling.
 	#[ffarg(omit_default)]
-	pub precision: VolumePrecision,
+	pub precision: Precision,
 
 	/// Choose the behaviour on encountering ReplayGain side data in input frames.
 	#[ffarg(omit_default)]
-	pub replaygain: VolumeReplayGain,
+	pub replaygain: ReplayGain,
 
 	/// Pre-amplification gain in dB to apply to the selected replaygain gain.
 	#[ffarg(omit_default)]

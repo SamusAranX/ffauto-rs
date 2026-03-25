@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum AfadeType {
+pub enum Type {
 	/// Fade-in effect.
 	#[strum(serialize = "in")]
 	#[default]
@@ -13,7 +13,7 @@ pub enum AfadeType {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum AfadeCurve {
+pub enum Curve {
 	/// Triangular, linear slope.
 	#[strum(serialize = "tri")]
 	#[default]
@@ -116,8 +116,8 @@ pub enum AfadeCurve {
 #[filter(name = "afade")]
 pub struct Afade {
 	/// Specify the effect type, either fade-in or fade-out.
-	#[ffarg(name = "type", default = AfadeType::In)]
-	pub r#type: AfadeType,
+	#[ffarg(name = "type", default = Type::In)]
+	pub r#type: Type,
 
 	// we're not using the sample-based timings so these are elided here
 	/// Specify the start time of the fade effect. The value must be specified as a time duration.
@@ -132,8 +132,7 @@ pub struct Afade {
 	pub duration: f64,
 
 	/// Set curve for fade transition.
-
-	pub curve: AfadeCurve,
+	pub curve: Curve,
 
 	/// Set the initial gain for fade-in or final gain for fade-out.
 	#[ffarg(omit_default)]
@@ -153,7 +152,7 @@ fn filter_afade() {
 #[test]
 fn filter_afade_in_params() {
 	let filter = Afade {
-		r#type: AfadeType::In,
+		r#type: Type::In,
 		start_time: 2.0,
 		duration: 5.0,
 		..Default::default()
@@ -164,7 +163,7 @@ fn filter_afade_in_params() {
 #[test]
 fn filter_afade_out_params() {
 	let filter = Afade {
-		r#type: AfadeType::Out,
+		r#type: Type::Out,
 		start_time: 2.0,
 		duration: 5.0,
 		..Default::default()

@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum PaletteuseDither {
+pub enum Dither {
 	/// Ordered 8x8 bayer dithering (deterministic).
 	#[strum(serialize = "bayer")]
 	Bayer,
@@ -42,7 +42,7 @@ pub enum PaletteuseDither {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum PaletteuseDiffMode {
+pub enum DiffMode {
 	#[strum(serialize = "none")]
 	#[default]
 	None,
@@ -61,7 +61,7 @@ pub enum PaletteuseDiffMode {
 #[filter(name = "paletteuse")]
 pub struct Paletteuse {
 	/// Select dithering mode.
-	pub dither: PaletteuseDither,
+	pub dither: Dither,
 
 	/// When bayer dithering is selected, this option defines the scale of the pattern (how much
 	/// the crosshatch pattern is visible). A low value means more visible pattern for less
@@ -72,7 +72,7 @@ pub struct Paletteuse {
 
 	/// If set, defines the zone to process.
 	#[ffarg(omit_default)]
-	pub diff_mode: PaletteuseDiffMode,
+	pub diff_mode: DiffMode,
 
 	/// Take new palette for each output frame.
 	#[ffarg(omit_default)]

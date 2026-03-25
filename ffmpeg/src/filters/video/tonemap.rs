@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum TonemapAlgorithm {
+pub enum Algorithm {
 	/// Do not apply any tone map, only desaturate overbright pixels.
 	#[strum(serialize = "none")]
 	#[default]
@@ -49,7 +49,7 @@ pub enum TonemapAlgorithm {
 pub struct Tonemap {
 	/// Set the tone map algorithm to use.
 	#[ffarg(name = "tonemap", omit_default)]
-	pub algorithm: TonemapAlgorithm,
+	pub algorithm: Algorithm,
 
 	/// Apply desaturation for highlights that exceed this level of brightness. The higher the
 	/// parameter, the more color information will be preserved. This helps prevent unnaturally
@@ -74,7 +74,7 @@ fn filter_tonemap() {
 #[test]
 fn filter_tonemap_params() {
 	let filter = Tonemap {
-		algorithm: TonemapAlgorithm::Reinhard,
+		algorithm: Algorithm::Reinhard,
 		desat: 5.0,
 		peak: Some(1000.0),
 	};

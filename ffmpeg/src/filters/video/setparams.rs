@@ -1,7 +1,7 @@
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsFieldMode {
+pub enum FieldMode {
 	/// Keep the same field property (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -21,7 +21,7 @@ pub enum SetParamsFieldMode {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsRange {
+pub enum Range {
 	/// Keep the same color range property (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -41,7 +41,7 @@ pub enum SetParamsRange {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsColorPrimaries {
+pub enum ColorPrimaries {
 	/// Keep the same color primaries property (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -85,7 +85,7 @@ pub enum SetParamsColorPrimaries {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsColorTransfer {
+pub enum ColorTransfer {
 	/// Keep the same color trc property (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -144,7 +144,7 @@ pub enum SetParamsColorTransfer {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsColorspace {
+pub enum Colorspace {
 	/// Keep the same colorspace property (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -194,7 +194,7 @@ pub enum SetParamsColorspace {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsChromaLocation {
+pub enum ChromaLocation {
 	/// Keep the same chroma location (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -223,7 +223,7 @@ pub enum SetParamsChromaLocation {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
-pub enum SetParamsAlphaMode {
+pub enum AlphaMode {
 	/// Keep the same alpha mode (default).
 	#[strum(serialize = "auto")]
 	#[default]
@@ -247,25 +247,25 @@ pub enum SetParamsAlphaMode {
 #[filter(name = "setparams")]
 pub struct SetParams {
 	#[ffarg(omit_default)]
-	pub field_mode: SetParamsFieldMode,
+	pub field_mode: FieldMode,
 
 	#[ffarg(omit_default)]
-	pub range: SetParamsRange,
+	pub range: Range,
 
 	#[ffarg(omit_default)]
-	pub color_primaries: SetParamsColorPrimaries,
+	pub color_primaries: ColorPrimaries,
+
+	#[ffarg(name = "color_trc", omit_default)]
+	pub color_transfer: ColorTransfer,
 
 	#[ffarg(omit_default)]
-	pub color_trc: SetParamsColorTransfer,
+	pub colorspace: Colorspace,
 
 	#[ffarg(omit_default)]
-	pub colorspace: SetParamsColorspace,
+	pub chroma_location: ChromaLocation,
 
 	#[ffarg(omit_default)]
-	pub chroma_location: SetParamsChromaLocation,
-
-	#[ffarg(omit_default)]
-	pub alpha_mode: SetParamsAlphaMode,
+	pub alpha_mode: AlphaMode,
 }
 
 #[test]
@@ -277,9 +277,9 @@ fn filter_setparams() {
 #[test]
 fn filter_setparams_params() {
 	let filter = SetParams {
-		colorspace: SetParamsColorspace::Bt709,
-		color_primaries: SetParamsColorPrimaries::Bt709,
-		color_trc: SetParamsColorTransfer::Iec61966_2_1,
+		colorspace: Colorspace::Bt709,
+		color_primaries: ColorPrimaries::Bt709,
+		color_transfer: ColorTransfer::Iec61966_2_1,
 		..Default::default()
 	};
 	assert_eq!(

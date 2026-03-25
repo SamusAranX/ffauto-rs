@@ -8,7 +8,6 @@ pub struct Eq {
 	pub contrast: f64,
 
 	/// Set the brightness expression. The value must be a float value in range -1.0 to 1.0.
-
 	pub brightness: f64,
 
 	/// Set the saturation expression. The value must be a float in range 0.0 to 3.0.
