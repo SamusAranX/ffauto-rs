@@ -9,6 +9,7 @@ pub(crate) mod fps;
 pub(crate) mod palettegen;
 pub(crate) mod paletteuse;
 pub(crate) mod scale;
+pub(crate) mod select;
 pub(crate) mod setparams;
 pub(crate) mod setsar;
 pub(crate) mod split;

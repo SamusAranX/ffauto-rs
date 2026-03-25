@@ -202,7 +202,7 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 					"Optional types are already omitted when None",
 				));
 			}
-			let inner_is_vec = extract_option_inner_type(ty).is_some_and(|inner| is_vec_type(inner));
+			let inner_is_vec = extract_option_inner_type(ty).is_some_and(is_vec_type);
 			if ffarg.default.is_some() || (ffarg.default_from.is_some() && !inner_is_vec) {
 				return Err(syn::Error::new_spanned(field, "Optional types always default to None"));
 			}
@@ -362,7 +362,7 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 				fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
 					let output: Vec<String> = [
 						#(#display_entries,)*
-					].into_iter().flatten().collect();
+					].into_iter().flatten().filter(|s| !s.is_empty()).collect();
 
 					if output.is_empty() {
 						write!(f, "{}", <Self as FFmpegFilter>::NAME)
