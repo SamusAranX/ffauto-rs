@@ -48,7 +48,7 @@ pub struct Loudnorm {
 
 	/// Measured threshold of input file. Range is -99.0 - +0.0.
 	#[ffarg(name = "measured_thresh")]
-	pub measured_thresh: f64,
+	pub measured_threshold: f64,
 
 	/// Set offset gain. Gain is applied before the true-peak limiter. Range is -99.0 - +99.0.
 	pub offset: f64,

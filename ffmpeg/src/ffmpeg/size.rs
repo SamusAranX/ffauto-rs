@@ -9,7 +9,7 @@ pub struct Size {
 }
 
 impl Size {
-	pub(crate) fn new(width: u64, height: u64) -> Self {
+	pub fn new(width: u64, height: u64) -> Self {
 		Size { width, height }
 	}
 }

@@ -1,6 +1,9 @@
 mod helpers;
 
-use crate::helpers::{add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type, is_option_type, is_vec_type, vec_value_expr};
+use crate::helpers::{
+	add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type, is_option_type,
+	is_vec_type, vec_display_expr,
+};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::{Parse, ParseStream};
@@ -27,6 +30,7 @@ struct FFArgArgs {
 	separator: Option<String>,
 	extra_flags: Vec<String>,
 	omit_default: bool,
+	noname: bool,
 	default_from: Option<syn::Ident>,
 }
 
@@ -38,6 +42,7 @@ impl Parse for FFArgArgs {
 		let mut separator: Option<String> = None;
 		let mut extra_flags: Vec<String> = Vec::new();
 		let mut omit_default = false;
+		let mut noname = false;
 
 		while !input.is_empty() {
 			let key: syn::Ident = input.parse()?;
@@ -45,6 +50,9 @@ impl Parse for FFArgArgs {
 			match key.to_string().as_str() {
 				"omit_default" => {
 					omit_default = true;
+				}
+				"noname" => {
+					noname = true;
 				}
 				_ => {
 					input.parse::<Token![=]>()?;
@@ -89,12 +97,17 @@ impl Parse for FFArgArgs {
 			}
 		}
 
+		if name.is_some() && noname {
+			return Err(syn::Error::new(input.span(), "name and noname are mutually exclusive"));
+		}
+
 		Ok(FFArgArgs {
 			name,
 			default,
 			separator,
 			extra_flags,
 			omit_default,
+			noname,
 			default_from,
 		})
 	}
@@ -220,25 +233,46 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 		// Option<T> fields: only included in Display when Some.
 		if is_option {
 			let inner_ty = extract_option_inner_type(ty).unwrap();
-			let value_expr = if is_vec_type(inner_ty) {
+			if is_vec_type(inner_ty) {
 				let default_from_extend = ffarg.default_from.as_ref().map(|source| {
 					quote! { v.push(self.#source.to_string()); }
 				});
-				vec_value_expr(quote! { val }, &ffarg, default_from_extend)
-			} else if is_display_type(inner_ty) {
-				quote! { val.to_string() }
-			} else if is_bool_type(inner_ty) {
-				quote! { u8::from(*val).to_string() }
+				let noname = ffarg.noname;
+				let vec_expr = vec_display_expr(quote! { val }, &ffarg, default_from_extend, |join| {
+					if noname {
+						quote! { format!("{}", #join) }
+					} else {
+						quote! { format!("{}={}", #name, #join) }
+					}
+				});
+				display_entries.push(quote! {
+					if let Some(val) = &self.#ident {
+						#vec_expr
+					} else {
+						None
+					}
+				});
 			} else {
-				quote! { val.to_string() }
-			};
-			display_entries.push(quote! {
-				if let Some(val) = &self.#ident {
-					Some(format!("{}={}", #name, #value_expr))
+				let value_expr = if is_display_type(inner_ty) {
+					quote! { val.to_string() }
+				} else if is_bool_type(inner_ty) {
+					quote! { u8::from(*val).to_string() }
 				} else {
-					None
-				}
-			});
+					quote! { val.to_string() }
+				};
+				let format_expr = if ffarg.noname {
+					quote! { format!("{}", #value_expr) }
+				} else {
+					quote! { format!("{}={}", #name, #value_expr) }
+				};
+				display_entries.push(quote! {
+					if let Some(val) = &self.#ident {
+						Some(#format_expr)
+					} else {
+						None
+					}
+				});
+			}
 			continue;
 		}
 
@@ -253,7 +287,16 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 				quote! { v.push(self.#source.to_string()); }
 			});
 
-			vec_value_expr(quote! { self.#ident }, &ffarg, default_from_extend)
+			let noname = ffarg.noname;
+			let vec_expr = vec_display_expr(quote! { self.#ident }, &ffarg, default_from_extend, |join| {
+				if noname {
+					quote! { format!("{}", #join) }
+				} else {
+					quote! { format!("{}={}", #name, #join) }
+				}
+			});
+			display_entries.push(vec_expr);
+			continue;
 		} else {
 			// enums fall into this branch (along with everything else) but
 			// the enums used for filters generally implement Display thanks to strum.
@@ -263,6 +306,12 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 			quote! { self.#ident.to_string() }
 		};
 
+		let format_expr = if ffarg.noname {
+			quote! { format!("{}", #value_expr) }
+		} else {
+			quote! { format!("{}={}", #name, #value_expr) }
+		};
+
 		if ffarg.omit_default {
 			let default_val = match &ffarg.default {
 				Some(expr) => quote! { #expr },
@@ -270,14 +319,14 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 			};
 			display_entries.push(quote! {
 				if self.#ident != #default_val {
-					Some(format!("{}={}", #name, #value_expr))
+					Some(#format_expr)
 				} else {
 					None
 				}
 			});
 		} else {
 			display_entries.push(quote! {
-				Some(format!("{}={}", #name, #value_expr))
+				Some(#format_expr)
 			});
 		}
 	}

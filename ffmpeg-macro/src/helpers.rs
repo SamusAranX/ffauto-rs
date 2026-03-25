@@ -1,5 +1,5 @@
-use proc_macro2::TokenStream;
 use crate::{DISPLAY_TYPES, FFArgArgs};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Expr, Type};
 
@@ -76,31 +76,49 @@ pub(crate) fn field_name(ident: &syn::Ident, ffarg: &FFArgArgs) -> String {
 	s.strip_prefix("r#").unwrap_or(&s).to_string()
 }
 
-/// Generates a `TokenStream` that joins a `Vec<String>` with a separator,
-/// optionally extending it with extra flags and/or a `default_from` source field value.
-pub(crate) fn vec_value_expr(
+/// Generates a `TokenStream` for a block that builds the final `Vec<String>` from the given
+/// vec access expression (applying `default_from` and `extra_flags`), then returns
+/// `Option<String>`: `Some(formatted)` if non-empty, `None` if empty.
+///
+/// The `format_fn` closure receives the join expression and should return the final
+/// format expression (e.g. with or without the field name).
+pub(crate) fn vec_display_expr(
 	vec_access: TokenStream,
 	ffarg: &FFArgArgs,
 	default_from_extend: Option<TokenStream>,
+	format_fn: impl FnOnce(TokenStream) -> TokenStream,
 ) -> TokenStream {
 	let sep = ffarg.separator.clone().unwrap_or(":".to_string());
 	let flags = &ffarg.extra_flags;
 
-	if flags.is_empty() && default_from_extend.is_none() {
-		quote! { #vec_access.join(#sep) }
+	let extra_extends = if flags.is_empty() {
+		quote! {}
 	} else {
-		let extra_extends = if flags.is_empty() {
-			quote! {}
-		} else {
-			quote! { v.extend([#(#flags.to_string()),*]); }
-		};
+		quote! { v.extend([#(#flags.to_string()),*]); }
+	};
+
+	let needs_mut = default_from_extend.is_some() || !flags.is_empty();
+	let build = if needs_mut {
 		quote! {
-			{
-				let mut v = #vec_access.clone();
-				#default_from_extend
-				#extra_extends
-				v.dedup();
-				v.join(#sep)
+			let mut v = #vec_access.clone();
+			#default_from_extend
+			#extra_extends
+			v.dedup();
+		}
+	} else {
+		quote! { let v = &#vec_access; }
+	};
+
+	let join_expr = quote! { v.join(#sep) };
+	let format_expr = format_fn(join_expr);
+
+	quote! {
+		{
+			#build
+			if v.is_empty() {
+				None
+			} else {
+				Some(#format_expr)
 			}
 		}
 	}

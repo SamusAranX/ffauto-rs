@@ -5,7 +5,7 @@ use ffmpeg_macro::filter;
 #[filter(name = "format")]
 pub struct Format {
 	/// A list of pixel format names.
-	#[ffarg(separator = "|")]
+	#[ffarg(noname, separator = "|")]
 	pub pix_fmts: Vec<String>,
 
 	/// A list of pixel format names.
@@ -23,10 +23,16 @@ pub struct Format {
 
 impl Format {
 	#[must_use]
-	pub fn new(pix_fmt: String) -> Self {
+	pub fn new<S: Into<String>>(pix_fmt: S) -> Self {
 		Self {
-			pix_fmts: vec![pix_fmt],
+			pix_fmts: vec![pix_fmt.into()],
 			..Default::default()
 		}
 	}
+}
+
+#[test]
+fn filter_format() {
+	let filter = Format::new("rgb48");
+	assert_eq!(filter.to_string(), "format=rgb48");
 }
