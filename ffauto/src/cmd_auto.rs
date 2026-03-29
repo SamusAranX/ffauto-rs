@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
+use ffmpeg::filters::{Afade, Crop, Fade, FilterChain, Fps, Volume};
 use isolang::Language;
 
 fn fix_language_code(s: &str) -> &str {
@@ -111,7 +112,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 					_ => panic!("you shouldn't be here"),
 				} {
 					let lang = fix_language_code(lang);
-					ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
+					ffmpeg_args.add_two(
+						format!("-metadata:s:{output_stream_idx}"),
+						format!("language={lang}"),
+					);
 				}
 
 				used_indices.push(used_idx);
@@ -122,10 +126,16 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 					continue;
 				}
 
-				ffmpeg_args.add_two("-map", format!("0:{}:m:language:{stream}", stream_type.identifier()));
+				ffmpeg_args.add_two(
+					"-map",
+					format!("0:{}:m:language:{stream}", stream_type.identifier()),
+				);
 
 				let lang = fix_language_code(stream);
-				ffmpeg_args.add_two(format!("-metadata:s:{output_stream_idx}"), format!("language={lang}"));
+				ffmpeg_args.add_two(
+					format!("-metadata:s:{output_stream_idx}"),
+					format!("language={lang}"),
+				);
 
 				used_indices.push(used_lang);
 			} else if stream_type == StreamType::Subtitle {
@@ -187,7 +197,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		duration.as_secs_f64() - fade_out
 	} else {
 		// duration wasn't given, use video duration
-		(video_duration.saturating_sub(seek.unwrap_or(Duration::ZERO))).as_secs_f64() - fade_out
+		video_duration
+			.saturating_sub(seek.unwrap_or(Duration::ZERO))
+			.as_secs_f64()
+			- fade_out
 	};
 
 	// region Audio Filtering
@@ -217,22 +230,21 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			}
 
 			if args.needs_audio_filter() {
-				let mut audio_filter: Vec<String> = vec![];
+				let mut audio_filters = FilterChain::new();
 
 				#[allow(clippy::float_cmp)]
 				if args.audio_volume != 1.0 {
-					audio_filter.push(format!("volume={:.3}", args.audio_volume));
+					audio_filters.push(Volume::new(args.audio_volume));
 				}
 
 				if fade_in > 0.0 {
-					audio_filter.push(format!("afade=t=in:st=0:d={fade_in:.3}:curve=losi"));
+					audio_filters.push(Afade::r#in(0.0, fade_in));
 				}
 				if fade_out > 0.0 {
-					audio_filter.push(format!("afade=t=out:st={fade_out_start:.3}:d={fade_out:.3}:curve=losi"));
+					audio_filters.push(Afade::out(fade_out_start, fade_out));
 				}
 
-				let audio_filter_str = audio_filter.join(",");
-				ffmpeg_args.add_two("-af", audio_filter_str);
+				ffmpeg_args.add_two("-af", audio_filters.to_string());
 			}
 		}
 	}
@@ -242,7 +254,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	// region Video Filtering
 
 	ffmpeg_args.add_two("-c:v", args.video_codec.video_codec());
-	ffmpeg_args.add_two("-crf", format!("{}", &args.video_codec.crf_with_garbage(args.garbage)));
+	ffmpeg_args.add_two(
+		"-crf",
+		format!("{}", &args.video_codec.crf_with_garbage(args.garbage)),
+	);
 	ffmpeg_args.add_two("-pix_fmt", args.video_codec.pix_fmt());
 	ffmpeg_args.add_two("-preset", "slower");
 	ffmpeg_args.add("-tune");
@@ -301,48 +316,45 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	}
 
 	if args.needs_video_filter() {
-		let mut video_filter: Vec<String> = vec![];
+		let mut video_filters = FilterChain::new();
 
+		#[allow(clippy::single_match)]
 		match args.optimize_target {
-			// limit fps to 30
-			// TODO: find a nicer way to do this
 			Some(OptimizeTarget::Ipod | OptimizeTarget::Ipod5) => {
+				// cap framerate at 30
 				if let Some(fps) = video_stream.frame_rate()
-					&& fps > 30.0 && let Some(fps_filter) =
-					args.generate_fps_filter_explicit(video_stream.frame_rate(), 30.0)
+					&& fps > 30.0
 				{
-					video_filter.push(fps_filter);
+					video_filters.push(Fps::target(fps, 30.0));
 				}
 			}
-			_ => {
-				if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
-					video_filter.push(fps_filter);
-				}
-			}
+			_ => (),
 		}
 
-		if let Some(crop_filter) = args.generate_crop_filter() {
-			video_filter.push(crop_filter);
+		if let Some(Ok(crop)) = args.crop.clone().map(Crop::from_arg) {
+			video_filters.push(crop);
 		}
 
-		if let Some(scale_filter) = args.generate_scale_filter() {
-			video_filter.push(scale_filter);
+		if let Some(scale_filter) =
+			generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode)
+		{
+			video_filters.push(scale_filter);
 		}
 
 		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
-			video_filter.push(TONEMAP_FILTER.parse()?);
+			let tonemap_chain = sdr_tonemap_chain();
+			video_filters.extend(tonemap_chain);
 		}
 
 		if fade_in > 0.0 {
-			video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
+			video_filters.push(Fade::r#in(0.0, fade_in));
 		}
 		if fade_out > 0.0 {
-			video_filter.push(format!("fade=t=out:st={fade_out_start:.3}:d={fade_out:.3}"));
+			video_filters.push(Fade::out(fade_out_start, fade_out));
 		}
 
-		let video_filter_str = video_filter.join(",");
-		if !video_filter_str.is_empty() {
-			ffmpeg_args.add_two("-vf", video_filter_str);
+		if !video_filters.is_empty() {
+			ffmpeg_args.add_two("-vf", video_filters.to_string());
 		}
 	}
 

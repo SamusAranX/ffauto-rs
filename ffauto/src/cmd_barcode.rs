@@ -6,6 +6,10 @@ use crate::vec_push_ext::PushStrExt;
 use ffmpeg::ffmpeg::enums::BarcodeMode;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
+use ffmpeg::filters::{
+	Blend, BlendMode, Colorspace, Crop, FilterChain, Format, Palettegen, PalettegenStatsMode, Scale,
+	ScaleAlgorithm, SetParams, SetSar, Split, Tile,
+};
 
 pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	let probe = match args.video_frames {
@@ -34,63 +38,77 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 
 	// region Filtering
 
-	let mut video_pipelines: Vec<Vec<String>> = vec![];
-	let mut input_pipeline: Vec<String> = vec![];
+	let mut video_pipelines: Vec<FilterChain> = vec![];
+	let mut input_pipeline =
+		FilterChain::with_inputs_and_outputs(vec![video_stream_id], vec!["video_out".to_string()]);
 
 	if video_stream.is_hdr() {
-		input_pipeline.push(format!("[{video_stream_id}]{TONEMAP_FILTER}"));
-		input_pipeline.add("format=rgb48be");
-	} else {
-		input_pipeline.add(format!("[{video_stream_id}]format=rgb48be"));
+		input_pipeline.extend(sdr_tonemap_chain());
 	}
+	input_pipeline.push(Format::new("rgb48be"));
 
+	#[allow(clippy::cast_possible_truncation)]
 	match args.barcode_mode {
 		BarcodeMode::Frames => {
-			input_pipeline.add(format!("scale=w=1:h={video_height}:flags=bicubic+{SCALE_FLAGS}"));
-			input_pipeline.add(format!("tile={video_frames}x1 [video_out]"));
+			input_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Bicubic));
+			input_pipeline.push(Tile::columns(*video_frames));
 			video_pipelines.push(input_pipeline);
 		}
 		BarcodeMode::Colors => {
-			input_pipeline.add(format!("scale=w=320:h=-2:flags=bicubic+{SCALE_FLAGS}"));
-			input_pipeline.add("colorspace=all=bt709:trc=srgb:range=pc"); // palettegen complains if this isn't here
-			input_pipeline.add("palettegen=max_colors=2:reserve_transparent=0:stats_mode=single");
-			input_pipeline.add("split [p1][p2]");
+			input_pipeline.push(Scale::preserve_aspect_ratio_width(320, ScaleAlgorithm::default()));
+			input_pipeline.push(Colorspace::srgb()); // palettegen complains if this isn't here
+			input_pipeline.push(Palettegen::new(2, false, PalettegenStatsMode::Single));
+			input_pipeline.push(Split::new(2));
+			input_pipeline.outputs = vec!["p1".to_string(), "p2".to_string()];
 			video_pipelines.push(input_pipeline);
 
-			video_pipelines.push(vec![
-				"[p1] crop=1:1:0:0".to_string(), // dark
-				format!("scale=w=1:h={video_height}:flags=neighbor+{SCALE_FLAGS}"),
-				format!("tile={video_frames}x1 [s1]"),
-			]);
-			video_pipelines.push(vec![
-				"[p2] crop=1:1:1:0".to_string(), // light
-				format!("scale=w=1:h={video_height}:flags=neighbor+{SCALE_FLAGS}"),
-				format!("tile={video_frames}x1 [s2]"),
-			]);
-			video_pipelines.push(vec!["[s2][s1] blend=all_mode=softlight [video_out]".to_string()]);
+			let mut light_pixel_pipeline =
+				FilterChain::with_inputs_and_outputs(vec!["p1".to_string()], vec!["s1".to_string()]);
+			light_pixel_pipeline.push(Crop::new(1, 1, 0, 0));
+			light_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
+			light_pixel_pipeline.push(Tile::rows(*video_frames));
+
+			let mut dark_pixel_pipeline =
+				FilterChain::with_inputs_and_outputs(vec!["p2".to_string()], vec!["s2".to_string()]);
+			dark_pixel_pipeline.push(Crop::new(1, 1, 1, 0));
+			dark_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
+			dark_pixel_pipeline.push(Tile::rows(*video_frames));
+
+			let mut blend_pipeline = FilterChain::with_inputs_and_outputs(
+				vec!["s1".to_string(), "s2".to_string()],
+				vec!["video_out".to_string()],
+			);
+			blend_pipeline.push(Blend::new(BlendMode::SoftLight));
 		}
 	}
 
-	let mut output_pipeline = vec![];
-	output_pipeline.add("[video_out] setsar=1");
+	let mut output_pipeline = FilterChain::with_inputs(vec!["video_out".to_string()]);
+	output_pipeline.push(SetSar::square());
 
 	if args.deep_color {
-		output_pipeline.add("format=rgb48be");
+		output_pipeline.push(Format::new("rgb48be"));
 	} else {
-		output_pipeline.add("format=rgb24");
+		output_pipeline.push(Format::new("rgb24"));
 	}
+
+	#[allow(clippy::cast_possible_truncation)]
 	if let Some(output_height) = args.height {
-		output_pipeline.add(format!("scale=h={output_height}:flags=bicubic+{SCALE_FLAGS}"));
+		output_pipeline.push(Scale::new(
+			*video_frames as i32,
+			output_height as i32,
+			ScaleAlgorithm::Neighbor,
+		));
 	}
-	output_pipeline.add("setparams=colorspace=bt709:color_primaries=bt709:color_trc=iec61966-2-1");
+
+	output_pipeline.push(SetParams::srgb());
 	video_pipelines.push(output_pipeline);
 
-	let filter_graph = video_pipelines
+	let filter_string = video_pipelines
 		.iter()
-		.map(|p| p.join(","))
-		.collect::<Vec<String>>()
+		.map(ToString::to_string)
+		.collect::<Vec<_>>()
 		.join(";");
-	ffmpeg_args.add_two("-filter_complex", filter_graph);
+	ffmpeg_args.add_two("-filter_complex", filter_string);
 
 	// endregion
 

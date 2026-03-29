@@ -65,6 +65,18 @@ pub struct Tonemap {
 	pub peak: Option<f64>,
 }
 
+impl Tonemap {
+	#[must_use]
+	pub fn new(algorithm: Algorithm, desat: f64) -> Self {
+		Tonemap { algorithm, desat, ..Default::default() }
+	}
+
+	#[must_use]
+	pub fn new_peak(algorithm: Algorithm, desat: f64, peak: Option<f64>) -> Self {
+		Tonemap { algorithm, desat, peak }
+	}
+}
+
 #[test]
 fn filter_tonemap() {
 	let filter = Tonemap::default();

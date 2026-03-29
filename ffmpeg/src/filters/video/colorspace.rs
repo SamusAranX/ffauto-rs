@@ -1,3 +1,4 @@
+use crate::filters::{ColorspaceAll, ColorspaceRange, ColorspaceTransfer};
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
@@ -319,6 +320,18 @@ pub struct Colorspace {
 	pub input_range: Option<Range>,
 }
 
+impl Colorspace {
+	#[must_use]
+	pub fn srgb() -> Self {
+		Self {
+			all: Some(ColorspaceAll::Bt709),
+			transfer: Some(ColorspaceTransfer::Srgb),
+			range: Some(ColorspaceRange::Pc),
+			..Default::default()
+		}
+	}
+}
+
 #[test]
 fn filter_colorspace() {
 	let filter = Colorspace::default();
@@ -334,5 +347,8 @@ fn filter_colorspace_params() {
 		dither: Some(Dither::FloydSteinberg),
 		..Default::default()
 	};
-	assert_eq!(filter.to_string(), "colorspace=all=bt709:trc=srgb:range=pc:dither=fsb");
+	assert_eq!(
+		filter.to_string(),
+		"colorspace=all=bt709:trc=srgb:range=pc:dither=fsb"
+	);
 }

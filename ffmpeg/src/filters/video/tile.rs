@@ -13,13 +13,33 @@ pub struct Tile {
 	pub nb_frames: u64,
 
 	/// Set the outer border margin in pixels. Range is 0 to 1024.
+	#[ffarg(omit_default)]
 	pub margin: u16,
 
 	/// Set the inner border thickness in pixels (i.e. the number of pixels between frames). Range
 	/// is 0 to 1024.
+	#[ffarg(omit_default)]
 	pub padding: u16,
 
 	/// Specify the color of the unused area.
-	#[ffarg(default = "black")]
+	#[ffarg(default = "black", omit_default)]
 	pub color: String,
+}
+
+impl Tile {
+	#[must_use]
+	pub fn columns(num: u64) -> Self {
+		Self {
+			layout: format!("{num}x1"),
+			..Default::default()
+		}
+	}
+
+	#[must_use]
+	pub fn rows(num: u64) -> Self {
+		Self {
+			layout: format!("1x{num}"),
+			..Default::default()
+		}
+	}
 }

@@ -47,7 +47,9 @@ impl FFProbeOutput {
 			return Ok(Duration::from_secs_f64(format_duration.parse()?));
 		}
 
-		if let (Some(read_frames), Some(frame_rate)) = (&video_stream.nb_read_frames, video_stream.frame_rate()) {
+		if let (Some(read_frames), Some(frame_rate)) =
+			(&video_stream.nb_read_frames, video_stream.frame_rate())
+		{
 			// divide number of frames by frame rate and return the result
 
 			let read_frames = read_frames.parse::<f64>()?;
@@ -69,7 +71,11 @@ impl FFProbeOutput {
 			.nth(index)
 	}
 
-	fn get_typed_stream_by_language<S: Into<String>>(&self, lang: S, stream_type: &StreamType) -> Option<&Stream> {
+	fn get_typed_stream_by_language<S: Into<String>>(
+		&self,
+		lang: S,
+		stream_type: &StreamType,
+	) -> Option<&Stream> {
 		let lang = lang.into();
 		self.streams.iter().find(|s| {
 			s.codec_type == *stream_type

@@ -29,6 +29,25 @@ pub struct Color {
 	pub sar: String,
 }
 
+impl Color {
+	pub fn new<S: Into<String>>(width: u64, height: u64, color: S) -> Self {
+		Self {
+			color: color.into(),
+			size: format!("{width}x{height}"),
+			..Default::default()
+		}
+	}
+
+	pub fn pixel<S: Into<String>>(color: S) -> Self {
+		Self {
+			color: color.into(),
+			size: "1x1".to_string(),
+			rate: 1.0,
+			..Default::default()
+		}
+	}
+}
+
 #[test]
 fn filter_color() {
 	let filter = Color::default();

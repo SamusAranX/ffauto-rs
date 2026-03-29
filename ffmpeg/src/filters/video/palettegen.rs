@@ -1,6 +1,6 @@
 use ffmpeg_macro::filter;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, clap::ValueEnum, strum::Display, strum::EnumString)]
 pub enum StatsMode {
 	/// Compute full frame histograms.
 	#[default]
@@ -39,6 +39,18 @@ pub struct Palettegen {
 	/// Set statistics mode.
 	#[ffarg(default = StatsMode::Full, omit_default)]
 	pub stats_mode: StatsMode,
+}
+
+impl Palettegen {
+	#[must_use]
+	pub fn new(max_colors: u16, reserve_transparent: bool, stats_mode: StatsMode) -> Self {
+		Self {
+			max_colors,
+			reserve_transparent,
+			stats_mode,
+			..Default::default()
+		}
+	}
 }
 
 #[test]

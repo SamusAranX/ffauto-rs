@@ -16,7 +16,8 @@ pub fn parse_ffmpeg_duration<S: Into<String>>(timestamp: S) -> Option<Duration> 
 	}
 
 	let re =
-		Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$").unwrap();
+		Regex::new(r"^(?:(?:(?P<hours>\d+):)?(?P<minutes>\d+):)?(?P<seconds>\d+)(?:\.?(?P<millis>\d+))?$")
+			.unwrap();
 
 	let groups: Captures = match re.captures(&timestamp) {
 		None => {
@@ -85,7 +86,10 @@ pub fn format_ffmpeg_timestamp(duration: Duration, format: &TimestampFormat) -> 
 			let millis_str = format!(".{millis:0>3}");
 			let millis_str = millis_str.trim_end_matches('0').trim_end_matches('.');
 			if secs_total >= 3600.0 {
-				format!("{:0>2}:{:0>2}:{secs:0>2}{millis_str}", hours as u64, minutes as u64)
+				format!(
+					"{:0>2}:{:0>2}:{secs:0>2}{millis_str}",
+					hours as u64, minutes as u64
+				)
 			} else if secs_total >= 60.0 {
 				format!("{:0>2}:{secs:0>2}{millis_str}", minutes as u64)
 			} else {
@@ -94,7 +98,10 @@ pub fn format_ffmpeg_timestamp(duration: Duration, format: &TimestampFormat) -> 
 		}
 		TimestampFormat::Full => {
 			let micros = duration.subsec_micros();
-			format!("{:0>2}:{:0>2}:{secs:0>2}.{micros:0>6}", hours as u64, minutes as u64)
+			format!(
+				"{:0>2}:{:0>2}:{secs:0>2}.{micros:0>6}",
+				hours as u64, minutes as u64
+			)
 		}
 		TimestampFormat::TwoDigits => {
 			let millis_two_digits = (duration.as_secs_f64().fract() * 100.0).floor() as u64;

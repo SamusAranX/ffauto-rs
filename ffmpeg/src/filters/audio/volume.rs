@@ -63,3 +63,10 @@ pub struct Volume {
 	#[ffarg(default = true, omit_default)]
 	pub replaygain_noclip: bool,
 }
+
+impl Volume {
+	#[must_use]
+	pub fn new(volume: f64) -> Self {
+		Self { volume, ..Default::default() }
+	}
+}

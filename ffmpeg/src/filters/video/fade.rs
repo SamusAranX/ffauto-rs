@@ -43,6 +43,28 @@ pub struct Fade {
 	pub color: String,
 }
 
+impl Fade {
+	#[must_use]
+	pub fn r#in(start_time: f64, duration: f64) -> Self {
+		Self {
+			r#type: Type::In,
+			start_time,
+			duration,
+			..Default::default()
+		}
+	}
+
+	#[must_use]
+	pub fn out(start_time: f64, duration: f64) -> Self {
+		Self {
+			r#type: Type::Out,
+			start_time,
+			duration,
+			..Default::default()
+		}
+	}
+}
+
 #[test]
 fn filter_fade() {
 	let filter = Fade::default();

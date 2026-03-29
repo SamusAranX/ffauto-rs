@@ -143,6 +143,30 @@ pub struct Afade {
 	pub unity: f64,
 }
 
+impl Afade {
+	#[must_use]
+	pub fn r#in(start_time: f64, duration: f64) -> Self {
+		Self {
+			r#type: Type::In,
+			start_time,
+			duration,
+			curve: Curve::LogisticSigmoid,
+			..Default::default()
+		}
+	}
+
+	#[must_use]
+	pub fn out(start_time: f64, duration: f64) -> Self {
+		Self {
+			r#type: Type::Out,
+			start_time,
+			duration,
+			curve: Curve::LogisticSigmoid,
+			..Default::default()
+		}
+	}
+}
+
 #[test]
 fn filter_afade() {
 	let filter = Afade::default();
@@ -157,7 +181,10 @@ fn filter_afade_in_params() {
 		duration: 5.0,
 		..Default::default()
 	};
-	assert_eq!(filter.to_string(), "afade=type=in:start_time=2:duration=5:curve=tri");
+	assert_eq!(
+		filter.to_string(),
+		"afade=type=in:start_time=2:duration=5:curve=tri"
+	);
 }
 
 #[test]
@@ -168,5 +195,8 @@ fn filter_afade_out_params() {
 		duration: 5.0,
 		..Default::default()
 	};
-	assert_eq!(filter.to_string(), "afade=type=out:start_time=2:duration=5:curve=tri");
+	assert_eq!(
+		filter.to_string(),
+		"afade=type=out:start_time=2:duration=5:curve=tri"
+	);
 }

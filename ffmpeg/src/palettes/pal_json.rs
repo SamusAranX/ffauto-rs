@@ -21,10 +21,11 @@ impl Palette {
 				let stripped = trimmed.strip_prefix("0x").unwrap_or(trimmed);
 				let stripped = stripped.strip_prefix("#").unwrap_or(stripped);
 
-				let parsed_int = u32::from_str_radix(stripped, 16).map_err(|_| PaletteError::InvalidJsonEntry {
-					index: i,
-					msg: format!("\"{stripped}\" is not a valid hexadecimal color value"),
-				})?;
+				let parsed_int =
+					u32::from_str_radix(stripped, 16).map_err(|_| PaletteError::InvalidJsonEntry {
+						index: i,
+						msg: format!("\"{stripped}\" is not a valid hexadecimal color value"),
+					})?;
 
 				Ok(Color::from(parsed_int))
 			})

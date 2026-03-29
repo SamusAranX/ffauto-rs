@@ -13,7 +13,8 @@ const GIMP_MAGIC: &str = "GIMP Palette";
 
 impl Palette {
 	fn from_gpl_internal<R: Read + BufRead>(reader: &mut R) -> Result<Palette, PaletteError> {
-		let re = Regex::new(r"^\s*(?P<r>\d+)\s+(?P<g>\d+)\s+(?P<b>\d+)(?:\s+(?P<a>\d+))?\s+(?P<name>.*)?$").unwrap();
+		let re = Regex::new(r"^\s*(?P<r>\d+)\s+(?P<g>\d+)\s+(?P<b>\d+)(?:\s+(?P<a>\d+))?\s+(?P<name>.*)?$")
+			.unwrap();
 
 		let mut pal = Palette::default();
 

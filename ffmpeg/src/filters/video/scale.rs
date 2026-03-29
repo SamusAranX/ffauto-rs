@@ -1,8 +1,8 @@
+use crate::ffmpeg::size::parse_ffmpeg_size;
+use anyhow::Result;
 use ffmpeg_macro::filter;
 
-// TODO: tie scale algorithm into the filter struct somehow
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, clap::ValueEnum, strum::Display, strum::EnumString)]
 pub enum Algorithm {
 	/// Fast bilinear scaling algorithm.
 	#[strum(serialize = "fast_bilinear")]
@@ -122,6 +122,54 @@ pub struct Scale {
 	/// pixels.
 	#[ffarg(omit_default)]
 	pub reset_sar: bool,
+}
+
+impl Scale {
+	#[must_use]
+	pub fn new(width: i32, height: i32, algorithm: Algorithm) -> Self {
+		Self {
+			width,
+			height,
+			scale_algorithm: algorithm,
+			..Default::default()
+		}
+	}
+
+	#[must_use]
+	pub fn preserve_aspect_ratio_width(width: i32, algorithm: Algorithm) -> Self {
+		let mut scale = Self::new(width, -2, algorithm);
+		scale.force_original_aspect_ratio = ForceOriginalAspectRatio::Decrease;
+		scale
+	}
+
+	#[must_use]
+	pub fn preserve_aspect_ratio_height(height: i32, algorithm: Algorithm) -> Self {
+		let mut scale = Self::new(-2, height, algorithm);
+		scale.force_original_aspect_ratio = ForceOriginalAspectRatio::Decrease;
+		scale
+	}
+
+	#[allow(clippy::cast_possible_truncation)]
+	pub fn from_size(size: String, algorithm: Algorithm) -> Result<Self> {
+		let parsed_size = parse_ffmpeg_size(size)?;
+		Ok(Self {
+			width: parsed_size.width as i32,
+			height: parsed_size.height as i32,
+			scale_algorithm: algorithm,
+			force_original_aspect_ratio: ForceOriginalAspectRatio::Decrease,
+			..Default::default()
+		})
+	}
+
+	#[must_use]
+	pub fn row(width: i32, algorithm: Algorithm) -> Self {
+		Self::new(width, 1, algorithm)
+	}
+
+	#[must_use]
+	pub fn column(height: i32, algorithm: Algorithm) -> Self {
+		Self::new(1, height, algorithm)
+	}
 }
 
 #[test]

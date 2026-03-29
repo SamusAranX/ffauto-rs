@@ -9,14 +9,22 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tempfile::Builder;
 
-pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bool, debug: bool) -> Result<()> {
+pub fn ffmpeg(
+	in_args: &[String],
+	accelerator: Option<String>,
+	show_progress: bool,
+	debug: bool,
+) -> Result<()> {
 	let temp_file = Builder::new()
 		.prefix("ffmpeg")
 		.suffix(".txt")
 		.tempfile()
 		.context("Couldn't create temp file: {e}")?;
 
-	let mut args = vec!["-progress".to_string(), temp_file.path().to_str().unwrap().to_string()];
+	let mut args = vec![
+		"-progress".to_string(),
+		temp_file.path().to_str().unwrap().to_string(),
+	];
 
 	if let Some(accelerator) = accelerator {
 		args.extend(["-hwaccel".to_string(), accelerator]);
@@ -29,7 +37,13 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 
 		let ffmpeg_args = &args
 			.iter()
-			.map(|a| if a.contains(' ') { format!("\"{a}\"") } else { a.clone() })
+			.map(|a| {
+				if a.contains(' ') {
+					format!("\"{a}\"")
+				} else {
+					a.clone()
+				}
+			})
 			.collect::<Vec<String>>();
 
 		println!("full command: ffmpeg {}", ffmpeg_args.join(" "));
@@ -163,7 +177,10 @@ pub fn ffmpeg(in_args: &[String], accelerator: Option<String>, show_progress: bo
 
 	let exit_status = process.wait().expect("failed to wait for ffmpeg");
 	if !exit_status.success() {
-		anyhow::bail!("ffmpeg exited with status code {}", exit_status.code().unwrap_or(-1))
+		anyhow::bail!(
+			"ffmpeg exited with status code {}",
+			exit_status.code().unwrap_or(-1)
+		)
 	}
 
 	let execution_time = start.elapsed();

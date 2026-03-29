@@ -42,7 +42,7 @@ fn palette_parsing() {
 				.iter()
 				.cloned()
 				.map(|c| c.name)
-				.collect::<Vec<String>>();
+				.collect::<Vec<_>>();
 			assert!(names.iter().all(|n| n == "Untitled"));
 		}
 
@@ -71,7 +71,7 @@ fn palette_parsing_from_string() {
 				.iter()
 				.cloned()
 				.map(|c| c.name)
-				.collect::<Vec<String>>();
+				.collect::<Vec<_>>();
 			assert!(names.iter().all(|n| n == "Untitled"));
 		}
 

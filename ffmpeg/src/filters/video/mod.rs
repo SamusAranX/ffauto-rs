@@ -17,4 +17,5 @@ pub(crate) mod subtitles;
 pub(crate) mod tile;
 pub(crate) mod tonemap;
 pub(crate) mod unsharp;
+pub(crate) mod xstack;
 pub(crate) mod zscale;

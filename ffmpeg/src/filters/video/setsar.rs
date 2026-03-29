@@ -21,6 +21,11 @@ impl SetSar {
 	pub fn new(sar: f64) -> Self {
 		Self { sar }
 	}
+
+	#[must_use]
+	pub fn square() -> Self {
+		Self { sar: 1.0 }
+	}
 }
 
 #[test]

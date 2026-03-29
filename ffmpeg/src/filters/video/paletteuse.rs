@@ -1,6 +1,6 @@
 use ffmpeg_macro::filter;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, clap::ValueEnum, strum::Display, strum::EnumString)]
 pub enum Dither {
 	/// Ordered 8x8 bayer dithering (deterministic).
 	#[strum(serialize = "bayer")]
@@ -83,4 +83,17 @@ pub struct Paletteuse {
 	/// transparent. Must be an integer value in the range [0, 255].
 	#[ffarg(default = 128, omit_default)]
 	pub alpha_threshold: u8,
+}
+
+impl Paletteuse {
+	#[must_use]
+	pub fn new(dither: Dither, bayer_scale: u8, diff_mode: DiffMode, new: bool) -> Self {
+		Self {
+			dither,
+			bayer_scale,
+			diff_mode,
+			new,
+			..Default::default()
+		}
+	}
 }

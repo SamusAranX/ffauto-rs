@@ -1,3 +1,4 @@
+use crate::filters::{SetParamsColorPrimaries, SetParamsColorTransfer, SetParamsColorspace};
 use ffmpeg_macro::filter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
@@ -266,6 +267,18 @@ pub struct SetParams {
 
 	#[ffarg(omit_default)]
 	pub alpha_mode: AlphaMode,
+}
+
+impl SetParams {
+	#[must_use]
+	pub fn srgb() -> Self {
+		Self {
+			colorspace: SetParamsColorspace::Bt709,
+			color_primaries: SetParamsColorPrimaries::Bt709,
+			color_transfer: SetParamsColorTransfer::Iec61966_2_1,
+			..Default::default()
+		}
+	}
 }
 
 #[test]

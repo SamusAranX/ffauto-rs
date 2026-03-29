@@ -1,21 +1,35 @@
-use crate::palettes::{BuiltInPalette, get_builtin_palette};
 use anyhow::Result;
-use ffmpeg::ffmpeg::enums::{Crop, DitherMode, ScaleMode, StatsMode};
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
-use ffmpeg::ffmpeg::size::parse_ffmpeg_size;
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffmpeg::palettes::palette::{Color, Palette};
-use std::collections::HashMap;
-use std::fmt::Write;
+use ffmpeg::filters::{
+	Eq, FilterChain, Format, Scale, ScaleAlgorithm, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack,
+	Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
+};
+use ffmpeg::palettes::palette::Palette;
 use std::path::Path;
+
 use std::time::Duration;
 
 const MAX32: u64 = i32::MAX as u64;
 
-pub(crate) const TONEMAP_FILTER: &str =
-	"zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709";
-pub(crate) const SCALE_FLAGS: &str = "accurate_rnd+full_chroma_int+full_chroma_inp";
+// zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709"
+
+/// Returns the standard tonemap filter chain for HDR-to-SDR conversion.
+pub(crate) fn sdr_tonemap_chain() -> FilterChain {
+	let mut list = FilterChain::new();
+
+	list.push(Zscale::new_transfer_and_npl(ZscaleTransfer::Linear, 100.0));
+	list.push(Format::new("gbrpf32le"));
+	list.push(Zscale::new_primaries(ZscalePrimaries::Bt709));
+	list.push(Tonemap::new(TonemapAlgorithm::Hable, 0.0));
+	list.push(Zscale::new_transfer_and_matrix(
+		ZscaleTransfer::Linear,
+		ZscaleMatrix::Bt709,
+	));
+
+	list
+}
 
 pub trait CanSeek {
 	fn parse_seek(&self) -> Option<Duration>;
@@ -25,25 +39,8 @@ pub trait CanSetDuration {
 	fn parse_duration(&self) -> Option<Duration>;
 }
 
-pub trait CanCrop {
-	fn generate_crop_filter(&self) -> Option<String>;
-}
-
-pub trait CanScale {
-	fn generate_scale_filter(&self) -> Option<String>;
-}
-
-pub trait CanChangeFPS {
-	fn generate_fps_filter(&self, stream_fps: Option<f64>) -> Option<String>;
-	fn generate_fps_filter_explicit(&self, stream_fps: Option<f64>, target: f64) -> Option<String>;
-}
-
 pub trait CanColorFilter {
-	fn generate_color_filters(&self) -> Option<String>;
-}
-
-pub trait CanGeneratePalette {
-	fn generate_palette_filters(&self) -> Result<String>;
+	fn generate_color_filters(&self) -> Option<FilterChain>;
 }
 
 /// Parses the seek string and returns it as a [Duration], if present.
@@ -72,185 +69,150 @@ pub(crate) fn parse_duration(
 	None
 }
 
-pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> String {
-	let colors = pal.colors.iter().map(|e| e.color).collect::<Vec<Color>>();
-
-	let mut color_sources: Vec<String> = Vec::new();
-	for (color_idx, color) in colors.iter().enumerate() {
-		let source = format!("color=c={color}:r=1:s=1x1,format=rgb24[p{}]", color_idx + 1);
-		color_sources.push(source);
-	}
-
-	let mut all_sources = (0..color_sources.len()).fold(String::new(), |mut output, i| {
-		let _ = write!(output, "[p{}]", i + 1);
-		output
-	});
-
-	if color_sources.len() < 256 {
-		let num_dummies = 256 - color_sources.len();
-		let all_dummies = (0..num_dummies).fold(String::new(), |mut output, i| {
-			let _ = write!(output, "[d{}]", i + 1);
-			output
-		});
-		let dummy_color = colors.last().unwrap().to_string();
-		let source = format!("color=c={dummy_color}:r=1:s=1x1,format=rgb24,split={num_dummies} {all_dummies}");
-		color_sources.push(source);
-
-		all_sources += &*all_dummies;
-	}
-
-	color_sources.push(format!("{all_sources}xstack=grid=16x16"));
-	color_sources.join(";")
-}
-
-pub(crate) fn generate_crop_filter(crop: Option<&str>) -> Option<String> {
-	if let Some(crop_str) = crop {
-		return Crop::new(crop_str).map(|c| format!("crop={c}")).ok();
-	}
-
-	None
-}
-
+/// Generates the correct scale filter based on the given arguments.
 pub(crate) fn generate_scale_filter(
 	width: Option<u64>,
 	height: Option<u64>,
-	size: Option<&str>,
-	scale_mode: &ScaleMode,
-) -> Option<String> {
-	if let Some(width) = width {
-		return Some(format!("scale=w={width}:h=-2:flags={scale_mode}+{SCALE_FLAGS}"));
-	} else if let Some(height) = height {
-		return Some(format!("scale=w=-2:h={height}:flags={scale_mode}+{SCALE_FLAGS}"));
-	} else if let Some(size) = size {
-		return match parse_ffmpeg_size(size) {
-			Ok(size) => Some(format!(
-				"scale=w={}:h={}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}+{SCALE_FLAGS}",
-				size.width, size.height, scale_mode
-			)),
-			Err(err) => {
-				eprintln!("{err}");
-				None
+	size: Option<&String>,
+	scale_mode: ScaleAlgorithm,
+) -> Option<Scale> {
+	#[allow(clippy::cast_possible_truncation)]
+	match (width, height, size) {
+		(_, _, Some(s)) => {
+			if let Ok(size_filter) = Scale::from_size(s.clone(), scale_mode) {
+				return Some(size_filter);
 			}
-		};
+			None
+		}
+		(Some(w), Some(h), _) => Some(Scale::new(w as i32, h as i32, scale_mode)),
+		(Some(w), None, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
+		(None, Some(h), _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
+		_ => None,
 	}
-
-	None
 }
 
-pub(crate) fn generate_fps_filter(
-	fps_arg: Option<f64>,
-	fps_mult_arg: Option<f64>,
-	stream_fps: Option<f64>,
-) -> Option<String> {
-	if let Some(fps) = fps_arg {
-		Some(format!("fps=fps={fps:.3}"));
-	} else if let (Some(fps_mult), Some(fps)) = (fps_mult_arg, stream_fps) {
-		Some(format!("fps=fps={:.3}", fps * fps_mult));
+/// Generates a filter chain that ends in a single 16x16 output labeled `palette`.
+#[allow(clippy::cast_possible_truncation)]
+pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> Vec<FilterChain> {
+	let colors = pal.colors.iter().map(|e| e.color).collect::<Vec<_>>();
+
+	// Create as many filter chains like `color,format[pX] as there are colors in the palette
+	let mut color_sources: Vec<FilterChain> = Vec::new();
+	for (color_idx, color) in colors.iter().enumerate() {
+		let mut chain = FilterChain::with_outputs(vec![format!("p{}", color_idx + 1)]);
+		chain.push(ffmpeg::filters::Color::pixel(color.to_string()));
+		chain.push(Format::new("rgb24"));
+		color_sources.push(chain);
 	}
 
-	None
+	// Create "dummy" filter chains repeating the last color of the palette until we hit 256 total filter chains
+	let mut dummy_sources: Vec<FilterChain> = Vec::new();
+	if color_sources.len() < 256 {
+		let num_dummies = 256 - color_sources.len();
+		let dummy_color = colors.last().unwrap().to_string();
+
+		let mut dummy_chain = FilterChain::with_outputs(
+			(0..num_dummies)
+				.map(|i| format!("d{}", i + 1))
+				.collect::<Vec<_>>(),
+		);
+		dummy_chain.push(ffmpeg::filters::Color::pixel(dummy_color));
+		dummy_chain.push(Format::new("rgb24"));
+		dummy_chain.push(Split::new(num_dummies as u32));
+
+		dummy_sources.push(dummy_chain);
+	}
+
+	// Grab the color filter chains' output names
+	let color_source_outputs = color_sources
+		.iter()
+		.map(|f| f.outputs.first().unwrap().clone())
+		.collect::<Vec<_>>();
+
+	// Grab the dummy filter chains' output names
+	let dummy_source_outputs = dummy_sources
+		.iter()
+		.map(|f| f.outputs.first().unwrap().clone())
+		.collect::<Vec<_>>();
+
+	// ...and now we have all the output names.
+	let all_color_inputs = [color_source_outputs, dummy_source_outputs].concat();
+
+	// We plug them into a new filter chain that has the single "palette" output
+	// and contains an xstack filter that combines all the sources into one 16x16 frame.
+	let mut palette_chain =
+		FilterChain::with_inputs_and_outputs(all_color_inputs, vec!["palette".to_string()]);
+	palette_chain.push(Xstack::grid(16, 16, None));
+
+	// And now we just return all of the chains in a big Vec!
+	let mut all_chains: Vec<FilterChain> = vec![];
+	all_chains.extend(color_sources);
+	all_chains.extend(dummy_sources);
+	all_chains.extend([palette_chain]);
+
+	all_chains
 }
+
+// pub(crate) fn generate_crop_filter(crop: Option<&str>) -> Option<Crop> {
+// 	if let Some(crop_str) = crop {
+// 		return Crop::from_arg(crop_str).ok();
+// 	}
+//
+// 	None
+// }
+
+// #[allow(clippy::cast_possible_truncation)]
+// pub(crate) fn generate_scale_filter(
+// 	width: Option<u64>,
+// 	height: Option<u64>,
+// 	size: Option<&str>,
+// 	algorithm: &ScaleAlgorithm,
+// ) -> Option<Scale> {
+// 	if let Some(width) = width {
+// 		return Some(Scale::preserve_aspect_ratio_width(width as i32, *algorithm));
+// 	} else if let Some(height) = height {
+// 		return Some(Scale::preserve_aspect_ratio_height(height as i32, *algorithm));
+// 	} else if let Some(size) = size {
+// 		return match parse_ffmpeg_size(size) {
+// 			Ok(size) => Some(Scale {
+// 				width: size.width as i32,
+// 				height: size.height as i32,
+// 				scale_algorithm: *algorithm,
+// 				force_original_aspect_ratio: ScaleForceOriginalAspectRatio::Decrease,
+// 				force_divisible_by: 2,
+// 				..Default::default()
+// 			}),
+// 			Err(err) => {
+// 				eprintln!("{err}");
+// 				None
+// 			}
+// 		};
+// 	}
+//
+// 	None
+// }
 
 pub(crate) fn generate_color_sharpness_filters(
 	brightness: f64,
 	contrast: f64,
 	saturation: f64,
 	sharpness: f64,
-) -> Option<String> {
-	let mut filter_parts: Vec<String> = vec![];
-
-	if brightness != 0.0 || contrast != 1.0 || saturation != 1.0 {
-		let mut eq_args: Vec<String> = vec![];
-
-		if brightness != 0.0 {
-			eq_args.push(format!("brightness={brightness}"));
-		}
-		if contrast != 1.0 {
-			eq_args.push(format!("contrast={contrast}"));
-		}
-		if saturation != 1.0 {
-			eq_args.push(format!("saturation={saturation}"));
-		}
-
-		filter_parts.push(format!("eq={}", eq_args.join(":")));
+) -> Option<FilterChain> {
+	if brightness == 0.0 && contrast == 1.0 && saturation == 1.0 && sharpness == 0.0 {
+		return None;
 	}
 
-	if sharpness != 0.0 {
-		filter_parts.push(format!("unsharp=la={sharpness}:ca={sharpness}"));
-	}
+	let mut filters = FilterChain::new();
+	filters.push(Eq {
+		brightness,
+		contrast,
+		saturation,
+		..Default::default()
+	});
 
-	if filter_parts.is_empty() {
-		None
-	} else {
-		Some(filter_parts.join(","))
-	}
-}
+	filters.push(Unsharp::new(sharpness));
 
-#[allow(clippy::too_many_arguments)]
-/// This function generates a chain of filters that should be appended to the very end of a filtergraph.
-pub(crate) fn generate_palette_filtergraph(
-	palette_file: Option<&Path>,
-	palette_name: Option<&BuiltInPalette>,
-	num_colors: u16,
-	stats_mode: &StatsMode,
-	diff_rect: bool,
-	dither: &DitherMode,
-	bayer_scale: u8,
-) -> Result<String> {
-	fn palette_filter_string(pal_string: &String, paletteuse_args: &String) -> String {
-		[
-			",setsar=1 [filtered]".to_string(),
-			format!("{pal_string} [pal]"),
-			format!("[filtered][pal] paletteuse={paletteuse_args}"),
-		]
-		.join(";")
-	}
-
-	let paletteuse_args = {
-		let mut args = HashMap::new();
-		args.insert("dither".to_string(), format!("{dither}"));
-		if dither == &DitherMode::Bayer {
-			args.insert("bayer_scale".to_string(), format!("{bayer_scale}"));
-		}
-		if diff_rect {
-			args.insert("diff_mode".to_string(), "rectangle".to_string());
-		}
-		if palette_file.is_none() && palette_name.is_none() {
-			let new = u8::from(stats_mode == &StatsMode::Single);
-			args.insert("new".to_string(), format!("{new}"));
-		}
-
-		args.into_iter()
-			.map(|(k, v)| format!("{k}={v}"))
-			.collect::<Vec<String>>()
-			.join(":")
-	};
-
-	match (palette_file, palette_name) {
-		(Some(palette_file), None) => {
-			#[allow(clippy::needless_late_init)]
-			let pal_string: String;
-			match Palette::load_from_file(palette_file) {
-				Ok(pal) => pal_string = palette_to_ffmpeg(&pal),
-				Err(e) => anyhow::bail!(e),
-			}
-			Ok(palette_filter_string(&pal_string, &paletteuse_args))
-		}
-		(None, Some(palette_name)) => {
-			let pal_string = palette_to_ffmpeg(&get_builtin_palette(palette_name));
-			Ok(palette_filter_string(&pal_string, &paletteuse_args))
-		}
-		(None, None) => {
-			// no palette was given, so we'll use palettegen to create one
-			Ok([
-				",setsar=1,split [a][b]".to_string(),
-				format!("[a] palettegen=max_colors={num_colors}:reserve_transparent=0:stats_mode={stats_mode} [pal]"),
-				format!("[b][pal] paletteuse={paletteuse_args}"),
-			]
-			.join(";"))
-		}
-		_ => anyhow::bail!("Well, this wasn't supposed to happen."),
-	}
+	if filters.is_empty() { None } else { Some(filters) }
 }
 
 /// This is a small wrapper for [ffprobe] that repeats the invocation with frame counting

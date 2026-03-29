@@ -45,3 +45,14 @@ pub struct Unsharp {
 	#[ffarg(name = "aa")]
 	pub alpha_amount: f64,
 }
+
+impl Unsharp {
+	#[must_use]
+	pub fn new(amount: f64) -> Self {
+		Self {
+			luma_amount: amount,
+			chroma_amount: amount,
+			..Default::default()
+		}
+	}
+}

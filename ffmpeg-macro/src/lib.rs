@@ -1,8 +1,8 @@
 mod helpers;
 
 use crate::helpers::{
-	add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type, is_option_type,
-	is_vec_type, vec_display_expr,
+	add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type,
+	is_option_type, is_vec_type, vec_display_expr,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -87,7 +87,12 @@ impl Parse for FFArgArgs {
 								}
 							}
 						}
-						other => return Err(syn::Error::new(key.span(), format!("Unknown ffarg argument: {other}"))),
+						other => {
+							return Err(syn::Error::new(
+								key.span(),
+								format!("Unknown ffarg argument: {other}"),
+							));
+						}
 					}
 				}
 			}
@@ -98,7 +103,10 @@ impl Parse for FFArgArgs {
 		}
 
 		if name.is_some() && noname {
-			return Err(syn::Error::new(input.span(), "name and noname are mutually exclusive"));
+			return Err(syn::Error::new(
+				input.span(),
+				"name and noname are mutually exclusive",
+			));
 		}
 
 		Ok(FFArgArgs {
@@ -145,7 +153,12 @@ impl Parse for FilterArgs {
 					let lit: LitStr = input.parse()?;
 					name = Some(lit.value());
 				}
-				other => return Err(syn::Error::new(key.span(), format!("Unknown filter argument: {other}"))),
+				other => {
+					return Err(syn::Error::new(
+						key.span(),
+						format!("Unknown filter argument: {other}"),
+					));
+				}
 			}
 
 			if input.peek(Token![,]) {
@@ -204,7 +217,10 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 			}
 			let inner_is_vec = extract_option_inner_type(ty).is_some_and(is_vec_type);
 			if ffarg.default.is_some() || (ffarg.default_from.is_some() && !inner_is_vec) {
-				return Err(syn::Error::new_spanned(field, "Optional types always default to None"));
+				return Err(syn::Error::new_spanned(
+					field,
+					"Optional types always default to None",
+				));
 			}
 		}
 

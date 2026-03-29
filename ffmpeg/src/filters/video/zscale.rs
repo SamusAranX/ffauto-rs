@@ -241,3 +241,20 @@ pub struct Zscale {
 	#[ffarg(omit_default)]
 	pub npl: f64,
 }
+
+impl Zscale {
+	#[must_use]
+	pub fn new_primaries(primaries: Primaries) -> Self {
+		Self { primaries, ..Default::default() }
+	}
+
+	#[must_use]
+	pub fn new_transfer_and_npl(transfer: Transfer, npl: f64) -> Self {
+		Self { transfer, npl, ..Default::default() }
+	}
+
+	#[must_use]
+	pub fn new_transfer_and_matrix(transfer: Transfer, matrix: Matrix) -> Self {
+		Self { transfer, matrix, ..Default::default() }
+	}
+}

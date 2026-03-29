@@ -7,7 +7,8 @@ use const_format::formatcp;
 use std::path::PathBuf;
 
 use crate::palettes::BuiltInPalette;
-use ffmpeg::ffmpeg::enums::{BarcodeMode, DitherMode, OptimizeTarget, ScaleMode, StatsMode, VideoCodec};
+use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, VideoCodec};
+use ffmpeg::filters::{PalettegenStatsMode, PaletteuseDither, ScaleAlgorithm};
 
 const GIT_HASH: &str = env!("GIT_HASH");
 const GIT_BRANCH: &str = env!("GIT_BRANCH");
@@ -81,8 +82,8 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
 	/// Sets the scaling algorithm used.
-	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
-	pub scale_mode: ScaleMode,
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
+	pub scale_mode: ScaleAlgorithm,
 
 	/// Performs an HDR-to-SDR tonemap.
 	#[arg(short = 'T', long)]
@@ -270,8 +271,8 @@ pub(crate) struct GIFArgs {
 	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
 	/// Sets the scaling algorithm used.
-	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
-	pub scale_mode: ScaleMode,
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
+	pub scale_mode: ScaleAlgorithm,
 
 	/// Sets the fade in and out durations. Takes precedence over --fi/--fo.
 	#[arg(short, long, default_value_t = 0.0)]
@@ -318,12 +319,12 @@ pub(crate) struct GIFArgs {
 	pub num_colors: u16,
 
 	/// The statistics mode. (palettegen)
-	#[arg(long, default_value_t = StatsMode::default())]
-	pub stats_mode: StatsMode, // StatsMode::Single implies paletteuse:new
+	#[arg(long, default_value_t = PalettegenStatsMode::default())]
+	pub stats_mode: PalettegenStatsMode, // PalettegenStatsMode::Single implies paletteuse:new
 
 	/// The dithering mode. (paletteuse)
-	#[arg(short = 'D', long, default_value_t = DitherMode::default())]
-	pub dither: DitherMode,
+	#[arg(short = 'D', long, default_value_t = PaletteuseDither::default())]
+	pub dither: PaletteuseDither,
 	/// The bayer pattern scale in the range [0;5] (paletteuse)
 	#[arg(long, default_value_t = 2)]
 	pub bayer_scale: u8,
@@ -366,8 +367,8 @@ pub(crate) struct QuantArgs {
 	#[arg(long = "vs", group = "resize")]
 	pub size: Option<String>,
 	/// Sets the scaling algorithm used.
-	#[arg(short = 'S', long, value_enum, default_value_t = ScaleMode::default())]
-	pub scale_mode: ScaleMode,
+	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
+	pub scale_mode: ScaleAlgorithm,
 
 	/// Affects the output brightness, range [-1.0;1.0]
 	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
@@ -393,8 +394,8 @@ pub(crate) struct QuantArgs {
 	pub num_colors: u16,
 
 	/// The dithering mode (paletteuse)
-	#[arg(short = 'D', long, default_value_t = DitherMode::default())]
-	pub dither: DitherMode,
+	#[arg(short = 'D', long, default_value_t = PaletteuseDither::default())]
+	pub dither: PaletteuseDither,
 	/// The bayer pattern scale in the range [0;5] (paletteuse)
 	#[arg(long, default_value_t = 2)]
 	pub bayer_scale: u8,

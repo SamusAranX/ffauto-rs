@@ -1,11 +1,16 @@
 use std::time::Duration;
 
-use anyhow::Result;
-use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
-
 use crate::commands::GIFArgs;
 use crate::common::*;
+use crate::palettes::get_builtin_palette;
 use crate::vec_push_ext::PushStrExt;
+use anyhow::Result;
+use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::filters::{
+	Crop, Fade, FilterChain, Fps, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode,
+	SetSar, Split,
+};
+use ffmpeg::palettes::palette::Palette;
 
 pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
@@ -48,26 +53,30 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
-	let mut video_filter: Vec<String> = vec![];
+	let mut video_pipelines: Vec<FilterChain> = vec![];
+	let mut filter_pipeline = FilterChain::with_inputs_and_outputs(
+		vec![video_stream_id],
+		vec!["filtered1".to_string(), "filtered2".to_string()],
+	);
 
-	if let Some(fps_filter) = args.generate_fps_filter(video_stream.frame_rate()) {
-		video_filter.push(fps_filter);
+	if let Some(fps) = args.framerate {
+		filter_pipeline.push(Fps::new(fps));
 	}
 
-	if let Some(crop_filter) = args.generate_crop_filter() {
-		video_filter.push(crop_filter);
+	if let Some(Ok(crop)) = args.crop.clone().map(Crop::from_arg) {
+		filter_pipeline.push(crop);
 	}
 
-	if let Some(scale_filter) = args.generate_scale_filter() {
-		video_filter.push(scale_filter);
+	if let Some(scale_filter) = generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode) {
+		filter_pipeline.push(scale_filter);
 	}
 
 	if video_stream.is_hdr() {
-		video_filter.push(TONEMAP_FILTER.parse()?);
+		filter_pipeline.extend(sdr_tonemap_chain());
 	}
 
 	if let Some(color_filters) = args.generate_color_filters() {
-		video_filter.push(color_filters);
+		filter_pipeline.extend(color_filters);
 	}
 
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
@@ -80,22 +89,74 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		duration.as_secs_f64() - fade_out
 	} else {
 		// duration wasn't given, use video duration
-		(video_duration.saturating_sub(seek.unwrap_or(Duration::ZERO))).as_secs_f64() - fade_out
+		video_duration
+			.saturating_sub(seek.unwrap_or(Duration::ZERO))
+			.as_secs_f64()
+			- fade_out
 	};
 
 	if fade_in > 0.0 {
-		video_filter.push(format!("fade=t=in:st=0:d={fade_in:.3}"));
+		filter_pipeline.push(Fade::r#in(0.0, fade_in));
 	}
 	if fade_out > 0.0 {
-		video_filter.push(format!("fade=t=out:st={fade_out_start:.3}:d={fade_out:.3}"));
+		filter_pipeline.push(Fade::out(fade_out_start, fade_out));
 	}
 
-	let video_filter_str = video_filter.join(",");
-	let palette_filters = args.generate_palette_filters()?;
-	ffmpeg_args.add_two(
-		"-filter_complex",
-		format!("[{video_stream_id}]{video_filter_str}{palette_filters}"),
-	);
+	filter_pipeline.push(SetSar::square());
+	filter_pipeline.push(Split::new(2));
+
+	video_pipelines.push(filter_pipeline);
+
+	let mut palettegen_pipeline: Vec<FilterChain> = vec![];
+	match (&args.palette_file, &args.palette_name) {
+		(Some(palette_file), None) => {
+			palettegen_pipeline.extend(match Palette::load_from_file(palette_file) {
+				Ok(pal) => palette_to_ffmpeg(&pal),
+				Err(e) => anyhow::bail!(e),
+			});
+		}
+		(None, Some(palette_name)) => {
+			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
+		}
+		(None, None) => {
+			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(
+				vec!["filtered1".to_string()],
+				vec!["palette".to_string()],
+			);
+			palettegen_chain.push(Palettegen::new(args.num_colors, false, args.stats_mode));
+
+			palettegen_pipeline.push(palettegen_chain);
+		}
+		_ => anyhow::bail!("Well, this wasn't supposed to happen."),
+	}
+
+	video_pipelines.extend(palettegen_pipeline);
+
+	let diff_mode = if args.diff_rect {
+		PaletteuseDiffMode::Rectangle
+	} else {
+		PaletteuseDiffMode::None
+	};
+	let new_palette = args.palette_file.is_none()
+		&& args.palette_name.is_none()
+		&& args.stats_mode == PalettegenStatsMode::Single;
+
+	let mut paletteuse_chain = FilterChain::with_inputs(vec!["filtered2".to_string(), "palette".to_string()]);
+	paletteuse_chain.push(Paletteuse::new(
+		args.dither,
+		args.bayer_scale,
+		diff_mode,
+		new_palette,
+	));
+
+	video_pipelines.push(paletteuse_chain);
+
+	let filter_string = video_pipelines
+		.iter()
+		.map(ToString::to_string)
+		.collect::<Vec<_>>()
+		.join(";");
+	ffmpeg_args.add_two("-filter_complex", filter_string);
 
 	// endregion
 

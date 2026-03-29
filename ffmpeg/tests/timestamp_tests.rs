@@ -44,7 +44,11 @@ fn timestamp_parsing() {
 	for (i, test) in timestamp_data().iter().enumerate() {
 		let dur = parse_ffmpeg_duration(&test.input_timestamp);
 		assert!(dur.is_some(), "{i}: parsing failed!");
-		assert_eq!(&dur.unwrap(), &test.expected_duration, "{i}: durations aren't equal!");
+		assert_eq!(
+			&dur.unwrap(),
+			&test.expected_duration,
+			"{i}: durations aren't equal!"
+		);
 
 		if !test.input_timestamp.ends_with("320000000") {
 			let ts = format_ffmpeg_timestamp(dur.unwrap(), &TimestampFormat::Auto);

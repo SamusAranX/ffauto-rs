@@ -1,67 +1,36 @@
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
-pub enum ScaleMode {
-	Nearest,
-	Bilinear,
-	FastBilinear,
-	Bicublin,
-	#[default]
-	Bicubic,
-	Area,
-	Gauss,
-	Sinc,
-	Lanczos,
-	Spline,
-}
-
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
+#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq, strum::Display, strum::EnumString)]
 pub enum VideoCodec {
 	#[default]
+	#[strum(serialize = "h264")]
 	H264,
+
+	#[strum(serialize = "h265")]
 	H265,
+
+	#[strum(serialize = "h265-10")]
 	H265_10,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, strum::Display, strum::EnumString)]
 pub enum OptimizeTarget {
+	#[strum(serialize = "ipod5")]
 	Ipod5, // earliest video-capable iPod
-	Ipod,  // newer video-capable iPods
+
+	#[strum(serialize = "ipod")]
+	Ipod, // newer video-capable iPods
+
+	#[strum(serialize = "psp")]
 	Psp,
+
+	#[strum(serialize = "psvita")]
 	PsVita,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
-pub struct Crop {
-	pub width: u64,
-	pub height: u64,
-	pub x: u64,
-	pub y: u64,
-}
-
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
-pub enum StatsMode {
-	#[default]
-	Full,
-	Diff,
-	Single,
-}
-
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
-pub enum DitherMode {
-	Bayer,
-	Heckbert,
-	FloydSteinberg,
-	Sierra2,
-	#[default]
-	Sierra2_4a,
-	Sierra3,
-	Burkes,
-	Atkinson,
-	None,
-}
-
-#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq)]
+#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq, strum::Display, strum::EnumString)]
 pub enum BarcodeMode {
 	#[default]
+	#[strum(serialize = "frames")]
 	Frames,
+	#[strum(serialize = "colors")]
 	Colors,
 }
