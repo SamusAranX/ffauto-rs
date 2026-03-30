@@ -1,8 +1,8 @@
 mod helpers;
 
 use crate::helpers::{
-	add_to_string_if_needed, extract_option_inner_type, field_name, is_bool_type, is_display_type,
-	is_option_type, is_vec_type, vec_display_expr,
+	add_to_string_if_needed, extract_option_inner_type, field_name, hashmap_display_expr, is_bool_type,
+	is_display_type, is_hashmap_type, is_option_type, is_vec_type, vec_display_expr,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -28,6 +28,8 @@ struct FFArgArgs {
 	name: Option<String>,
 	default: Option<Expr>,
 	separator: Option<String>,
+	map_kv_separator: Option<String>,
+	map_item_separator: Option<String>,
 	extra_flags: Vec<String>,
 	omit_default: bool,
 	noname: bool,
@@ -40,6 +42,8 @@ impl Parse for FFArgArgs {
 		let mut default: Option<Expr> = None;
 		let mut default_from: Option<syn::Ident> = None;
 		let mut separator: Option<String> = None;
+		let mut map_kv_separator: Option<String> = None;
+		let mut map_item_separator: Option<String> = None;
 		let mut extra_flags: Vec<String> = Vec::new();
 		let mut omit_default = false;
 		let mut noname = false;
@@ -75,6 +79,14 @@ impl Parse for FFArgArgs {
 						"separator" => {
 							let lit: LitStr = input.parse()?;
 							separator = Some(lit.value());
+						}
+						"map_kv_separator" => {
+							let lit: LitStr = input.parse()?;
+							map_kv_separator = Some(lit.value());
+						}
+						"map_item_separator" => {
+							let lit: LitStr = input.parse()?;
+							map_item_separator = Some(lit.value());
 						}
 						"extra_flags" => {
 							let content;
@@ -113,6 +125,8 @@ impl Parse for FFArgArgs {
 			name,
 			default,
 			separator,
+			map_kv_separator,
+			map_item_separator,
 			extra_flags,
 			omit_default,
 			noname,
@@ -268,6 +282,22 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 						None
 					}
 				});
+			} else if is_hashmap_type(inner_ty) {
+				let noname = ffarg.noname;
+				let map_expr = hashmap_display_expr(quote! { val }, &ffarg, |join| {
+					if noname {
+						quote! { format!("{}", #join) }
+					} else {
+						quote! { format!("{}={}", #name, #join) }
+					}
+				});
+				display_entries.push(quote! {
+					if let Some(val) = &self.#ident {
+						#map_expr
+					} else {
+						None
+					}
+				});
 			} else {
 				let value_expr = if is_display_type(inner_ty) {
 					quote! { val.to_string() }
@@ -312,6 +342,17 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 				}
 			});
 			display_entries.push(vec_expr);
+			continue;
+		} else if is_hashmap_type(ty) {
+			let noname = ffarg.noname;
+			let map_expr = hashmap_display_expr(quote! { self.#ident }, &ffarg, |join| {
+				if noname {
+					quote! { format!("{}", #join) }
+				} else {
+					quote! { format!("{}={}", #name, #join) }
+				}
+			});
+			display_entries.push(map_expr);
 			continue;
 		} else {
 			// enums fall into this branch (along with everything else) but

@@ -7,8 +7,7 @@ use crate::vec_push_ext::PushStrExt;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
-	Crop, FilterChain, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode, Select,
-	SetSar, Split,
+	Crop, FilterChain, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode, Select, SetSar, Split,
 };
 use ffmpeg::palettes::palette::Palette;
 
@@ -63,7 +62,9 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 		filter_pipeline.push(crop);
 	}
 
-	if let Some(scale_filter) = generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode) {
+	if let Some(scale_filter) =
+		generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode)
+	{
 		filter_pipeline.push(scale_filter);
 	}
 

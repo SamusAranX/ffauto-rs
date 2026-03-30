@@ -7,8 +7,8 @@ use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::filters::{
-	Crop, Fade, FilterChain, Fps, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode,
-	SetSar, Split,
+	Crop, Fade, FilterChain, Fps, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode, SetSar,
+	Split,
 };
 use ffmpeg::palettes::palette::Palette;
 
@@ -67,7 +67,9 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		filter_pipeline.push(crop);
 	}
 
-	if let Some(scale_filter) = generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode) {
+	if let Some(scale_filter) =
+		generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode)
+	{
 		filter_pipeline.push(scale_filter);
 	}
 

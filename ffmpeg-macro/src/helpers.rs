@@ -3,6 +3,16 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Expr, Type};
 
+/// Returns `true` if the type is a HashMap of some kind.
+pub(crate) fn is_hashmap_type(ty: &Type) -> bool {
+	if let Type::Path(type_path) = ty
+		&& let Some(segment) = type_path.path.segments.last()
+	{
+		return segment.ident == "HashMap";
+	}
+	false
+}
+
 /// Adds `.to_string()` inside of the macro if `expr` is a string literal.
 pub(crate) fn add_to_string_if_needed(expr: Expr) -> Expr {
 	if matches!(&expr, Expr::Lit(lit) if matches!(&lit.lit, syn::Lit::Str(_))) {
@@ -116,6 +126,40 @@ pub(crate) fn vec_display_expr(
 		{
 			#build
 			if v.is_empty() {
+				None
+			} else {
+				Some(#format_expr)
+			}
+		}
+	}
+}
+
+/// Generates a `TokenStream` for a block that formats a HashMap field as a flat string.
+/// Key-value pairs are joined with `map_kv_separator` (default `"="`), and the resulting
+/// strings are joined with `map_item_separator` (default `","`). Returns `Option<String>`:
+/// `Some(formatted)` if non-empty, `None` if the map is empty.
+///
+/// The `format_fn` closure receives the join expression and should return the final
+/// format expression (e.g. with or without the field name).
+pub(crate) fn hashmap_display_expr(
+	map_access: TokenStream,
+	ffarg: &FFArgArgs,
+	format_fn: impl FnOnce(TokenStream) -> TokenStream,
+) -> TokenStream {
+	let kv_sep = ffarg.map_kv_separator.as_deref().unwrap_or("=");
+	let item_sep = ffarg.map_item_separator.as_deref().unwrap_or(",");
+
+	let join_expr = quote! { format!("'{}'", pairs.join(#item_sep)) };
+	let format_expr = format_fn(join_expr);
+
+	quote! {
+		{
+			let mut sorted: Vec<_> = #map_access.iter().collect();
+			sorted.sort_by_key(|(k, _)| k.to_string());
+			let pairs: Vec<String> = sorted.iter()
+				.map(|(k, v)| format!("{}{}{}", k, #kv_sep, v))
+				.collect();
+			if pairs.is_empty() {
 				None
 			} else {
 				Some(#format_expr)
