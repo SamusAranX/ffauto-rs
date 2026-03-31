@@ -54,10 +54,8 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 	// region Video Filtering
 
 	let mut video_pipelines = FilterChainList::new();
-	let mut filter_pipeline = FilterChain::with_inputs_and_outputs(
-		vec![video_stream_id],
-		vec!["filtered1".to_string(), "filtered2".to_string()],
-	);
+	let mut filter_pipeline =
+		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered1", "filtered2"]);
 
 	if let Some(fps) = args.framerate {
 		filter_pipeline.push(Fps::new(fps));
@@ -121,10 +119,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
 		}
 		(None, None) => {
-			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(
-				vec!["filtered1".to_string()],
-				vec!["palette".to_string()],
-			);
+			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered1"], ["palette"]);
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, args.stats_mode));
 
 			palettegen_pipeline.push(palettegen_chain);
@@ -143,7 +138,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		&& args.palette_name.is_none()
 		&& args.stats_mode == PalettegenStatsMode::Single;
 
-	let mut paletteuse_chain = FilterChain::with_inputs(vec!["filtered2".to_string(), "palette".to_string()]);
+	let mut paletteuse_chain = FilterChain::with_inputs(["filtered2", "palette"]);
 	paletteuse_chain.push(Paletteuse::new(
 		args.dither,
 		args.bayer_scale,

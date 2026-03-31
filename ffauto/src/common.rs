@@ -99,7 +99,7 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 	// Create as many filter chains like `color,format[pX] as there are colors in the palette
 	let mut color_sources = FilterChainList::new();
 	for (color_idx, color) in colors.iter().enumerate() {
-		let mut chain = FilterChain::with_outputs(vec![format!("p{}", color_idx + 1)]);
+		let mut chain = FilterChain::with_outputs([format!("p{}", color_idx + 1)]);
 		chain.push(ffmpeg::filters::Color::pixel(color.to_string()));
 		chain.push(Format::new("rgb24"));
 		color_sources.push(chain);
@@ -140,8 +140,7 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 
 	// We plug them into a new filter chain that has the single "palette" output
 	// and contains an xstack filter that combines all the sources into one 16x16 frame.
-	let mut palette_chain =
-		FilterChain::with_inputs_and_outputs(all_color_inputs, vec!["palette".to_string()]);
+	let mut palette_chain = FilterChain::with_inputs_and_outputs(all_color_inputs, ["palette"]);
 	palette_chain.push(Xstack::grid(16, 16, None));
 
 	// And now we just return all of the chains in a big Vec!

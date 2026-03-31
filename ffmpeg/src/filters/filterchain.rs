@@ -18,18 +18,39 @@ impl FilterChain {
 	}
 
 	#[must_use]
-	pub fn with_inputs(inputs: Vec<String>) -> Self {
-		Self { inputs, ..Default::default() }
+	pub fn with_inputs(inputs: impl IntoIterator<Item = impl Into<String>>) -> Self {
+		Self {
+			inputs: inputs.into_iter().map(Into::into).collect(),
+			..Default::default()
+		}
 	}
 
 	#[must_use]
-	pub fn with_outputs(outputs: Vec<String>) -> Self {
-		Self { outputs, ..Default::default() }
+	pub fn with_outputs(outputs: impl IntoIterator<Item = impl Into<String>>) -> Self {
+		Self {
+			outputs: outputs.into_iter().map(Into::into).collect(),
+			..Default::default()
+		}
 	}
 
 	#[must_use]
-	pub fn with_inputs_and_outputs(inputs: Vec<String>, outputs: Vec<String>) -> Self {
-		Self { inputs, outputs, ..Default::default() }
+	pub fn with_inputs_and_outputs(
+		inputs: impl IntoIterator<Item = impl Into<String>>,
+		outputs: impl IntoIterator<Item = impl Into<String>>,
+	) -> Self {
+		Self {
+			inputs: inputs.into_iter().map(Into::into).collect(),
+			outputs: outputs.into_iter().map(Into::into).collect(),
+			..Default::default()
+		}
+	}
+
+	pub fn set_inputs(&mut self, inputs: impl IntoIterator<Item = impl Into<String>>) {
+		self.inputs = inputs.into_iter().map(Into::into).collect();
+	}
+
+	pub fn set_outputs(&mut self, outputs: impl IntoIterator<Item = impl Into<String>>) {
+		self.outputs = outputs.into_iter().map(Into::into).collect();
 	}
 
 	pub fn push<T: Display + Send + Sync + 'static>(&mut self, value: T) {

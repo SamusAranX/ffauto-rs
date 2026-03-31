@@ -1,5 +1,5 @@
 use crate::commands::PalettesArgs;
-use crate::palettes::{get_builtin_palette, BuiltInPalette};
+use crate::palettes::{BuiltInPalette, get_builtin_palette};
 use anyhow::Result;
 use clap::ValueEnum;
 

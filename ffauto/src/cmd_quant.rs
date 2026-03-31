@@ -52,10 +52,8 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 	// region Video Filtering
 
 	let mut video_pipelines = FilterChainList::new();
-	let mut filter_pipeline = FilterChain::with_inputs_and_outputs(
-		vec![video_stream_id],
-		vec!["filtered1".to_string(), "filtered2".to_string()],
-	);
+	let mut filter_pipeline =
+		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered1", "filtered2"]);
 
 	filter_pipeline.push(Select::new("eq(n\\,0)", 1));
 
@@ -94,10 +92,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
 		}
 		(None, None) => {
-			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(
-				vec!["filtered1".to_string()],
-				vec!["palette".to_string()],
-			);
+			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered1"], ["palette"]);
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, PalettegenStatsMode::Full));
 
 			palettegen_pipeline.push(palettegen_chain);
@@ -109,7 +104,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	let new_palette = args.palette_file.is_none() && args.palette_name.is_none();
 
-	let mut paletteuse_chain = FilterChain::with_inputs(vec!["filtered2".to_string(), "palette".to_string()]);
+	let mut paletteuse_chain = FilterChain::with_inputs(["filtered2", "palette"]);
 	paletteuse_chain.push(Paletteuse::new(
 		args.dither,
 		args.bayer_scale,

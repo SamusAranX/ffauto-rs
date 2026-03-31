@@ -45,8 +45,7 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	// region Filtering
 
 	let mut video_pipelines = FilterChainList::new();
-	let mut input_pipeline =
-		FilterChain::with_inputs_and_outputs(vec![video_stream_id], vec!["video_out".to_string()]);
+	let mut input_pipeline = FilterChain::with_inputs_and_outputs([video_stream_id], ["video_out"]);
 
 	if video_stream.is_hdr() {
 		input_pipeline.extend(sdr_tonemap_chain());
@@ -63,37 +62,32 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 			video_pipelines.push(input_pipeline);
 		}
 		BarcodeMode::Colors => {
-			input_pipeline.outputs = vec!["p1".to_string(), "p2".to_string()];
+			input_pipeline.set_outputs(["p1", "p2"]);
 			input_pipeline.push(Scale::preserve_aspect_ratio_width(320, ScaleAlgorithm::default()));
 			input_pipeline.push(Colorspace::srgb()); // palettegen complains if this isn't here
 			input_pipeline.push(Palettegen::new(2, false, PalettegenStatsMode::Single));
 			input_pipeline.push(Split::new(2));
 			video_pipelines.push(input_pipeline);
 
-			let mut light_pixel_pipeline =
-				FilterChain::with_inputs_and_outputs(vec!["p1".to_string()], vec!["s1".to_string()]);
+			let mut light_pixel_pipeline = FilterChain::with_inputs_and_outputs(["p1"], ["s1"]);
 			light_pixel_pipeline.push(Crop::new(1, 1, 0, 0));
 			light_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
 			light_pixel_pipeline.push(Tile::columns(*video_frames));
 			video_pipelines.push(light_pixel_pipeline);
 
-			let mut dark_pixel_pipeline =
-				FilterChain::with_inputs_and_outputs(vec!["p2".to_string()], vec!["s2".to_string()]);
+			let mut dark_pixel_pipeline = FilterChain::with_inputs_and_outputs(["p2"], ["s2"]);
 			dark_pixel_pipeline.push(Crop::new(1, 1, 1, 0));
 			dark_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
 			dark_pixel_pipeline.push(Tile::columns(*video_frames));
 			video_pipelines.push(dark_pixel_pipeline);
 
-			let mut blend_pipeline = FilterChain::with_inputs_and_outputs(
-				vec!["s1".to_string(), "s2".to_string()],
-				vec!["video_out".to_string()],
-			);
+			let mut blend_pipeline = FilterChain::with_inputs_and_outputs(["s1", "s2"], ["video_out"]);
 			blend_pipeline.push(Blend::new(BlendMode::SoftLight));
 			video_pipelines.push(blend_pipeline);
 		}
 	}
 
-	let mut output_pipeline = FilterChain::with_inputs(vec!["video_out".to_string()]);
+	let mut output_pipeline = FilterChain::with_inputs(["video_out"]);
 	output_pipeline.push(SetSar::square());
 
 	if args.deep_color {
