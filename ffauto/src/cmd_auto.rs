@@ -40,12 +40,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		.clone();
 	let video_duration = probe.duration()?;
 
-	let mut ffmpeg_args: Vec<String> = vec![
-		"-hide_banner".to_string(),
-		"-loglevel".to_string(),
-		"warning".to_string(),
-		"-y".to_string(),
-	];
+	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
+		.into_iter()
+		.map(Into::into)
+		.collect();
 
 	let seek = args.parse_seek();
 	let duration = args.parse_duration();

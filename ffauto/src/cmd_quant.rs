@@ -7,8 +7,8 @@ use crate::vec_push_ext::PushStrExt;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
-	Crop, FilterChain, FilterChainList, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode,
-	Select, SetSar, Split,
+	Colorspace, Crop, FilterChain, FilterChainList, Palettegen, PalettegenStatsMode, Paletteuse,
+	PaletteuseDiffMode, Select, SetSar, Split,
 };
 use ffmpeg::palettes::palette::Palette;
 
@@ -18,12 +18,10 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 	let (video_stream, video_stream_id) =
 		probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
-	let mut ffmpeg_args: Vec<String> = vec![
-		"-hide_banner".to_string(),
-		"-loglevel".to_string(),
-		"error".to_string(),
-		"-y".to_string(),
-	];
+	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
+		.into_iter()
+		.map(Into::into)
+		.collect();
 
 	let seek = args.parse_seek();
 	if let Some(seek) = seek {
@@ -98,6 +96,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 			let mut palettegen_chain =
 				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
+			palettegen_chain.push(Colorspace::srgb()); // palettegen complains if this isn't here
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, PalettegenStatsMode::Full));
 
 			palettegen_pipeline.push(palettegen_chain);

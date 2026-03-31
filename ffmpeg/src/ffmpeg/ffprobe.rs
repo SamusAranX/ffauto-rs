@@ -10,7 +10,7 @@ pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOu
 	let mut ffprobe_args = vec![
 		"-hide_banner",
 		"-loglevel",
-		"error",
+		"warning",
 		"-print_format",
 		"json",
 		"-show_streams",

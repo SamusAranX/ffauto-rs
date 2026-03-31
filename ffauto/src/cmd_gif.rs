@@ -7,7 +7,7 @@ use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::filters::{
-	Crop, Fade, FilterChain, FilterChainList, Fps, Palettegen, PalettegenStatsMode, Paletteuse,
+	Colorspace, Crop, Fade, FilterChain, FilterChainList, Fps, Palettegen, PalettegenStatsMode, Paletteuse,
 	PaletteuseDiffMode, SetSar, Split,
 };
 use ffmpeg::palettes::palette::Palette;
@@ -20,12 +20,10 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	let video_duration = probe.duration()?;
 
-	let mut ffmpeg_args: Vec<String> = vec![
-		"-hide_banner".to_string(),
-		"-loglevel".to_string(),
-		"error".to_string(),
-		"-y".to_string(),
-	];
+	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
+		.into_iter()
+		.map(Into::into)
+		.collect();
 
 	let seek = args.parse_seek();
 	let duration = args.parse_duration();
@@ -125,6 +123,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 			let mut palettegen_chain =
 				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
+			palettegen_chain.push(Colorspace::srgb()); // palettegen complains if this isn't here
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, args.stats_mode));
 
 			palettegen_pipeline.push(palettegen_chain);

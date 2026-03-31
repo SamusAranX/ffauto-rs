@@ -20,15 +20,17 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 		Some(_) => ffprobe(&args.input, false)?,
 	};
 
-	let mut ffmpeg_args: Vec<String> = vec![
-		"-hide_banner".to_string(),
-		"-loglevel".to_string(),
-		"warning".to_string(),
-		"-y".to_string(),
-	];
+	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
+		.into_iter()
+		.map(Into::into)
+		.collect();
 
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
+
+	ffmpeg_args.add("-an");
+	ffmpeg_args.add("-dn");
+	ffmpeg_args.add("-sn");
 
 	let (video_stream, video_stream_id) =
 		probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
