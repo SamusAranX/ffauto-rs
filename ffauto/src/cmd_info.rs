@@ -6,13 +6,14 @@ use colored::Colorize;
 use ffmpeg::ffmpeg::ffprobe_struct::StreamType;
 
 pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
-	let probe = ffprobe_output(&args.input)?;
-
-	if probe.get_first_video_stream().is_none() {
-		eprintln!("NOTE: The input file has no video streams!");
+	if args.no_color {
+		colored::control::set_override(false);
 	}
-	if probe.get_first_audio_stream().is_none() {
-		eprintln!("NOTE: The input file has no audio streams!");
+
+	let probe = ffprobe_output(&args.input)?;
+	if probe.streams.is_empty() {
+		eprintln!("The input file contains no usable streams.");
+		return Ok(());
 	}
 
 	let mut stream_type_index = 0;

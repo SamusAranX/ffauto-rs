@@ -406,22 +406,26 @@ pub(crate) struct InfoArgs {
 	/// The input file.
 	#[arg(short)]
 	pub input: PathBuf,
+
+	/// Disables color output. The NO_COLOR environment variable is also supported.
+	#[arg(long, short = 'C')]
+	pub no_color: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum Commands {
-	#[command(about = "Common ffmpeg wrapper")]
+	#[command(about = "Wrapper around common ffmpeg operations")]
 	Auto(AutoArgs),
 
-	#[command(about = "Movie barcode generator")]
-	Barcode(BarcodeArgs),
-
-	#[command(about = "GIF encoder with a subset of features")]
+	#[command(about = "Wrapper around ffmpeg's GIF creation functionality")]
 	Gif(GIFArgs),
 
-	#[command(about = "Uses ffmpeg to quantize still images")]
+	#[command(about = "Like the gif subcommand but for still images")]
 	Quant(QuantArgs),
 
-	#[command(about = "Formats and prints ffprobe information")]
+	#[command(about = "Movie \"barcode\" generator")]
+	Barcode(BarcodeArgs),
+
+	#[command(about = "Outputs information about a media file")]
 	Info(InfoArgs),
 }
