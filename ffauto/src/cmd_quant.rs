@@ -53,7 +53,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	let mut video_pipelines = FilterChainList::new();
 	let mut filter_pipeline =
-		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered1", "filtered2"]);
+		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered_paletteuse"]);
 
 	filter_pipeline.push(Select::new("eq(n\\,0)", 1));
 
@@ -76,9 +76,6 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 	}
 
 	filter_pipeline.push(SetSar::square());
-	filter_pipeline.push(Split::new(2));
-
-	video_pipelines.push(filter_pipeline);
 
 	let mut palettegen_pipeline = FilterChainList::new();
 	match (&args.palette_file, &args.palette_name) {
@@ -92,7 +89,14 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
 		}
 		(None, None) => {
-			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered1"], ["palette"]);
+			// Add a split and an additional "filtered_palettegen" output to the filter pipeline
+			// The palettegen filter needs that connected to its input to work
+			filter_pipeline.push(Split::new(2));
+			filter_pipeline
+				.outputs
+				.push("filtered_palettegen".to_string());
+
+			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, PalettegenStatsMode::Full));
 
 			palettegen_pipeline.push(palettegen_chain);
@@ -100,11 +104,12 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 		_ => anyhow::bail!("Well, this wasn't supposed to happen."),
 	}
 
+	video_pipelines.push(filter_pipeline);
 	video_pipelines.extend(palettegen_pipeline);
 
 	let new_palette = args.palette_file.is_none() && args.palette_name.is_none();
 
-	let mut paletteuse_chain = FilterChain::with_inputs(["filtered2", "palette"]);
+	let mut paletteuse_chain = FilterChain::with_inputs(["filtered_paletteuse", "palette"]);
 	paletteuse_chain.push(Paletteuse::new(
 		args.dither,
 		args.bayer_scale,

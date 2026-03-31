@@ -106,37 +106,28 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 	}
 
 	// Create "dummy" filter chains repeating the last color of the palette until we hit 256 total filter chains
-	let mut dummy_sources = FilterChainList::new();
+	let mut dummy_source = FilterChain::new();
 	if color_sources.len() < 256 {
 		let num_dummies = 256 - color_sources.len();
 		let dummy_color = colors.last().unwrap().to_string();
 
-		let mut dummy_chain = FilterChain::with_outputs(
-			(0..num_dummies)
-				.map(|i| format!("d{}", i + 1))
-				.collect::<Vec<_>>(),
-		);
-		dummy_chain.push(ffmpeg::filters::Color::pixel(dummy_color));
-		dummy_chain.push(Format::new("rgb24"));
-		dummy_chain.push(Split::new(num_dummies as u32));
-
-		dummy_sources.push(dummy_chain);
+		let dummy_outputs = (0..num_dummies)
+			.map(|i| format!("d{}", color_sources.len() + i + 1))
+			.collect::<Vec<_>>();
+		dummy_source = FilterChain::with_outputs(dummy_outputs);
+		dummy_source.push(ffmpeg::filters::Color::pixel(dummy_color));
+		dummy_source.push(Format::new("rgb24"));
+		dummy_source.push(Split::new(num_dummies as u32));
 	}
 
-	// Grab the color filter chains' output names
+	// Grab the color filter chains' output names…
 	let color_source_outputs = color_sources
 		.iter()
 		.map(|f| f.outputs.first().unwrap().clone())
 		.collect::<Vec<_>>();
 
-	// Grab the dummy filter chains' output names
-	let dummy_source_outputs = dummy_sources
-		.iter()
-		.map(|f| f.outputs.first().unwrap().clone())
-		.collect::<Vec<_>>();
-
-	// ...and now we have all the output names.
-	let all_color_inputs = [color_source_outputs, dummy_source_outputs].concat();
+	// …and now we have all the output names.
+	let all_color_inputs = [color_source_outputs, dummy_source.outputs.clone()].concat();
 
 	// We plug them into a new filter chain that has the single "palette" output
 	// and contains an xstack filter that combines all the sources into one 16x16 frame.
@@ -146,7 +137,9 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 	// And now we just return all of the chains in a big Vec!
 	let mut all_chains = FilterChainList::new();
 	all_chains.extend(color_sources);
-	all_chains.extend(dummy_sources);
+	if !dummy_source.is_empty() {
+		all_chains.push(dummy_source);
+	}
 	all_chains.extend([palette_chain]);
 
 	all_chains

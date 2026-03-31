@@ -55,7 +55,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	let mut video_pipelines = FilterChainList::new();
 	let mut filter_pipeline =
-		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered1", "filtered2"]);
+		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered_paletteuse"]);
 
 	if let Some(fps) = args.framerate {
 		filter_pipeline.push(Fps::new(fps));
@@ -103,9 +103,6 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 	}
 
 	filter_pipeline.push(SetSar::square());
-	filter_pipeline.push(Split::new(2));
-
-	video_pipelines.push(filter_pipeline);
 
 	let mut palettegen_pipeline = FilterChainList::new();
 	match (&args.palette_file, &args.palette_name) {
@@ -119,7 +116,15 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
 		}
 		(None, None) => {
-			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered1"], ["palette"]);
+			// Add a split and an additional "filtered_palettegen" output to the filter pipeline
+			// The palettegen filter needs that connected to its input to work
+			filter_pipeline.push(Split::new(2));
+			filter_pipeline
+				.outputs
+				.push("filtered_palettegen".to_string());
+
+			let mut palettegen_chain =
+				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, args.stats_mode));
 
 			palettegen_pipeline.push(palettegen_chain);
@@ -127,6 +132,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		_ => anyhow::bail!("Well, this wasn't supposed to happen."),
 	}
 
+	video_pipelines.push(filter_pipeline);
 	video_pipelines.extend(palettegen_pipeline);
 
 	let diff_mode = if args.diff_rect {
@@ -138,7 +144,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		&& args.palette_name.is_none()
 		&& args.stats_mode == PalettegenStatsMode::Single;
 
-	let mut paletteuse_chain = FilterChain::with_inputs(["filtered2", "palette"]);
+	let mut paletteuse_chain = FilterChain::with_inputs(["filtered_paletteuse", "palette"]);
 	paletteuse_chain.push(Paletteuse::new(
 		args.dither,
 		args.bayer_scale,

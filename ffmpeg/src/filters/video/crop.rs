@@ -7,7 +7,7 @@ use regex::Regex;
 pub struct Crop {
 	/// The width of the output video. This expression is evaluated only once during the filter
 	/// configuration, or when the 'w' or 'out_w' command is sent.
-	#[ffarg(name = "out_w")]
+	#[ffarg(name = "out_w", omit_default)]
 	pub width: i32,
 
 	/// The height of the output video. This expression is evaluated only once during the filter
@@ -65,7 +65,7 @@ impl Crop {
 			.collect::<anyhow::Result<Vec<_>, anyhow::Error>>()?;
 
 		match numbers.as_slice() {
-			[h] if *h > 0 => Ok(Crop::new_only_size(*h, *h)),
+			[h] if *h > 0 => Ok(Crop { height: *h, ..Crop::default() }),
 			[w, h] if *w > 0 && *h > 0 => Ok(Crop::new_only_size(*w, *h)),
 			[w, h, x, y] if *w > 0 && *h > 0 => Ok(Crop::new(*w, *h, *x, *y)),
 			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value"),
