@@ -97,6 +97,27 @@ pub enum BuiltInPalette {
 	ENOS16,
 	HEPT32,
 
+	// by Hyohnoo
+	// https://twitter.com/Hyohnoo
+	Mail24,
+
+	// by Javier Guerrero
+	// https://twitter.com/Xavier_Gd
+	Nyx8,
+
+	// by Joseph White
+	// https://www.pico-8.com/
+	Pico8,
+
+	// by PineTreePizza
+	// https://twitter.com/PineTreePizza
+	Bubblegum16,
+	Rosy42,
+
+	// by Zughy
+	// https://twitter.com/_Zughy
+	Zughy32,
+
 	// Hardware Palettes
 	// https://github.com/aseprite/aseprite/tree/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/data/extensions/hardware-palettes
 	AppleII,
@@ -125,23 +146,6 @@ pub enum BuiltInPalette {
 	VirtualBoy,
 	ZXSpectrum,
 
-	// by Hyohnoo
-	// https://twitter.com/Hyohnoo
-	Mail24,
-
-	// by Javier Guerrero
-	// https://twitter.com/Xavier_Gd
-	Nyx8,
-
-	// by Joseph White
-	// https://www.pico-8.com/
-	Pico8,
-
-	// by PineTreePizza
-	// https://twitter.com/PineTreePizza
-	Bubblegum16,
-	Rosy42,
-
 	// Software Palettes
 	// https://github.com/aseprite/aseprite/tree/8323a555007e1db9670b098ce4b1b9c5f8b3d7ad/data/extensions/software-palettes
 	GoogleUI,
@@ -151,10 +155,6 @@ pub enum BuiltInPalette {
 	Solarized,
 	Win16,
 	X11,
-
-	// by Zughy
-	// https://twitter.com/_Zughy
-	Zughy32,
 }
 
 #[rustfmt::skip]
@@ -242,6 +242,17 @@ pub fn get_builtin_palette(pal: &BuiltInPalette) -> Palette {
 		BuiltInPalette::ENOS16 => Palette::from_gpl_string(include_str!("palettes/endesga-palettes/enos16.gpl")).unwrap(),
 		BuiltInPalette::HEPT32 => Palette::from_gpl_string(include_str!("palettes/endesga-palettes/hept32.gpl")).unwrap(),
 
+		BuiltInPalette::Mail24 => Palette::from_gpl_string(include_str!("palettes/hyohnoo-palettes/mail24.gpl")).unwrap(),
+
+		BuiltInPalette::Nyx8 => Palette::from_gpl_string(include_str!("palettes/javierguerrero-palettes/nyx8.gpl")).unwrap(),
+
+		BuiltInPalette::Pico8 => Palette::from_gpl_string(include_str!("palettes/pico8-palette/pico-8.gpl")).unwrap(),
+
+		BuiltInPalette::Bubblegum16 => Palette::from_gpl_string(include_str!("palettes/pinetreepizza-palettes/bubblegum-16.gpl")).unwrap(),
+		BuiltInPalette::Rosy42 => Palette::from_gpl_string(include_str!("palettes/pinetreepizza-palettes/rosy-42.gpl")).unwrap(),
+
+		BuiltInPalette::Zughy32 => Palette::from_gpl_string(include_str!("palettes/zughy-palettes/zughy-32.gpl")).unwrap(),
+
 		BuiltInPalette::AppleII => Palette::from_gpl_string(include_str!("palettes/hardware-palettes/apple-ii.gpl")).unwrap(),
 		BuiltInPalette::Atari2600Ntsc => Palette::from_gpl_string(include_str!("palettes/hardware-palettes/atari2600-ntsc.gpl")).unwrap(),
 		BuiltInPalette::Atari2600Pal => Palette::from_gpl_string(include_str!("palettes/hardware-palettes/atari2600-pal.gpl")).unwrap(),
@@ -268,15 +279,6 @@ pub fn get_builtin_palette(pal: &BuiltInPalette) -> Palette {
 		BuiltInPalette::VirtualBoy => Palette::from_gpl_string(include_str!("palettes/hardware-palettes/virtualboy.gpl")).unwrap(),
 		BuiltInPalette::ZXSpectrum => Palette::from_gpl_string(include_str!("palettes/hardware-palettes/zx-spectrum.gpl")).unwrap(),
 
-		BuiltInPalette::Mail24 => Palette::from_gpl_string(include_str!("palettes/hyohnoo-palettes/mail24.gpl")).unwrap(),
-
-		BuiltInPalette::Nyx8 => Palette::from_gpl_string(include_str!("palettes/javierguerrero-palettes/nyx8.gpl")).unwrap(),
-
-		BuiltInPalette::Pico8 => Palette::from_gpl_string(include_str!("palettes/pico8-palette/pico-8.gpl")).unwrap(),
-
-		BuiltInPalette::Bubblegum16 => Palette::from_gpl_string(include_str!("palettes/pinetreepizza-palettes/bubblegum-16.gpl")).unwrap(),
-		BuiltInPalette::Rosy42 => Palette::from_gpl_string(include_str!("palettes/pinetreepizza-palettes/rosy-42.gpl")).unwrap(),
-
 		BuiltInPalette::GoogleUI => Palette::from_gpl_string(include_str!("palettes/software-palettes/google-ui.gpl")).unwrap(),
 		BuiltInPalette::Minecraft => Palette::from_gpl_string(include_str!("palettes/software-palettes/minecraft.gpl")).unwrap(),
 		BuiltInPalette::Monokai => Palette::from_gpl_string(include_str!("palettes/software-palettes/monokai.gpl")).unwrap(),
@@ -284,7 +286,5 @@ pub fn get_builtin_palette(pal: &BuiltInPalette) -> Palette {
 		BuiltInPalette::Solarized => Palette::from_gpl_string(include_str!("palettes/software-palettes/solarized.gpl")).unwrap(),
 		BuiltInPalette::Win16 => Palette::from_gpl_string(include_str!("palettes/software-palettes/win16.gpl")).unwrap(),
 		BuiltInPalette::X11 => Palette::from_gpl_string(include_str!("palettes/software-palettes/x11.gpl")).unwrap(),
-
-		BuiltInPalette::Zughy32 => Palette::from_gpl_string(include_str!("palettes/zughy-palettes/zughy-32.gpl")).unwrap(),
 	}
 }

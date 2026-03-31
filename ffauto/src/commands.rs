@@ -55,7 +55,7 @@ pub(crate) struct AutoArgs {
 	#[arg(long, alias = "Ss")]
 	pub sub_streams: Vec<String>,
 
-	/// Burns the first specified subtitle stream into the output video stream. All further specified subtitle streams will be ignored.
+	/// (WIP, currently nonfunctional) Burns the first specified subtitle stream into the output video stream. All further specified subtitle streams will be ignored.
 	#[arg(short = 'B', long, alias = "B")]
 	pub burn_subtitle: bool,
 
@@ -414,7 +414,7 @@ pub(crate) struct InfoArgs {
 	pub no_color: bool,
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "palette_generator")]
 #[derive(Parser, Debug, Clone)]
 pub(crate) struct PalettesArgs {
 	/// The output directory.
@@ -439,7 +439,7 @@ pub(crate) enum Commands {
 	#[command(about = "Outputs information about a media file")]
 	Info(InfoArgs),
 
-	#[cfg(debug_assertions)]
+	#[cfg(feature = "palette_generator")]
 	#[command(about = "Generates example palette images")]
 	Palettes(PalettesArgs),
 }

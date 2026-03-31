@@ -6,6 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+palette_generator = ["imageproc"]
+
 [[bin]]
 name = "ff"
 path = "src/main.rs"
@@ -24,6 +27,7 @@ colored = "3.1"
 const_format = "0.2"
 ffmpeg = { path = "../ffmpeg" }
 humansize = "2.1"
+imageproc = { version = "0.26", optional = true }
 isolang = "2.4"
 strum = { version = "0.28", features = ["derive"] }
 

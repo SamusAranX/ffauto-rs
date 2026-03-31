@@ -2,6 +2,7 @@ use crate::cmd_auto::ffmpeg_auto;
 use crate::cmd_barcode::ffmpeg_barcode;
 use crate::cmd_gif::ffmpeg_gif;
 use crate::cmd_info::ffmpeg_info;
+#[cfg(feature = "palette_generator")]
 use crate::cmd_palettes::generate_palettes;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
@@ -56,7 +57,7 @@ fn main() -> ExitCode {
 				}
 			};
 		}
-		#[cfg(debug_assertions)]
+		#[cfg(feature = "palette_generator")]
 		Some(Commands::Palettes(args)) => {
 			return match generate_palettes(args) {
 				Ok(()) => ExitCode::SUCCESS,
