@@ -7,11 +7,14 @@ use ffmpeg::ffmpeg::enums::BarcodeMode;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
-	Blend, BlendMode, Colorspace, Crop, FilterChain, Format, Palettegen, PalettegenStatsMode, Scale,
-	ScaleAlgorithm, SetParams, SetSar, Split, Tile,
+	Blend, BlendMode, Colorspace, Crop, FilterChain, FilterChainList, Format, Palettegen,
+	PalettegenStatsMode, Scale, ScaleAlgorithm, SetParams, SetSar, Split, Tile,
 };
 
 pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
+	eprintln!("Gathering media information…");
+
+	// ffprobe_frames() bails if the input file has no usable video streams
 	let probe = match args.video_frames {
 		None => ffprobe_frames(&args.input)?,
 		Some(_) => ffprobe(&args.input, false)?,
@@ -36,15 +39,20 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 		.unwrap_or_else(|| video_stream.total_frames().unwrap());
 	check_frame_size(*video_frames, video_height)?;
 
+	#[cfg(debug_assertions)]
+	eprintln!("total frames: {video_frames}");
+
 	// region Filtering
 
-	let mut video_pipelines: Vec<FilterChain> = vec![];
+	let mut video_pipelines = FilterChainList::new();
 	let mut input_pipeline =
 		FilterChain::with_inputs_and_outputs(vec![video_stream_id], vec!["video_out".to_string()]);
 
 	if video_stream.is_hdr() {
 		input_pipeline.extend(sdr_tonemap_chain());
 	}
+
+	// unconditionally convert to rgb48 here so there's more color to work with before the final output
 	input_pipeline.push(Format::new("rgb48be"));
 
 	#[allow(clippy::cast_possible_truncation)]
@@ -55,30 +63,33 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 			video_pipelines.push(input_pipeline);
 		}
 		BarcodeMode::Colors => {
+			input_pipeline.outputs = vec!["p1".to_string(), "p2".to_string()];
 			input_pipeline.push(Scale::preserve_aspect_ratio_width(320, ScaleAlgorithm::default()));
 			input_pipeline.push(Colorspace::srgb()); // palettegen complains if this isn't here
 			input_pipeline.push(Palettegen::new(2, false, PalettegenStatsMode::Single));
 			input_pipeline.push(Split::new(2));
-			input_pipeline.outputs = vec!["p1".to_string(), "p2".to_string()];
 			video_pipelines.push(input_pipeline);
 
 			let mut light_pixel_pipeline =
 				FilterChain::with_inputs_and_outputs(vec!["p1".to_string()], vec!["s1".to_string()]);
 			light_pixel_pipeline.push(Crop::new(1, 1, 0, 0));
 			light_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
-			light_pixel_pipeline.push(Tile::rows(*video_frames));
+			light_pixel_pipeline.push(Tile::columns(*video_frames));
+			video_pipelines.push(light_pixel_pipeline);
 
 			let mut dark_pixel_pipeline =
 				FilterChain::with_inputs_and_outputs(vec!["p2".to_string()], vec!["s2".to_string()]);
 			dark_pixel_pipeline.push(Crop::new(1, 1, 1, 0));
 			dark_pixel_pipeline.push(Scale::column(video_height as i32, ScaleAlgorithm::Neighbor));
-			dark_pixel_pipeline.push(Tile::rows(*video_frames));
+			dark_pixel_pipeline.push(Tile::columns(*video_frames));
+			video_pipelines.push(dark_pixel_pipeline);
 
 			let mut blend_pipeline = FilterChain::with_inputs_and_outputs(
 				vec!["s1".to_string(), "s2".to_string()],
 				vec!["video_out".to_string()],
 			);
 			blend_pipeline.push(Blend::new(BlendMode::SoftLight));
+			video_pipelines.push(blend_pipeline);
 		}
 	}
 
@@ -103,11 +114,7 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	output_pipeline.push(SetParams::srgb());
 	video_pipelines.push(output_pipeline);
 
-	let filter_string = video_pipelines
-		.iter()
-		.map(ToString::to_string)
-		.collect::<Vec<_>>()
-		.join(";");
+	let filter_string = video_pipelines.to_string();
 	ffmpeg_args.add_two("-filter_complex", filter_string);
 
 	// endregion
@@ -117,6 +124,8 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 	ffmpeg_args.add_two("-update", "1");
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
+
+	eprintln!("Generating image…");
 
 	ffmpeg(&ffmpeg_args, None, false, debug)
 }

@@ -31,6 +31,7 @@ impl Tile {
 	pub fn columns(num: u64) -> Self {
 		Self {
 			layout: format!("{num}x1"),
+			nb_frames: num,
 			..Default::default()
 		}
 	}
@@ -39,6 +40,7 @@ impl Tile {
 	pub fn rows(num: u64) -> Self {
 		Self {
 			layout: format!("1x{num}"),
+			nb_frames: num,
 			..Default::default()
 		}
 	}

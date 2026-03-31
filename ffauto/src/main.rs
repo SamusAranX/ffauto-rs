@@ -8,11 +8,13 @@ use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use crate::cmd_palettes::generate_palettes;
 
 mod cmd_auto;
 mod cmd_barcode;
 mod cmd_gif;
 mod cmd_info;
+mod cmd_palettes;
 mod cmd_quant;
 mod commands;
 mod commands_traits;
@@ -47,6 +49,16 @@ fn main() -> ExitCode {
 		}
 		Some(Commands::Info(args)) => {
 			return match ffmpeg_info(args) {
+				Ok(()) => ExitCode::SUCCESS,
+				Err(e) => {
+					eprintln!("execution failed: {e}");
+					ExitCode::FAILURE
+				}
+			};
+		}
+		#[cfg(debug_assertions)]
+		Some(Commands::Palettes(args)) => {
+			return match generate_palettes(args) {
 				Ok(()) => ExitCode::SUCCESS,
 				Err(e) => {
 					eprintln!("execution failed: {e}");

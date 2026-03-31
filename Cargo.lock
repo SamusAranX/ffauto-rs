@@ -242,6 +242,7 @@ dependencies = [
  "ffmpeg",
  "humansize",
  "isolang",
+ "strum",
 ]
 
 [[package]]

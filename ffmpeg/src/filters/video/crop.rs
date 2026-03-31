@@ -65,7 +65,7 @@ impl Crop {
 			.collect::<anyhow::Result<Vec<_>, anyhow::Error>>()?;
 
 		match numbers.as_slice() {
-			[h] if *h > 0 => Ok(Crop { height: *h, ..Crop::default() }),
+			[h] if *h > 0 => Ok(Crop::new_only_size(*h, *h)),
 			[w, h] if *w > 0 && *h > 0 => Ok(Crop::new_only_size(*w, *h)),
 			[w, h, x, y] if *w > 0 && *h > 0 => Ok(Crop::new(*w, *h, *x, *y)),
 			_ => anyhow::bail!("\"{crop_str}\" is not a valid crop value"),

@@ -33,6 +33,7 @@ impl Palette {
 				|| trimmed_line.is_empty()
 				|| trimmed_line.starts_with("Name: ")
 				|| trimmed_line.starts_with("Columns: ")
+				|| trimmed_line.starts_with("Channels: ")
 			{
 				continue;
 			}

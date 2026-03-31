@@ -25,6 +25,7 @@ const_format = "0.2"
 ffmpeg = { path = "../ffmpeg" }
 humansize = "2.1"
 isolang = "2.4"
+strum = { version = "0.28", features = ["derive"] }
 
 [build-dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }

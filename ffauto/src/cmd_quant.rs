@@ -7,7 +7,8 @@ use crate::vec_push_ext::PushStrExt;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
-	Crop, FilterChain, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode, Select, SetSar, Split,
+	Crop, FilterChain, FilterChainList, Palettegen, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode,
+	Select, SetSar, Split,
 };
 use ffmpeg::palettes::palette::Palette;
 
@@ -50,7 +51,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
-	let mut video_pipelines: Vec<FilterChain> = vec![];
+	let mut video_pipelines = FilterChainList::new();
 	let mut filter_pipeline = FilterChain::with_inputs_and_outputs(
 		vec![video_stream_id],
 		vec!["filtered1".to_string(), "filtered2".to_string()],
@@ -81,7 +82,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	video_pipelines.push(filter_pipeline);
 
-	let mut palettegen_pipeline: Vec<FilterChain> = vec![];
+	let mut palettegen_pipeline = FilterChainList::new();
 	match (&args.palette_file, &args.palette_name) {
 		(Some(palette_file), None) => {
 			palettegen_pipeline.extend(match Palette::load_from_file(palette_file) {
@@ -118,11 +119,7 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 
 	video_pipelines.push(paletteuse_chain);
 
-	let filter_string = video_pipelines
-		.iter()
-		.map(ToString::to_string)
-		.collect::<Vec<_>>()
-		.join(";");
+	let filter_string = video_pipelines.to_string();
 	ffmpeg_args.add_two("-filter_complex", filter_string);
 
 	// endregion

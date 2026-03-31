@@ -47,6 +47,7 @@ pub(crate) struct AutoArgs {
 	/// Selects video streams by index or ISO 639-2 language code.
 	#[arg(long, alias = "Vs", default_values_t = ["0".to_string()])]
 	pub video_streams: Vec<String>,
+
 	/// Selects audio streams by index or ISO 639-2 language code.
 	#[arg(long, alias = "As", default_values_t = ["0".to_string()])]
 	pub audio_streams: Vec<String>,
@@ -65,6 +66,7 @@ pub(crate) struct AutoArgs {
 	/// The output duration.
 	#[arg(short = 't', group = "seeking")]
 	pub duration: Option<String>,
+	/// The end time offset.
 	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
@@ -225,7 +227,7 @@ pub(crate) struct BarcodeArgs {
 	#[arg(short = 'D', long)]
 	pub deep_color: bool,
 
-	/// Sets the output barcode image's height.
+	/// Sets the output barcode image's height. (defaults to the input video's height)
 	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
 }
@@ -412,6 +414,14 @@ pub(crate) struct InfoArgs {
 	pub no_color: bool,
 }
 
+#[cfg(debug_assertions)]
+#[derive(Parser, Debug, Clone)]
+pub(crate) struct PalettesArgs {
+	/// The output directory.
+	#[arg()]
+	pub output: PathBuf,
+}
+
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum Commands {
 	#[command(about = "Wrapper around common ffmpeg operations")]
@@ -428,4 +438,8 @@ pub(crate) enum Commands {
 
 	#[command(about = "Outputs information about a media file")]
 	Info(InfoArgs),
+
+	#[cfg(debug_assertions)]
+	#[command(about = "Generates example palette images")]
+	Palettes(PalettesArgs),
 }

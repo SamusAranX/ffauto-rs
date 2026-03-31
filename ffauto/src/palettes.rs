@@ -1,6 +1,6 @@
 use ffmpeg::palettes::palette::Palette;
 
-#[derive(clap::ValueEnum, Clone, Debug, PartialEq)]
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, strum::Display)]
 pub enum BuiltInPalette {
 	Cmyk, // actually CMYK plus white
 	Windows,

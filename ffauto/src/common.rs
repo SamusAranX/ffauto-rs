@@ -3,8 +3,8 @@ use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffmpeg::filters::{
-	Eq, FilterChain, Format, Scale, ScaleAlgorithm, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack,
-	Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
+	Eq, FilterChain, FilterChainList, Format, Scale, ScaleAlgorithm, Split, Tonemap, TonemapAlgorithm,
+	Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
 };
 use ffmpeg::palettes::palette::Palette;
 use std::path::Path;
@@ -93,11 +93,11 @@ pub(crate) fn generate_scale_filter(
 
 /// Generates a filter chain that ends in a single 16x16 output labeled `palette`.
 #[allow(clippy::cast_possible_truncation)]
-pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> Vec<FilterChain> {
+pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 	let colors = pal.colors.iter().map(|e| e.color).collect::<Vec<_>>();
 
 	// Create as many filter chains like `color,format[pX] as there are colors in the palette
-	let mut color_sources: Vec<FilterChain> = Vec::new();
+	let mut color_sources = FilterChainList::new();
 	for (color_idx, color) in colors.iter().enumerate() {
 		let mut chain = FilterChain::with_outputs(vec![format!("p{}", color_idx + 1)]);
 		chain.push(ffmpeg::filters::Color::pixel(color.to_string()));
@@ -106,7 +106,7 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> Vec<FilterChain> {
 	}
 
 	// Create "dummy" filter chains repeating the last color of the palette until we hit 256 total filter chains
-	let mut dummy_sources: Vec<FilterChain> = Vec::new();
+	let mut dummy_sources = FilterChainList::new();
 	if color_sources.len() < 256 {
 		let num_dummies = 256 - color_sources.len();
 		let dummy_color = colors.last().unwrap().to_string();
@@ -145,7 +145,7 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> Vec<FilterChain> {
 	palette_chain.push(Xstack::grid(16, 16, None));
 
 	// And now we just return all of the chains in a big Vec!
-	let mut all_chains: Vec<FilterChain> = vec![];
+	let mut all_chains = FilterChainList::new();
 	all_chains.extend(color_sources);
 	all_chains.extend(dummy_sources);
 	all_chains.extend([palette_chain]);
@@ -265,7 +265,7 @@ pub(crate) fn check_frame_size(w: u64, h: u64) -> Result<()> {
 	let stride_area = stride * (h + 128);
 
 	#[cfg(debug_assertions)]
-	eprintln!("stride: {stride} | stride_area: {stride_area}");
+	eprintln!("{w}×{h} → stride: {stride}, stride_area: {stride_area}");
 
 	if w == 0 || h == 0 || w > MAX32 || h > MAX32 || stride >= MAX32 || stride_area >= MAX32 {
 		anyhow::bail!("ffmpeg can't handle frames as big as {w}×{h}!")

@@ -20,7 +20,7 @@ pub enum Dither {
 	Sierra2,
 
 	/// Frankie Sierra dithering v2 "Lite" (error diffusion).
-	#[strum(serialize = "sierra2_4a")]
+	#[strum(serialize = "sierra2-4a")]
 	#[default]
 	Sierra2_4a,
 

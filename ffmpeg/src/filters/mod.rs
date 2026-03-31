@@ -4,6 +4,7 @@ use std::fmt::Display;
 
 mod audio;
 mod filterchain;
+mod filterchain_list;
 mod video;
 
 pub trait FFmpegFilter: Display {
@@ -11,6 +12,7 @@ pub trait FFmpegFilter: Display {
 }
 
 pub use filterchain::FilterChain;
+pub use filterchain_list::FilterChainList;
 
 pub use audio::afade::{Afade, Curve as AfadeCurve, Type as AfadeType};
 pub use audio::asplit::Asplit;
