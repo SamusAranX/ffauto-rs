@@ -96,7 +96,8 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, debug: bool) -> Result<()> {
 				.outputs
 				.push("filtered_palettegen".to_string());
 
-			let mut palettegen_chain = FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
+			let mut palettegen_chain =
+				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
 			palettegen_chain.push(Palettegen::new(args.num_colors, false, PalettegenStatsMode::Full));
 
 			palettegen_pipeline.push(palettegen_chain);
