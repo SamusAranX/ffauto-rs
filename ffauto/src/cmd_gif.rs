@@ -5,6 +5,7 @@ use crate::common::*;
 use crate::palettes::get_builtin_palette;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
+use clap::ArgMatches;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::filters::{
 	Colorspace, Crop, Fade, FilterChain, FilterChainList, Fps, Palettegen, PalettegenStatsMode, Paletteuse,
@@ -12,7 +13,7 @@ use ffmpeg::filters::{
 };
 use ffmpeg::palettes::palette::Palette;
 
-pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
+pub(crate) fn ffmpeg_gif(args: &GIFArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
 	let (video_stream, video_stream_id) =
@@ -51,6 +52,9 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
+	// get order of crop and scale arguments so we can reorder the crop and scale filters below
+	let (crop_index, scale_index) = get_crop_and_scale_order(matches);
+
 	let mut video_pipelines = FilterChainList::new();
 	let mut filter_pipeline =
 		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered_paletteuse"]);
@@ -59,15 +63,28 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, debug: bool) -> Result<()> {
 		filter_pipeline.push(Fps::new(fps));
 	}
 
+	let mut crop_and_scale = FilterChain::new();
+
 	if let Some(Ok(crop)) = args.crop.clone().map(Crop::from_arg) {
-		filter_pipeline.push(crop);
+		crop_and_scale.push(crop);
 	}
 
-	if let Some(scale_filter) =
-		generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode)
-	{
-		filter_pipeline.push(scale_filter);
+	if let Some(scale_filter) = generate_scale_filter(
+		args.width,
+		args.height,
+		args.size_fit.as_ref(),
+		args.size_fill.as_ref(),
+		args.scale_mode,
+	) {
+		crop_and_scale.push(scale_filter);
 	}
+
+	if scale_index < crop_index {
+		// if the scale argument was provided before the crop argument,
+		// flip this list around
+		crop_and_scale.reverse();
+	}
+	filter_pipeline.extend(crop_and_scale);
 
 	if video_stream.is_hdr() {
 		filter_pipeline.extend(sdr_tonemap_chain());

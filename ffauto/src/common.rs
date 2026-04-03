@@ -3,12 +3,13 @@ use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
 use ffmpeg::filters::{
-	Eq, FilterChain, FilterChainList, Format, Scale, ScaleAlgorithm, Split, Tonemap, TonemapAlgorithm,
-	Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
+	Eq, FilterChain, FilterChainList, Format, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split,
+	Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
 };
 use ffmpeg::palettes::palette::Palette;
 use std::path::Path;
 
+use clap::ArgMatches;
 use std::time::Duration;
 
 const MAX32: u64 = i32::MAX as u64;
@@ -29,6 +30,17 @@ pub(crate) fn sdr_tonemap_chain() -> FilterChain {
 	));
 
 	list
+}
+
+pub(crate) fn get_crop_and_scale_order(matches: &ArgMatches) -> (usize, usize) {
+	let crop_index = matches.index_of("crop").unwrap_or_default();
+	let scale_index = matches
+		.index_of("width")
+		.or_else(|| matches.index_of("height"))
+		.or_else(|| matches.index_of("size"))
+		.unwrap_or_default();
+
+	(crop_index, scale_index)
 }
 
 pub trait CanSeek {
@@ -73,20 +85,31 @@ pub(crate) fn parse_duration(
 pub(crate) fn generate_scale_filter(
 	width: Option<u64>,
 	height: Option<u64>,
-	size: Option<&String>,
+	size_fit: Option<&String>,
+	size_fill: Option<&String>,
 	scale_mode: ScaleAlgorithm,
 ) -> Option<Scale> {
 	#[allow(clippy::cast_possible_truncation)]
-	match (width, height, size) {
-		(_, _, Some(s)) => {
-			if let Ok(size_filter) = Scale::from_size(s.clone(), scale_mode) {
+	match (width, height, size_fit, size_fill) {
+		(_, _, Some(fit), _) => {
+			if let Ok(size_filter) =
+				Scale::from_size(fit.clone(), ScaleForceOriginalAspectRatio::Decrease, scale_mode)
+			{
 				return Some(size_filter);
 			}
 			None
 		}
-		(Some(w), Some(h), _) => Some(Scale::new(w as i32, h as i32, scale_mode)),
-		(Some(w), None, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
-		(None, Some(h), _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
+		(_, _, _, Some(fill)) => {
+			if let Ok(size_filter) =
+				Scale::from_size(fill.clone(), ScaleForceOriginalAspectRatio::Increase, scale_mode)
+			{
+				return Some(size_filter);
+			}
+			None
+		}
+		(Some(w), Some(h), _, _) => Some(Scale::new(w as i32, h as i32, scale_mode)),
+		(Some(w), None, _, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
+		(None, Some(h), _, _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
 		_ => None,
 	}
 }
@@ -144,45 +167,6 @@ pub(crate) fn palette_to_ffmpeg(pal: &Palette) -> FilterChainList {
 
 	all_chains
 }
-
-// pub(crate) fn generate_crop_filter(crop: Option<&str>) -> Option<Crop> {
-// 	if let Some(crop_str) = crop {
-// 		return Crop::from_arg(crop_str).ok();
-// 	}
-//
-// 	None
-// }
-
-// #[allow(clippy::cast_possible_truncation)]
-// pub(crate) fn generate_scale_filter(
-// 	width: Option<u64>,
-// 	height: Option<u64>,
-// 	size: Option<&str>,
-// 	algorithm: &ScaleAlgorithm,
-// ) -> Option<Scale> {
-// 	if let Some(width) = width {
-// 		return Some(Scale::preserve_aspect_ratio_width(width as i32, *algorithm));
-// 	} else if let Some(height) = height {
-// 		return Some(Scale::preserve_aspect_ratio_height(height as i32, *algorithm));
-// 	} else if let Some(size) = size {
-// 		return match parse_ffmpeg_size(size) {
-// 			Ok(size) => Some(Scale {
-// 				width: size.width as i32,
-// 				height: size.height as i32,
-// 				scale_algorithm: *algorithm,
-// 				force_original_aspect_ratio: ScaleForceOriginalAspectRatio::Decrease,
-// 				force_divisible_by: 2,
-// 				..Default::default()
-// 			}),
-// 			Err(err) => {
-// 				eprintln!("{err}");
-// 				None
-// 			}
-// 		};
-// 	}
-//
-// 	None
-// }
 
 pub(crate) fn generate_color_sharpness_filters(
 	brightness: f64,

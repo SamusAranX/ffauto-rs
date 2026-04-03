@@ -21,7 +21,7 @@ Hardware acceleration also isn't really supported, so encoding will happen on th
 ## `auto`
 
 <details>
-<summary>Output of `ff auto -h`</summary>
+<summary>Command help text</summary>
 
 ```
 Wrapper around common ffmpeg operations
@@ -49,13 +49,15 @@ Options:
       --to <DURATION_TO>
           The end time offset
   -c, --crop <CROP>
-          Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+          Crops the output video. Format: H, WxH, or WxH,X;Y.
       --vw <WIDTH>
           Sets the output video width, preserving aspect ratio
       --vh <HEIGHT>
           Sets the output video height, preserving aspect ratio
       --vs <SIZE>
-          Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name
+          Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name
+      --vS <SIZE>
+          Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name
   -S, --scale-mode <SCALE_MODE>
           Sets the scaling algorithm used [default: bicubic] [possible values: fast-bilinear, bilinear, bicubic, neighbor, area, bicublin, gauss, sinc, lanczos, spline]
   -T, --tonemap
@@ -115,7 +117,7 @@ Timestamps can be given in any of these formats: `H:MM:SS.f`, `H:MM:SS`, `M:SS.f
 
 ### Cropping
 
-* `-c/--crop <CROP>`: Crop the video before scaling. Three formats are accepted:
+* `-c/--crop <CROP>`: Crop the video. Three formats are accepted:
     * `H`: centered square crop of width and height `H`
     * `WxH`: centered crop to `W`×`H`
     * `WxH,X;Y`: crop to `W`×`H` at offset `X`, `Y`
@@ -124,15 +126,18 @@ The separators `x`, `,`, and `;` are used for demonstration purposes, but any se
 
 ### Scaling
 
-At most one option of `--vw`, `--vw`, and `--vs` may be given at a time.
+The following arguments are all mutually exclusive. Only one of them may be specified at a time.
 
 * `--vw <WIDTH>`: Resize to this width, preserving aspect ratio.
 * `--vh <HEIGHT>`: Resize to this height, preserving aspect ratio.
 * `--vs <SIZE>`: Fit the video into a bounding box. Accepts `WxH` (e.g. `1280x720`) or an [ffmpeg size name](https://ffmpeg.org/ffmpeg-utils.html#Video-size) (e.g. `hd720`).
+* `--vS <SIZE>`: Makes the video fill the specified bounding box. Accepts `WxH` (e.g. `1280x720`) or an [ffmpeg size name](https://ffmpeg.org/ffmpeg-utils.html#Video-size) (e.g. `hd720`).
 
 Additionally, this argument may be used to control the scaling algorithm:
 
 * `-S/--scale-mode <SCALE_MODE>`: Scaling algorithm. Default: `bicubic`. Options: `fast-bilinear`, `bilinear`, `bicubic`, `neighbor`, `area`, `bicublin`, `gauss`, `sinc`, `lanczos`, `spline`.
+
+**Note:** Cropping and scaling are applied in the order `-c`/`--crop` and the scaling arguments (`--vw`, `--vh`, `--vs`, `--vS`) appear on the command line.
 
 ### Video Codec
 
@@ -186,7 +191,7 @@ Fades apply to audio and video streams at the same time.
 ## `gif`
 
 <details>
-<summary>Output of `ff gif -h`</summary>
+<summary>Command help text</summary>
 
 ```
 Wrapper around ffmpeg's GIF creation functionality
@@ -210,13 +215,15 @@ Options:
       --to <DURATION_TO>
           The end time offset
   -c, --crop <CROP>
-          Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+          Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
       --vw <WIDTH>
           Sets the output video width, preserving aspect ratio
       --vh <HEIGHT>
           Sets the output video height, preserving aspect ratio
       --vs <SIZE>
-          Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name
+          Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name
+      --vS <SIZE>
+          Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name
   -S, --scale-mode <SCALE_MODE>
           Sets the scaling algorithm used [default: bicubic] [possible values: fast-bilinear, bilinear, bicubic, neighbor, area, bicublin, gauss, sinc, lanczos, spline]
   -f, --fade <FADE>
@@ -313,9 +320,9 @@ At most one palette source may be specified. When none is given, a palette is ge
 Only applies when neither `--palette-file` nor `--palette-name` are given.
 
 * `--stats-mode <STATS_MODE>`: How the palette is computed. Default: `full`.
-  * `full`: Generate one palette for the entire video.
-  * `diff`: Only consider parts of frames that don't change from the previous frame. Good for static backgrounds.
-  * `single`: Generate a fresh palette per frame.
+    * `full`: Generate one palette for the entire video.
+    * `diff`: Only consider parts of frames that don't change from the previous frame. Good for static backgrounds.
+    * `single`: Generate a fresh palette per frame.
 
 ### Dithering (see also [`paletteuse`](https://ffmpeg.org/ffmpeg-filters.html#paletteuse))
 
@@ -328,7 +335,7 @@ Only applies when neither `--palette-file` nor `--palette-name` are given.
 ## `quant`
 
 <details>
-<summary>Output of `ff quant -h`</summary>
+<summary>Command help text</summary>
 
 ```
 Like the gif subcommand but for still images
@@ -343,10 +350,11 @@ Options:
       --video-stream <VIDEO_STREAM>  Selects a video stream by index [default: 0]
       --video-lang <VIDEO_LANGUAGE>  Selects a video stream by language. (ISO 639-2)
   -s, --seek <SEEK>                  The start time offset
-  -c, --crop <CROP>                  Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+  -c, --crop <CROP>                  Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
       --vw <WIDTH>                   Sets the output video width, preserving aspect ratio
       --vh <HEIGHT>                  Sets the output video height, preserving aspect ratio
-      --vs <SIZE>                    Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name
+      --vs <SIZE>                    Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name
+      --vS <SIZE>                    Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name
   -S, --scale-mode <SCALE_MODE>      Sets the scaling algorithm used [default: bicubic] [possible values: fast-bilinear, bilinear, bicubic, neighbor, area, bicublin, gauss, sinc, lanczos, spline]
       --brightness <BRIGHTNESS>      Affects the output brightness, range [-1.0;1.0] [default: 0]
       --contrast <CONTRAST>          Affects the output contrast, range [-1000.0;1000.0] [default: 1]
@@ -402,7 +410,7 @@ Options:
 ## `barcode`
 
 <details>
-<summary>Output of `ff barcode -h`</summary>
+<summary>Command help text</summary>
 
 ```
 Movie "barcode" generator
@@ -450,7 +458,7 @@ Generates a "movie barcode": a single image where each column represents one fra
 ## `info`
 
 <details>
-<summary>Output of `ff info -h`</summary>
+<summary>Command help text</summary>
 
 ```
 Outputs information about a media file
@@ -509,7 +517,7 @@ All of these used [this video](https://www.youtube.com/watch?v=1_tFPT5X2hs) as t
 ### Barcodes
 
 <details>
-<summary>Two barcodes, showcasing the `frames` and `colors` modes respectively</summary>
+<summary>Two barcodes, showcasing the "frames" and "colors" modes respectively</summary>
 
 ![A movie barcode in "frames" mode](images/barcode_frames.png)
 

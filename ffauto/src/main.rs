@@ -6,7 +6,6 @@ use crate::cmd_info::ffmpeg_info;
 use crate::cmd_palettes::generate_palettes;
 use crate::cmd_quant::ffmpeg_quant;
 use crate::commands::{Cli, Commands};
-use clap::Parser;
 use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -24,7 +23,8 @@ mod palettes;
 mod vec_push_ext;
 
 fn main() -> ExitCode {
-	let cli = Cli::parse();
+	let (cli, sub_matches) = Cli::parse_with_matches();
+	let matches = sub_matches.unwrap_or_default();
 	let output: &PathBuf;
 
 	let result = match &cli.command {
@@ -34,7 +34,7 @@ fn main() -> ExitCode {
 			let mut args = args.clone();
 			args.optimize_settings();
 
-			ffmpeg_auto(&args, cli.debug)
+			ffmpeg_auto(&args, &matches, cli.debug)
 		}
 		Some(Commands::Barcode(args)) => {
 			output = &args.output;
@@ -42,11 +42,11 @@ fn main() -> ExitCode {
 		}
 		Some(Commands::Gif(args)) => {
 			output = &args.output;
-			ffmpeg_gif(args, cli.debug)
+			ffmpeg_gif(args, &matches, cli.debug)
 		}
 		Some(Commands::Quant(args)) => {
 			output = &args.output;
-			ffmpeg_quant(args, cli.debug)
+			ffmpeg_quant(args, &matches, cli.debug)
 		}
 		Some(Commands::Info(args)) => {
 			return match ffmpeg_info(args) {

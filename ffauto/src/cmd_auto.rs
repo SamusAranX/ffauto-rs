@@ -6,6 +6,7 @@ use crate::commands::AutoArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::{Context, Result};
+use clap::ArgMatches;
 use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
@@ -25,7 +26,7 @@ enum StreamIndex {
 	Language(Language),
 }
 
-pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
+pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
 	let first_video_stream = probe.get_first_video_stream();
@@ -62,6 +63,12 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
+	if args.faststart {
+		ffmpeg_args.add_two("-movflags", "faststart");
+	}
+
+	// region Stream Selection
+
 	let streams_and_types = [
 		(&args.video_streams, StreamType::Video),
 		(&args.audio_streams, StreamType::Audio),
@@ -70,8 +77,6 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 	// -metadata expects output stream indices, so keep track of those
 	let mut output_stream_idx: usize = 0;
-
-	// let subtitle_lang_re = Regex::new(r"(?i)\.(?<lang>[a-z0-9\-_]+)\.[a-z0-9]+$").unwrap();
 
 	// select appropriate streams, default to the first one respectively if none were specified
 	for (streams, stream_type) in streams_and_types {
@@ -185,6 +190,8 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		}
 	}
 
+	// endregion
+
 	let (mut fade_in, mut fade_out) = (args.fade_in, args.fade_out);
 	if args.fade > 0.0 {
 		fade_in = args.fade;
@@ -251,6 +258,9 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 
 	// region Video Filtering
 
+	// get order of crop and scale arguments so we can reorder the crop and scale filters below
+	let (crop_index, scale_index) = get_crop_and_scale_order(matches);
+
 	ffmpeg_args.add_two("-c:v", args.video_codec.video_codec());
 	ffmpeg_args.add_two(
 		"-crf",
@@ -309,10 +319,6 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 		}
 	}
 
-	if args.faststart {
-		ffmpeg_args.add_two("-movflags", "faststart");
-	}
-
 	if args.needs_video_filter() {
 		let mut video_filters = FilterChain::new();
 
@@ -329,15 +335,28 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, debug: bool) -> Result<()> {
 			_ => (),
 		}
 
+		let mut crop_and_scale = FilterChain::new();
+
 		if let Some(Ok(crop)) = args.crop.clone().map(Crop::from_arg) {
-			video_filters.push(crop);
+			crop_and_scale.push(crop);
 		}
 
-		if let Some(scale_filter) =
-			generate_scale_filter(args.width, args.height, args.size.as_ref(), args.scale_mode)
-		{
-			video_filters.push(scale_filter);
+		if let Some(scale_filter) = generate_scale_filter(
+			args.width,
+			args.height,
+			args.size_fit.as_ref(),
+			args.size_fill.as_ref(),
+			args.scale_mode,
+		) {
+			crop_and_scale.push(scale_filter);
 		}
+
+		if scale_index < crop_index {
+			// if the scale argument was provided before the crop argument,
+			// flip this list around
+			crop_and_scale.reverse();
+		}
+		video_filters.extend(crop_and_scale);
 
 		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
 			let tonemap_chain = sdr_tonemap_chain();

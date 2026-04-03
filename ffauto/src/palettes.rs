@@ -16,8 +16,8 @@ pub enum BuiltInPalette {
 	UniformPerceptual, // Photoshop's Perceptual method
 	UniformSelective,  // Photoshop's Selective method
 
-	// from gradient-rs
-	// https://github.com/mazznoer/gradient-rs
+	// from colorgrad-rs
+	// https://github.com/mazznoer/colorgrad-rs/blob/master/PRESET.md
 	Blues,
 	BrBg,
 	BuGn,

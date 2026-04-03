@@ -1,8 +1,7 @@
-use anyhow::Result;
-
 use crate::commands::BarcodeArgs;
 use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
+use anyhow::Result;
 use ffmpeg::ffmpeg::enums::BarcodeMode;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;

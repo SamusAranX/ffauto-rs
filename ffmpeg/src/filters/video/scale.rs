@@ -131,6 +131,7 @@ impl Scale {
 			width,
 			height,
 			scale_algorithm: algorithm,
+			force_divisible_by: 2,
 			..Default::default()
 		}
 	}
@@ -150,13 +151,14 @@ impl Scale {
 	}
 
 	#[allow(clippy::cast_possible_truncation)]
-	pub fn from_size(size: String, algorithm: Algorithm) -> Result<Self> {
+	pub fn from_size(size: String, aspect_ratio: ForceOriginalAspectRatio, algorithm: Algorithm) -> Result<Self> {
 		let parsed_size = parse_ffmpeg_size(size)?;
 		Ok(Self {
 			width: parsed_size.width as i32,
 			height: parsed_size.height as i32,
 			scale_algorithm: algorithm,
-			force_original_aspect_ratio: ForceOriginalAspectRatio::Decrease,
+			force_original_aspect_ratio: aspect_ratio,
+			force_divisible_by: 2,
 			..Default::default()
 		})
 	}

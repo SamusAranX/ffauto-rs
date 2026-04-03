@@ -1,6 +1,8 @@
 #![allow(clippy::doc_markdown)]
 
 use clap::ArgAction;
+use clap::CommandFactory;
+use clap::FromArgMatches;
 use clap::Parser;
 use clap::Subcommand;
 use const_format::formatcp;
@@ -25,6 +27,15 @@ pub(crate) struct Cli {
 
 	#[arg(long, global = true)]
 	pub debug: bool,
+}
+
+impl Cli {
+	pub(crate) fn parse_with_matches() -> (Self, Option<clap::ArgMatches>) {
+		let matches = Self::command().get_matches();
+		let cli = Self::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
+		let sub_matches = matches.subcommand().map(|(_, m)| m.clone());
+		(cli, sub_matches)
+	}
 }
 
 #[allow(unreachable_code)]
@@ -70,7 +81,7 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -80,9 +91,12 @@ pub(crate) struct AutoArgs {
 	/// Sets the output video height, preserving aspect ratio.
 	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	/// Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name.
 	#[arg(long = "vs", group = "resize")]
-	pub size: Option<String>,
+	pub size_fit: Option<String>,
+	/// Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name.
+	#[arg(long = "vS", group = "resize")]
+	pub size_fill: Option<String>,
 	/// Sets the scaling algorithm used.
 	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
 	pub scale_mode: ScaleAlgorithm,
@@ -160,7 +174,8 @@ impl AutoArgs {
 	pub(crate) fn needs_video_filter(&self) -> bool {
 		self.width.is_some()
 			|| self.height.is_some()
-			|| self.size.is_some()
+			|| self.size_fit.is_some()
+			|| self.size_fill.is_some()
 			|| self.fade > 0.0
 			|| self.fade_in > 0.0
 			|| self.fade_out > 0.0
@@ -173,7 +188,8 @@ impl AutoArgs {
 		if self.optimize_target.is_some() {
 			self.width = None;
 			self.height = None;
-			self.size = None;
+			self.size_fit = None;
+			self.size_fill = None;
 			self.tonemap = true; // none of the optimization targets support HDR media
 			self.faststart = true;
 			self.audio_channels = Some("2".parse().unwrap());
@@ -183,18 +199,18 @@ impl AutoArgs {
 		match self.optimize_target {
 			None => (),
 			Some(OptimizeTarget::Ipod5) => {
-				self.size = Some("320x240".to_string());
+				self.size_fit = Some("320x240".to_string());
 			}
 			Some(OptimizeTarget::Ipod) => {
-				self.size = Some("640x480".to_string());
+				self.size_fit = Some("640x480".to_string());
 			}
 			Some(OptimizeTarget::Psp) => {
 				// as of firmware 3.30, allegedly supports MPEG-4 AVC Main Profile 720x480, 352x480 and 480x272
 				// extra info: also supports 160x120 JPEG thumbnails with a .THM extension, next to the video files
-				self.size = Some("480x272".to_string());
+				self.size_fit = Some("480x272".to_string());
 			}
 			Some(OptimizeTarget::PsVita) => {
-				self.size = Some("960x540".to_string());
+				self.size_fit = Some("960x540".to_string());
 			}
 		}
 	}
@@ -259,7 +275,7 @@ pub(crate) struct GIFArgs {
 	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -269,9 +285,12 @@ pub(crate) struct GIFArgs {
 	/// Sets the output video height, preserving aspect ratio.
 	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	/// Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name.
 	#[arg(long = "vs", group = "resize")]
-	pub size: Option<String>,
+	pub size_fit: Option<String>,
+	/// Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name.
+	#[arg(long = "vS", group = "resize")]
+	pub size_fill: Option<String>,
 	/// Sets the scaling algorithm used.
 	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
 	pub scale_mode: ScaleAlgorithm,
@@ -355,7 +374,7 @@ pub(crate) struct QuantArgs {
 	#[arg(short = 's', long)]
 	pub seek: Option<String>,
 
-	/// Crops the output video. Format H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -365,9 +384,12 @@ pub(crate) struct QuantArgs {
 	/// Sets the output video height, preserving aspect ratio.
 	#[arg(long = "vh", group = "resize")]
 	pub height: Option<u64>,
-	/// Sets the rectangle the output video size must fit into. Format WxH or an ffmpeg size name.
+	/// Sets the rectangle the output video size will fit into. Format: WxH or an ffmpeg size name.
 	#[arg(long = "vs", group = "resize")]
-	pub size: Option<String>,
+	pub size_fit: Option<String>,
+	/// Sets the rectangle the output video will fill. Format: WxH or an ffmpeg size name.
+	#[arg(long = "vS", group = "resize")]
+	pub size_fill: Option<String>,
 	/// Sets the scaling algorithm used.
 	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
 	pub scale_mode: ScaleAlgorithm,
