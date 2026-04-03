@@ -1,27 +1,28 @@
 use crate::commands::QuantArgs;
 use crate::common::*;
-use crate::palettes::get_builtin_palette;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use clap::ArgMatches;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
-	Colorspace, Crop, FilterChain, FilterChainList, Palettegen, PalettegenStatsMode, Paletteuse,
-	PaletteuseDiffMode, Select, SetSar, Split,
+	Crop, FilterChain, FilterChainList, PalettegenStatsMode, Paletteuse, PaletteuseDiffMode, Select, SetSar,
 };
-use ffmpeg::palettes::palette::Palette;
 
 pub(crate) fn ffmpeg_quant(args: &QuantArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
+	let mut remove_bars_crop: Option<Crop> = None;
+	if args.remove_bars {
+		eprintln!("Gathering autocrop information…");
+		remove_bars_crop = Some(ffmpeg_cropdetect(&args.input)?);
+	}
+
 	let probe = ffprobe(&args.input, false)?;
 
 	let (video_stream, video_stream_id) =
 		probe.checked_get_video_stream_by_index_or_language(&args.video_language, args.video_stream)?;
 
-	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
-		.into_iter()
-		.map(Into::into)
-		.collect();
+	let mut ffmpeg_args: Vec<String> = Vec::new();
 
 	let seek = args.parse_seek();
 	if let Some(seek) = seek {
@@ -55,6 +56,10 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, matches: &ArgMatches, debug: bool) 
 	let mut video_pipelines = FilterChainList::new();
 	let mut filter_pipeline =
 		FilterChain::with_inputs_and_outputs([video_stream_id], ["filtered_paletteuse"]);
+
+	if let Some(remove_bars_crop) = remove_bars_crop {
+		filter_pipeline.push(remove_bars_crop);
+	}
 
 	filter_pipeline.push(Select::new("eq(n\\,0)", 1));
 
@@ -91,39 +96,23 @@ pub(crate) fn ffmpeg_quant(args: &QuantArgs, matches: &ArgMatches, debug: bool) 
 
 	filter_pipeline.push(SetSar::square());
 
-	let mut palettegen_pipeline = FilterChainList::new();
-	match (&args.palette_file, &args.palette_name) {
-		(Some(palette_file), None) => {
-			palettegen_pipeline.extend(match Palette::load_from_file(palette_file) {
-				Ok(pal) => palette_to_ffmpeg(&pal),
-				Err(e) => anyhow::bail!(e),
-			});
-		}
-		(None, Some(palette_name)) => {
-			palettegen_pipeline.extend(palette_to_ffmpeg(&get_builtin_palette(palette_name)));
-		}
-		(None, None) => {
-			// Add a split and an additional "filtered_palettegen" output to the filter pipeline
-			// The palettegen filter needs that connected to its input to work
-			filter_pipeline.push(Split::new(2));
-			filter_pipeline
-				.outputs
-				.push("filtered_palettegen".to_string());
-
-			let mut palettegen_chain =
-				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
-			palettegen_chain.push(Colorspace::srgb()); // palettegen complains if this isn't here
-			palettegen_chain.push(Palettegen::new(args.num_colors, false, PalettegenStatsMode::Full));
-
-			palettegen_pipeline.push(palettegen_chain);
-		}
-		_ => anyhow::bail!("Well, this wasn't supposed to happen."),
-	}
+	let palettegen_pipeline = generate_palette_filter(
+		args.palette_file.clone(),
+		args.palette_static.clone(),
+		args.palette_dynamic.clone(),
+		args.palette_gradient.clone(),
+		args.palette_steps,
+		&mut filter_pipeline,
+		PalettegenStatsMode::Full,
+	)?;
 
 	video_pipelines.push(filter_pipeline);
 	video_pipelines.extend(palettegen_pipeline);
 
-	let new_palette = args.palette_file.is_none() && args.palette_name.is_none();
+	let new_palette = args.palette_file.is_none()
+		&& args.palette_static.is_none()
+		&& args.palette_dynamic.is_none()
+		&& args.palette_gradient.is_none();
 
 	let mut paletteuse_chain = FilterChain::with_inputs(["filtered_paletteuse", "palette"]);
 	paletteuse_chain.push(Paletteuse::new(

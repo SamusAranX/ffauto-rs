@@ -30,6 +30,16 @@ fn scale_6bits_to_8bits(v: u8) -> u8 {
 }
 
 impl Color {
+	#[must_use]
+	#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+	pub fn from_f32(r: f32, g: f32, b: f32) -> Self {
+		Self {
+			r: (r * 255.0).round() as u8,
+			g: (g * 255.0).round() as u8,
+			b: (b * 255.0).round() as u8,
+		}
+	}
+
 	pub(crate) fn from_6bits(v: [u8; 3]) -> Self {
 		Self {
 			r: scale_6bits_to_8bits(v[0]),

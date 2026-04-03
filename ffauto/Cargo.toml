@@ -24,6 +24,7 @@ wildcard_imports = "allow"
 anyhow = "1.0"
 clap = { version = "4.6", features = ["derive"] }
 colored = "3.1"
+colorgrad = { version = "0.8", features = ["preset", "named-colors"] }
 const_format = "0.2"
 ffmpeg = { path = "../ffmpeg" }
 humansize = "2.1"

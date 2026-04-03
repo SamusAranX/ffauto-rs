@@ -15,6 +15,18 @@ pub struct Eq {
 	pub saturation: f64,
 
 	/// Set the gamma expression. The value must be a float in range 0.1 to 10.0.
-	#[ffarg(default = 1.0)]
+	#[ffarg(default = 1.0, omit_default)]
 	pub gamma: f64,
+}
+
+impl Eq {
+	#[must_use]
+	pub fn new(contrast: f64, brightness: f64, saturation: f64) -> Self {
+		Self {
+			contrast,
+			brightness,
+			saturation,
+			..Default::default()
+		}
+	}
 }

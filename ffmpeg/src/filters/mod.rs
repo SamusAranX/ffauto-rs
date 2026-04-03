@@ -27,10 +27,13 @@ pub use video::colorspace::{
 	Space as ColorspaceSpace, Transfer as ColorspaceTransfer, WhitepointAdapt as ColorspaceWhitepointAdapt,
 };
 pub use video::crop::Crop;
+pub use video::cropdetect::{Cropdetect, Mode as CropdetectMode};
 pub use video::eq::Eq;
 pub use video::fade::{Fade, Type as FadeType};
 pub use video::format::Format;
 pub use video::fps::Fps;
+pub use video::metadata::{Metadata, Mode as MetadataMode};
+pub use video::normalize::Normalize;
 pub use video::palettegen::{Palettegen, StatsMode as PalettegenStatsMode};
 pub use video::paletteuse::{DiffMode as PaletteuseDiffMode, Dither as PaletteuseDither, Paletteuse};
 pub use video::scale::{

@@ -4,6 +4,8 @@ pub mod enums;
 pub mod enums_impl;
 #[allow(clippy::module_inception)]
 pub mod ffmpeg;
+#[allow(clippy::module_inception)]
+pub mod ffmpeg_cropdetect;
 pub mod ffprobe;
 pub mod ffprobe_struct;
 pub mod size;

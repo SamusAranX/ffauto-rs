@@ -1,20 +1,30 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffmpeg::filters::{
-	Eq, FilterChain, FilterChainList, Format, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split,
-	Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
-};
-use ffmpeg::palettes::palette::Palette;
-use std::path::Path;
+use ffmpeg::filters::{Colorspace, Eq, FilterChain, FilterChainList, Format, Palettegen, PalettegenStatsMode, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer};
+use ffmpeg::palettes::palette::{Color, Palette};
+use std::path::{Path, PathBuf};
 
+use crate::palettes_dynamic::DynamicPalette;
+use crate::palettes_static::StaticPalette;
 use clap::ArgMatches;
+use colorgrad::Gradient;
 use std::time::Duration;
 
 const MAX32: u64 = i32::MAX as u64;
 
-// zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709"
+pub trait CanSeek {
+	fn parse_seek(&self) -> Option<Duration>;
+}
+
+pub trait CanSetDuration {
+	fn parse_duration(&self) -> Option<Duration>;
+}
+
+pub trait CanColorFilter {
+	fn generate_color_filters(&self) -> Option<FilterChain>;
+}
 
 /// Returns the standard tonemap filter chain for HDR-to-SDR conversion.
 pub(crate) fn sdr_tonemap_chain() -> FilterChain {
@@ -37,22 +47,11 @@ pub(crate) fn get_crop_and_scale_order(matches: &ArgMatches) -> (usize, usize) {
 	let scale_index = matches
 		.index_of("width")
 		.or_else(|| matches.index_of("height"))
-		.or_else(|| matches.index_of("size"))
+		.or_else(|| matches.index_of("size_fit"))
+		.or_else(|| matches.index_of("size_fill"))
 		.unwrap_or_default();
 
 	(crop_index, scale_index)
-}
-
-pub trait CanSeek {
-	fn parse_seek(&self) -> Option<Duration>;
-}
-
-pub trait CanSetDuration {
-	fn parse_duration(&self) -> Option<Duration>;
-}
-
-pub trait CanColorFilter {
-	fn generate_color_filters(&self) -> Option<FilterChain>;
 }
 
 /// Parses the seek string and returns it as a [Duration], if present.
@@ -111,6 +110,70 @@ pub(crate) fn generate_scale_filter(
 		(Some(w), None, _, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
 		(None, Some(h), _, _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
 		_ => None,
+	}
+}
+
+pub(crate) fn generate_palette_filter(
+	palette_file: Option<PathBuf>,
+	palette_static: Option<StaticPalette>,
+	palette_dynamic: Option<DynamicPalette>,
+	palette_gradient: Option<Vec<String>>,
+	palette_steps: u16,
+	filter_pipeline: &mut FilterChain,
+	stats_mode: PalettegenStatsMode,
+) -> Result<FilterChainList> {
+	match (palette_file, palette_static, palette_dynamic, palette_gradient) {
+		(Some(file), _, _, _) => match Palette::load_from_file(file) {
+			Ok(pal) => Ok(palette_to_ffmpeg(&pal)),
+			Err(e) => bail!(e),
+		},
+		(_, Some(pal_static), _, _) => Ok(palette_to_ffmpeg(&pal_static.to_palette())),
+		(_, _, Some(pal_dynamic), _) => {
+			let palette = pal_dynamic.to_palette(palette_steps);
+			Ok(palette_to_ffmpeg(&palette))
+		}
+		(_, _, _, Some(pal_gradient)) => {
+			if pal_gradient.len() < 2 || pal_gradient.len() > 256 {
+				bail!(
+					"The number of gradient colors must be greater than or equal to 2 and smaller than or equal to 256."
+				)
+			}
+			if !(2..=256).contains(&palette_steps) {
+				bail!(
+					"The number of gradient steps must be greater than or equal to 2 and smaller than or equal to 256."
+				)
+			}
+
+			let colors_string = pal_gradient.join(", ");
+			let gradient = colorgrad::GradientBuilder::new()
+				.css(&colors_string)
+				.build::<colorgrad::LinearGradient>()?;
+			let palette_colors = gradient
+				.colors(palette_steps as usize)
+				.iter()
+				.map(|c| Color::from_f32(c.r, c.g, c.b))
+				.collect::<Vec<_>>();
+
+			let palette = Palette::from(palette_colors);
+			Ok(palette_to_ffmpeg(&palette))
+		}
+		(None, None, None, None) => {
+			// Add a split and an additional "filtered_palettegen" output to the filter pipeline
+			// The palettegen filter needs that connected to its input to work
+			filter_pipeline.push(Split::new(2));
+			filter_pipeline
+				.outputs
+				.push("filtered_palettegen".to_string());
+
+			let mut palettegen_chain =
+				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
+			palettegen_chain.push(Colorspace::srgb()); // palettegen complains if this isn't here
+			palettegen_chain.push(Palettegen::new(palette_steps, false, stats_mode));
+			let mut palettegen_chain_list = FilterChainList::new();
+			palettegen_chain_list.push(palettegen_chain);
+
+			Ok(palettegen_chain_list)
+		}
 	}
 }
 
@@ -211,7 +274,7 @@ pub(crate) fn ffprobe_output<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> 
 pub(crate) fn ffprobe_frames<P: AsRef<Path>>(input: P) -> Result<FFProbeOutput> {
 	let p = ffprobe(&input, false)?;
 	if !p.has_video_streams() {
-		anyhow::bail!("The input file contains no usable video streams")
+		bail!("The input file contains no usable video streams")
 	}
 
 	let all_video_streams_have_nb_frames = p
@@ -244,7 +307,7 @@ pub(crate) fn check_frame_size(w: u64, h: u64) -> Result<()> {
 	eprintln!("{w}×{h} → stride: {stride}, stride_area: {stride_area}");
 
 	if w == 0 || h == 0 || w > MAX32 || h > MAX32 || stride >= MAX32 || stride_area >= MAX32 {
-		anyhow::bail!("ffmpeg can't handle frames as big as {w}×{h}!")
+		bail!("ffmpeg can't handle frames as big as {w}×{h}!")
 	}
 
 	Ok(())

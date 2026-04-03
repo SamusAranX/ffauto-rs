@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use clap::ArgMatches;
 use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
 use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
 use ffmpeg::filters::{Afade, Crop, Fade, FilterChain, Fps, Volume};
 use isolang::Language;
@@ -27,6 +28,12 @@ enum StreamIndex {
 }
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
+	let mut remove_bars_crop: Option<Crop> = None;
+	if args.remove_bars {
+		eprintln!("Gathering autocrop information…");
+		remove_bars_crop = Some(ffmpeg_cropdetect(&args.input)?);
+	}
+
 	let probe = ffprobe_output(&args.input)?;
 
 	let first_video_stream = probe.get_first_video_stream();
@@ -41,10 +48,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 		.clone();
 	let video_duration = probe.duration()?;
 
-	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
-		.into_iter()
-		.map(Into::into)
-		.collect();
+	let mut ffmpeg_args: Vec<String> = Vec::new();
 
 	let seek = args.parse_seek();
 	let duration = args.parse_duration();
@@ -333,6 +337,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 				}
 			}
 			_ => (),
+		}
+
+		if let Some(remove_bars_crop) = remove_bars_crop {
+			video_filters.push(remove_bars_crop);
 		}
 
 		let mut crop_and_scale = FilterChain::new();

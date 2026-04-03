@@ -1,22 +1,25 @@
 #![cfg(feature = "palette_generator")]
 
 use crate::commands::PalettesArgs;
-use crate::palettes::{BuiltInPalette, get_builtin_palette};
+use crate::palettes_static::StaticPalette;
 use anyhow::Result;
 use clap::ValueEnum;
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::image::ImageFormat;
 use imageproc::rect::Rect;
+use crate::palettes_dynamic::DynamicPalette;
 
-const IMAGE_WIDTH: u32 = 512;
-const IMAGE_HEIGHT: u32 = 32;
+const IMAGE_WIDTH: u32 = 1280;
+const IMAGE_HEIGHT: u32 = 64;
 
 pub(crate) fn generate_palettes(args: &PalettesArgs) -> Result<()> {
 	eprintln!("Output palettes to: {}", args.output.display());
 
-	for built_in_pal in BuiltInPalette::value_variants() {
+	eprintln!("# List of static palettes");
+
+	for static_pal in StaticPalette::value_variants() {
 		let mut image = imageproc::image::RgbImage::new(IMAGE_WIDTH, IMAGE_HEIGHT);
-		let pal = get_builtin_palette(built_in_pal);
+		let pal = static_pal.to_palette();
 
 		let rect_width = (IMAGE_WIDTH as f64 / pal.len() as f64).ceil() as u32;
 
@@ -26,13 +29,34 @@ pub(crate) fn generate_palettes(args: &PalettesArgs) -> Result<()> {
 			draw_filled_rect_mut(&mut image, rect, col);
 		}
 
-		let png_name = format!("{built_in_pal}.png");
+		let png_name = format!("static_{static_pal}.png");
 		let png_path = args.output.join(&png_name);
 		image.save_with_format(&png_path, ImageFormat::Png)?;
 
-		eprintln!("### {built_in_pal}");
+		eprintln!("### {static_pal}");
 		eprintln!(
-			"![A visualization of the \"{built_in_pal}\" palette]({})",
+			"![A visualization of the static \"{static_pal}\" palette]({})",
+			png_path.display()
+		);
+		eprintln!();
+	}
+
+	eprintln!("# List of dynamic palettes");
+
+	for dynamic_pal in DynamicPalette::value_variants() {
+		let grad = dynamic_pal.to_gradient();
+
+		let image = imageproc::image::ImageBuffer::from_fn(IMAGE_WIDTH, IMAGE_HEIGHT, |x, _| {
+			imageproc::image::Rgba(grad.at(x as f32 / IMAGE_WIDTH as f32).to_rgba8())
+		});
+
+		let png_name = format!("dynamic_{dynamic_pal}.png");
+		let png_path = args.output.join(&png_name);
+		image.save_with_format(&png_path, ImageFormat::Png)?;
+
+		eprintln!("### {dynamic_pal}");
+		eprintln!(
+			"![A visualization of the dynamic \"{dynamic_pal}\" palette]({})",
 			png_path.display()
 		);
 		eprintln!();

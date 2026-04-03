@@ -8,7 +8,8 @@ use clap::Subcommand;
 use const_format::formatcp;
 use std::path::PathBuf;
 
-use crate::palettes::BuiltInPalette;
+use crate::palettes_dynamic::DynamicPalette;
+use crate::palettes_static::StaticPalette;
 use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, VideoCodec};
 use ffmpeg::filters::{PalettegenStatsMode, PaletteuseDither, ScaleAlgorithm};
 
@@ -67,7 +68,7 @@ pub(crate) struct AutoArgs {
 	pub sub_streams: Vec<String>,
 
 	/// (WIP, currently nonfunctional) Burns the first specified subtitle stream into the output video stream. All further specified subtitle streams will be ignored.
-	#[arg(short = 'B', long, alias = "B")]
+	#[arg(short = 'B', long)]
 	pub burn_subtitle: bool,
 
 	/// The start time offset.
@@ -81,7 +82,11 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Attempts to crop off pillar- or letterboxing automatically before applying any manual cropping or scaling operations.
+	#[arg(short = 'X', long)]
+	pub remove_bars: bool,
+
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y.
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -151,8 +156,7 @@ pub(crate) struct AutoArgs {
 	pub optimize_target: Option<OptimizeTarget>,
 
 	/// Increasingly reduces video quality (in turn reducing output file size) depending on how often this was specified.
-	#[arg(short,
-	action = ArgAction::Count)]
+	#[arg(short, action = ArgAction::Count)]
 	pub garbage: u8,
 }
 
@@ -176,6 +180,7 @@ impl AutoArgs {
 			|| self.height.is_some()
 			|| self.size_fit.is_some()
 			|| self.size_fill.is_some()
+			|| self.remove_bars
 			|| self.fade > 0.0
 			|| self.fade_in > 0.0
 			|| self.fade_out > 0.0
@@ -190,6 +195,7 @@ impl AutoArgs {
 			self.height = None;
 			self.size_fit = None;
 			self.size_fill = None;
+			self.remove_bars = false;
 			self.tonemap = true; // none of the optimization targets support HDR media
 			self.faststart = true;
 			self.audio_channels = Some("2".parse().unwrap());
@@ -225,6 +231,10 @@ pub(crate) struct BarcodeArgs {
 	#[arg()]
 	pub output: PathBuf,
 
+	/// Attempts to crop off pillar- or letterboxing automatically before applying any manual cropping or scaling operations.
+	#[arg(short = 'X', long)]
+	pub remove_bars: bool,
+
 	/// Selects a video stream by index.
 	#[arg(long, group = "video_select", default_value_t = 0)]
 	pub video_stream: usize,
@@ -239,6 +249,7 @@ pub(crate) struct BarcodeArgs {
 	/// The barcode strip generation method.
 	#[arg(short = 'B', long, value_enum, default_value_t = BarcodeMode::default())]
 	pub barcode_mode: BarcodeMode,
+
 	/// Outputs a 48-bit PNG.
 	#[arg(short = 'D', long)]
 	pub deep_color: bool,
@@ -275,7 +286,11 @@ pub(crate) struct GIFArgs {
 	#[arg(long = "to", group = "seeking")]
 	pub duration_to: Option<String>,
 
-	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Attempts to crop off pillar- or letterboxing automatically before applying any manual cropping or scaling operations.
+	#[arg(short = 'X', long)]
+	pub remove_bars: bool,
+
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y.
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -330,14 +345,22 @@ pub(crate) struct GIFArgs {
 	pub sharpness: f64,
 
 	/// A file containing a palette. (supports ACT, COL, GPL, HEX, and PAL formats)
-	#[arg(short, long, group = "palette")]
+	#[arg(long, alias = "pf", group = "palette")]
 	pub palette_file: Option<PathBuf>,
-	/// A built-in palette.
-	#[arg(short = 'P', long, group = "palette")]
-	pub palette_name: Option<BuiltInPalette>,
-	/// The number of colors in the generated palette.
-	#[arg(short = 'n', group = "palette", default_value_t = 256)]
-	pub num_colors: u16,
+	/// A static palette. See also PALETTES_STATIC.md in the project repository.
+	#[arg(long, alias = "ps", group = "palette")]
+	pub palette_static: Option<StaticPalette>,
+	/// A dynamic palette. See also PALETTES_DYNAMIC.md in the project repository.
+	#[arg(long, alias = "pd", group = "palette")]
+	pub palette_dynamic: Option<DynamicPalette>,
+	/// Steps for a custom gradient palette. At least 2 colors must be specified.
+	/// Accepts CSS colors as arguments.
+	/// Pass a value for --palette-steps to control how many palette colors to pick from this gradient.
+	#[arg(long, alias = "pg", group = "palette", action = ArgAction::Append)]
+	pub palette_gradient: Option<Vec<String>>,
+	/// The number of colors in the palette. Only used with dynamic, gradient, and generated palettes.
+	#[arg(long, alias = "pn", default_value_t = 256)]
+	pub palette_steps: u16,
 
 	/// The statistics mode. (palettegen)
 	#[arg(long, default_value_t = PalettegenStatsMode::default())]
@@ -374,7 +397,11 @@ pub(crate) struct QuantArgs {
 	#[arg(short = 's', long)]
 	pub seek: Option<String>,
 
-	/// Crops the output video. Format: H, WxH, or WxH,X;Y. (applied before scaling)
+	/// Attempts to crop off pillar- or letterboxing automatically before applying any manual cropping or scaling operations.
+	#[arg(short = 'X', long)]
+	pub remove_bars: bool,
+
+	/// Crops the output video. Format: H, WxH, or WxH,X;Y.
 	#[arg(short, long)]
 	pub crop: Option<String>,
 
@@ -407,15 +434,23 @@ pub(crate) struct QuantArgs {
 	#[arg(long, allow_negative_numbers = true, default_value_t = 0.0)]
 	pub sharpness: f64,
 
-	/// A file containing a palette in either ACT, COL, GPL, HEX, JSON, or PAL format.
-	#[arg(short, long, group = "palette")]
+	/// A file containing a palette. (supports ACT, COL, GPL, HEX, and PAL formats)
+	#[arg(long, alias = "pf", group = "palette")]
 	pub palette_file: Option<PathBuf>,
-	/// A built-in palette.
-	#[arg(short = 'P', long, group = "palette")]
-	pub palette_name: Option<BuiltInPalette>,
-	/// The number of colors in the generated palette
-	#[arg(short = 'n', group = "palette", default_value_t = 256)]
-	pub num_colors: u16,
+	/// A static palette. See also PALETTES_STATIC.md in the project repository.
+	#[arg(long, alias = "ps", group = "palette")]
+	pub palette_static: Option<StaticPalette>,
+	/// A dynamic palette. See also PALETTES_DYNAMIC.md in the project repository.
+	#[arg(long, alias = "pd", group = "palette")]
+	pub palette_dynamic: Option<DynamicPalette>,
+	/// Steps for a custom gradient palette. At least 2 colors must be specified.
+	/// Accepts CSS colors as arguments.
+	/// Pass a value for --palette-steps to control how many palette colors to pick from this gradient.
+	#[arg(long, alias = "pg", group = "palette", action = ArgAction::Append)]
+	pub palette_gradient: Option<Vec<String>>,
+	/// The number of colors in the palette. Only used with dynamic, gradient, and generated palettes.
+	#[arg(long, alias = "pn", default_value_t = 256)]
+	pub palette_steps: u16,
 
 	/// The dithering mode (paletteuse)
 	#[arg(short = 'D', long, default_value_t = PaletteuseDither::default())]

@@ -9,6 +9,49 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 use tempfile::Builder;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, strum::Display, strum::EnumString)]
+pub enum LogLevel {
+	/// Show nothing at all; be silent.
+	#[strum(serialize = "quiet")]
+	Quiet,
+
+	/// Only show fatal errors which could lead the process to crash, such as an assertion failure.
+	/// This is not currently used for anything.
+	#[strum(serialize = "panic")]
+	Panic,
+
+	/// Only show fatal errors. These are errors after which the process absolutely cannot
+	/// continue.
+	#[strum(serialize = "fatal")]
+	Fatal,
+
+	/// Show all errors, including ones which can be recovered from.
+	#[strum(serialize = "error")]
+	Error,
+
+	/// Show all warnings and errors. Any message related to possibly incorrect or unexpected
+	/// events will be shown.
+	#[strum(serialize = "warning")]
+	Warning,
+
+	/// Show informative messages during processing. This is in addition to warnings and errors.
+	/// This is the default value.
+	#[strum(serialize = "info")]
+	#[default]
+	Info,
+
+	/// Same as info, except more verbose.
+	#[strum(serialize = "verbose")]
+	Verbose,
+
+	/// Show everything, including debugging information.
+	#[strum(serialize = "debug")]
+	Debug,
+
+	#[strum(serialize = "trace")]
+	Trace,
+}
+
 pub fn ffmpeg(
 	in_args: &[String],
 	accelerator: Option<String>,
@@ -21,10 +64,19 @@ pub fn ffmpeg(
 		.tempfile()
 		.context("Couldn't create temp file: {e}")?;
 
-	let mut args = vec![
-		"-progress".to_string(),
-		temp_file.path().to_str().unwrap().to_string(),
-	];
+	let loglevel = if debug { LogLevel::Info } else { LogLevel::Error };
+
+	let mut args: Vec<String> = vec![
+		"-hide_banner",
+		"-loglevel",
+		&loglevel.to_string(),
+		"-y",
+		"-progress",
+		temp_file.path().to_str().unwrap(),
+	]
+	.into_iter()
+	.map(Into::into)
+	.collect();
 
 	if let Some(accelerator) = accelerator {
 		args.extend(["-hwaccel".to_string(), accelerator]);

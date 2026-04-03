@@ -4,6 +4,7 @@ use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use ffmpeg::ffmpeg::enums::BarcodeMode;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
+use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::filters::{
 	Blend, BlendMode, Colorspace, Crop, FilterChain, FilterChainList, Format, Palettegen,
@@ -19,10 +20,13 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 		Some(_) => ffprobe(&args.input, false)?,
 	};
 
-	let mut ffmpeg_args: Vec<String> = vec!["-hide_banner", "-loglevel", "warning", "-y"]
-		.into_iter()
-		.map(Into::into)
-		.collect();
+	let mut remove_bars_crop: Option<Crop> = None;
+	if args.remove_bars {
+		eprintln!("Gathering autocrop information…");
+		remove_bars_crop = Some(ffmpeg_cropdetect(&args.input)?);
+	}
+
+	let mut ffmpeg_args: Vec<String> = Vec::new();
 
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
@@ -50,6 +54,10 @@ pub(crate) fn ffmpeg_barcode(args: &BarcodeArgs, debug: bool) -> Result<()> {
 
 	if video_stream.is_hdr() {
 		input_pipeline.extend(sdr_tonemap_chain());
+	}
+
+	if let Some(remove_bars_crop) = remove_bars_crop {
+		input_pipeline.push(remove_bars_crop);
 	}
 
 	// unconditionally convert to rgb48 here so there's more color to work with before the final output

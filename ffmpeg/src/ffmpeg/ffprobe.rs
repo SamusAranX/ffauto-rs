@@ -5,7 +5,6 @@ use anyhow::{Result, anyhow};
 
 use crate::ffmpeg::ffprobe_struct::FFProbeOutput;
 
-// ffprobe -hide_banner -loglevel error -print_format json -show_streams -show_format Exclusion\ Zone/mariomovie.mkv
 pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOutput> {
 	let mut ffprobe_args = vec![
 		"-hide_banner",

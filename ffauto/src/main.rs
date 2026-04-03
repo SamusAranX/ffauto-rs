@@ -19,7 +19,8 @@ mod cmd_quant;
 mod commands;
 mod commands_traits;
 mod common;
-mod palettes;
+mod palettes_dynamic;
+mod palettes_static;
 mod vec_push_ext;
 
 fn main() -> ExitCode {
