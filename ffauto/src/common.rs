@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffmpeg::filters::{Colorspace, Eq, FilterChain, FilterChainList, Format, Palettegen, PalettegenStatsMode, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer};
+use ffmpeg::filters::{Colorspace, ColorspaceAll, Eq, FilterChain, FilterChainList, Format, Palettegen, PalettegenStatsMode, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer};
 use ffmpeg::palettes::palette::{Color, Palette};
 use std::path::{Path, PathBuf};
 
@@ -167,7 +167,12 @@ pub(crate) fn generate_palette_filter(
 
 			let mut palettegen_chain =
 				FilterChain::with_inputs_and_outputs(["filtered_palettegen"], ["palette"]);
-			palettegen_chain.push(Colorspace::srgb()); // palettegen complains if this isn't here
+
+			let mut colspace = Colorspace::srgb();
+			// interpret all input files as srgb. ffmpeg complains about unknown primaries otherwise
+			colspace.input_all = Some(ColorspaceAll::Bt709);
+			// palettegen wants input frames to be srgb
+			palettegen_chain.push(colspace);
 			palettegen_chain.push(Palettegen::new(palette_steps, false, stats_mode));
 			let mut palettegen_chain_list = FilterChainList::new();
 			palettegen_chain_list.push(palettegen_chain);
