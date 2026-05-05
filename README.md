@@ -152,7 +152,7 @@ This way you can control whether you crop *before* or *after* scaling.
 
 ### HDR
 
-* `-T/--tonemap`: Perform an HDR-to-SDR tonemap. Applied automatically when encoding HDR source material to `h264` or `h265`. HDR content is preserved when the specified codec is `h265-10`, but `-T` maybe specified explicitly if tonemapped 10-bit SDR output is desired.
+* `-T/--tonemap`: Perform an HDR-to-SDR tonemap. Applied automatically when encoding HDR source material to `h264` or `h265`. HDR content is preserved when the specified codec is `h265-10`, but `-T` may be specified explicitly if tonemapped 10-bit SDR output is desired.
 
 ### Audio
 
