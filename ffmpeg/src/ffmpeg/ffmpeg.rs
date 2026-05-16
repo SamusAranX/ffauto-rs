@@ -115,7 +115,7 @@ pub fn ffmpeg(
 	#[allow(clippy::zombie_processes)]
 	let mut process = ffmpeg.spawn().expect("failed to run ffmpeg");
 
-	if show_progress {
+	if show_progress && !debug {
 		let progress_file = File::open(temp_file.path())?;
 		let mut reader = BufReader::new(progress_file);
 

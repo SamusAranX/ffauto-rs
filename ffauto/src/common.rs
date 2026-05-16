@@ -1,8 +1,12 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use ffmpeg::ffmpeg::ffprobe::ffprobe;
 use ffmpeg::ffmpeg::ffprobe_struct::{FFProbeOutput, StreamType};
 use ffmpeg::ffmpeg::timestamps::parse_ffmpeg_duration;
-use ffmpeg::filters::{Colorspace, ColorspaceAll, Eq, FilterChain, FilterChainList, Format, Palettegen, PalettegenStatsMode, Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, Split, Tonemap, TonemapAlgorithm, Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer};
+use ffmpeg::filters::{
+	Colorspace, ColorspaceAll, Eq, FilterChain, FilterChainList, Format, Palettegen, PalettegenStatsMode,
+	Scale, ScaleAlgorithm, ScaleForceOriginalAspectRatio, ScaleRange, Split, Tonemap, TonemapAlgorithm,
+	Unsharp, Xstack, Zscale, ZscaleMatrix, ZscalePrimaries, ZscaleTransfer,
+};
 use ffmpeg::palettes::palette::{Color, Palette};
 use std::path::{Path, PathBuf};
 
@@ -10,6 +14,7 @@ use crate::palettes_dynamic::DynamicPalette;
 use crate::palettes_static::StaticPalette;
 use clap::ArgMatches;
 use colorgrad::Gradient;
+use ffmpeg::ffmpeg::enums::TargetVideoRange;
 use std::time::Duration;
 
 const MAX32: u64 = i32::MAX as u64;
@@ -87,9 +92,10 @@ pub(crate) fn generate_scale_filter(
 	size_fit: Option<&String>,
 	size_fill: Option<&String>,
 	scale_mode: ScaleAlgorithm,
+	target_video_range: Option<&TargetVideoRange>,
 ) -> Option<Scale> {
 	#[allow(clippy::cast_possible_truncation)]
-	match (width, height, size_fit, size_fill) {
+	let mut scale_filter = match (width, height, size_fit, size_fill) {
 		(_, _, Some(fit), _) => {
 			if let Ok(size_filter) =
 				Scale::from_size(fit.clone(), ScaleForceOriginalAspectRatio::Decrease, scale_mode)
@@ -110,7 +116,18 @@ pub(crate) fn generate_scale_filter(
 		(Some(w), None, _, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
 		(None, Some(h), _, _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
 		_ => None,
+	};
+
+	if let Some(scale_filter) = &mut scale_filter
+		&& let Some(target_video_range) = target_video_range
+	{
+		scale_filter.out_range = Some(match target_video_range {
+			TargetVideoRange::Full => ScaleRange::Full,
+			TargetVideoRange::Limited => ScaleRange::Limited,
+		});
 	}
+
+	scale_filter
 }
 
 pub(crate) fn generate_palette_filter(

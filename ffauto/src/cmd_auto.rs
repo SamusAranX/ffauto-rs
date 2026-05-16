@@ -28,24 +28,17 @@ enum StreamIndex {
 }
 
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
-	let mut remove_bars_crop: Option<Crop> = None;
-	if args.remove_bars {
-		eprintln!("Gathering autocrop information…");
-		remove_bars_crop = Some(ffmpeg_cropdetect(&args.input)?);
-	}
-
 	let probe = ffprobe_output(&args.input)?;
-
-	let first_video_stream = probe.get_first_video_stream();
-	let first_audio_stream = probe.get_first_audio_stream();
 
 	if !probe.has_video_streams() && !probe.has_audio_streams() {
 		anyhow::bail!("The input file contains no usable audio/video streams")
 	}
 
-	let video_stream = first_video_stream
-		.context("The input file needs to contain a usable video stream")?
-		.clone();
+	let first_video_stream = probe.get_first_video_stream();
+	let first_audio_stream = probe.get_first_audio_stream();
+
+	let video_stream = first_video_stream.context("The input file needs to contain a usable video stream")?;
+
 	let video_duration = probe.duration()?;
 
 	let mut ffmpeg_args: Vec<String> = Vec::new();
@@ -85,15 +78,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	// select appropriate streams, default to the first one respectively if none were specified
 	for (streams, stream_type) in streams_and_types {
 		match stream_type {
-			StreamType::Audio => {
-				if !probe.has_audio_streams() {
-					continue;
-				}
+			StreamType::Audio if !probe.has_audio_streams() => {
+				continue;
 			}
-			StreamType::Video => {
-				if !probe.has_video_streams() {
-					continue;
-				}
+			StreamType::Video if !probe.has_video_streams() => {
+				continue;
 			}
 			_ => (),
 		}
@@ -339,6 +328,13 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 			_ => (),
 		}
 
+		let remove_bars_crop: Option<Crop> = if args.remove_bars {
+			eprintln!("Gathering autocrop information…");
+			Some(ffmpeg_cropdetect(&args.input)?)
+		} else {
+			None
+		};
+
 		if let Some(remove_bars_crop) = remove_bars_crop {
 			video_filters.push(remove_bars_crop);
 		}
@@ -355,6 +351,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 			args.size_fit.as_ref(),
 			args.size_fill.as_ref(),
 			args.scale_mode,
+			args.target_video_range.as_ref(),
 		) {
 			crop_and_scale.push(scale_filter);
 		}

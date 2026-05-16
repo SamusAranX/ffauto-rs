@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use crate::palettes_dynamic::DynamicPalette;
 use crate::palettes_static::StaticPalette;
-use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, VideoCodec};
+use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, TargetVideoRange, VideoCodec};
 use ffmpeg::filters::{PalettegenStatsMode, PaletteuseDither, ScaleAlgorithm};
 
 const GIT_HASH: &str = env!("GIT_HASH");
@@ -148,6 +148,10 @@ pub(crate) struct AutoArgs {
 	pub framerate_mult: Option<f64>,
 
 	/// The output video codec.
+	#[arg(long = "range")]
+	pub target_video_range: Option<TargetVideoRange>,
+
+	/// The output video codec.
 	#[arg(short = 'C', long = "codec", default_value_t = VideoCodec::default())]
 	pub video_codec: VideoCodec,
 
@@ -187,6 +191,7 @@ impl AutoArgs {
 			|| self.crop.is_some()
 			|| self.framerate.is_some()
 			|| self.tonemap
+			|| self.target_video_range.is_some()
 	}
 
 	pub(crate) fn optimize_settings(&mut self) {

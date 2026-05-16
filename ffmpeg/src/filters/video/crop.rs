@@ -76,7 +76,7 @@ impl Crop {
 #[test]
 fn filter_crop() {
 	let filter = Crop::default();
-	assert_eq!(filter.to_string(), "crop=out_w=0:out_h=0");
+	assert_eq!(filter.to_string(), "crop=out_h=0");
 }
 
 #[test]

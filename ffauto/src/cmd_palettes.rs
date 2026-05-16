@@ -1,13 +1,13 @@
 #![cfg(feature = "palette_generator")]
 
 use crate::commands::PalettesArgs;
+use crate::palettes_dynamic::DynamicPalette;
 use crate::palettes_static::StaticPalette;
 use anyhow::Result;
 use clap::ValueEnum;
 use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::image::ImageFormat;
 use imageproc::rect::Rect;
-use crate::palettes_dynamic::DynamicPalette;
 
 const IMAGE_WIDTH: u32 = 1280;
 const IMAGE_HEIGHT: u32 = 64;

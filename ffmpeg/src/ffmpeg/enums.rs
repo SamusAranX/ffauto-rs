@@ -34,3 +34,11 @@ pub enum BarcodeMode {
 	#[strum(serialize = "colors")]
 	Colors,
 }
+
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, strum::Display, strum::EnumString)]
+pub enum TargetVideoRange {
+	#[strum(serialize = "full")]
+	Full,
+	#[strum(serialize = "limited")]
+	Limited,
+}

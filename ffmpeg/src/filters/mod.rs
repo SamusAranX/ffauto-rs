@@ -37,7 +37,9 @@ pub use video::normalize::Normalize;
 pub use video::palettegen::{Palettegen, StatsMode as PalettegenStatsMode};
 pub use video::paletteuse::{DiffMode as PaletteuseDiffMode, Dither as PaletteuseDither, Paletteuse};
 pub use video::scale::{
-	Algorithm as ScaleAlgorithm, ForceOriginalAspectRatio as ScaleForceOriginalAspectRatio, Scale,
+	Algorithm as ScaleAlgorithm, ChromaLocation as ScaleChromaLocation, ColorMatrix as ScaleColorMatrix,
+	ForceOriginalAspectRatio as ScaleForceOriginalAspectRatio, Intent as ScaleIntent,
+	Primaries as ScalePrimaries, Range as ScaleRange, Scale, Transfer as ScaleTransfer,
 };
 pub use video::select::Select;
 pub use video::setparams::{

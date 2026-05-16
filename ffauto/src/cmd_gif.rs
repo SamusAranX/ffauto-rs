@@ -5,6 +5,7 @@ use crate::common::*;
 use crate::vec_push_ext::PushStrExt;
 use anyhow::Result;
 use clap::ArgMatches;
+use ffmpeg::ffmpeg::enums::TargetVideoRange;
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
 use ffmpeg::filters::{
@@ -81,6 +82,7 @@ pub(crate) fn ffmpeg_gif(args: &GIFArgs, matches: &ArgMatches, debug: bool) -> R
 		args.size_fit.as_ref(),
 		args.size_fill.as_ref(),
 		args.scale_mode,
+		Some(&TargetVideoRange::Full),
 	) {
 		crop_and_scale.push(scale_filter);
 	}

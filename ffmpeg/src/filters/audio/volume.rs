@@ -70,3 +70,9 @@ impl Volume {
 		Self { volume, ..Default::default() }
 	}
 }
+
+#[test]
+fn filter_volume() {
+	let filter = Volume::default();
+	assert_eq!(filter.to_string(), "volume=volume=1");
+}
