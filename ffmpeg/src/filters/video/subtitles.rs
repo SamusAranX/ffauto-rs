@@ -1,15 +1,18 @@
 use ffmpeg_macro::filter;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 /// Draw subtitles on top of input video using the libass library.
 #[filter(name = "subtitles")]
 pub struct Subtitles {
 	/// Set the filename of the subtitle file to read. It must be specified.
-	pub filename: String,
+	/// Specify the name of a video file to be able to use `stream_index`.
+	pub filename: PathBuf,
 
 	/// Specify the size of the original video, the video for which the ASS file was composed.
 	/// Due to a misdesign in ASS aspect ratio arithmetic, this is necessary to correctly scale the
 	/// fonts if the aspect ratio has been changed.
+	#[ffarg(omit_default)]
 	pub original_size: String,
 
 	/// Set a directory path containing fonts that can be used by the filter. These fonts will be
@@ -26,8 +29,7 @@ pub struct Subtitles {
 	pub charenc: String,
 
 	/// Set subtitles stream index.
-	#[ffarg(name = "stream_index")]
-	pub stream_index: i64,
+	pub stream_index: Option<usize>,
 
 	/// Override default style or script info parameters of the subtitles. Accepts a string
 	/// containing ASS style format KEY=VALUE couples separated by ",".
@@ -36,38 +38,50 @@ pub struct Subtitles {
 
 	/// Break lines according to the Unicode Line Breaking Algorithm. Enabled by default except
 	/// for native ASS.
-	#[ffarg(default = true)]
-	pub wrap_unicode: bool,
+	pub wrap_unicode: Option<bool>,
 }
 
 impl Subtitles {
-	pub fn new<N: Into<String>, S: Into<String>, F: Into<String>>(
-		filename: N,
-		original_size: S,
-		fonts_dir: F,
-	) -> Self {
+	pub fn new_with_file<P: AsRef<Path>>(file: P) -> Self {
 		Self {
-			filename: filename.into(),
-			original_size: original_size.into(),
-			fonts_dir: fonts_dir.into(),
+			filename: file.as_ref().into(),
 			..Default::default()
 		}
+	}
+
+	pub fn new_with_file_and_stream_index<P: AsRef<Path>>(file: P, index: usize) -> Self {
+		Self {
+			filename: file.as_ref().into(),
+			stream_index: Some(index),
+			..Default::default()
+		}
+	}
+
+	pub fn set_font<S: Into<String>>(&mut self, font_name: S) {
+		self.force_style.insert("Fontname".into(), font_name.into());
 	}
 }
 
 #[test]
-fn filter_subtitles() {
-	let filter = Subtitles::new("/tmp/example.srt", "1920x1080", "/tmp/fonts/");
+fn filter_subtitles_filename() {
+	let filter = Subtitles::new_with_file("/tmp/example.srt");
+
+	assert_eq!(filter.to_string(), "subtitles=filename='/tmp/example.srt'");
+}
+
+#[test]
+fn filter_subtitles_stream_index() {
+	let filter = Subtitles::new_with_file_and_stream_index("/tmp/input.mkv", 1);
 
 	assert_eq!(
 		filter.to_string(),
-		"subtitles=filename=/tmp/example.srt:original_size=1920x1080:fontsdir=/tmp/fonts/:stream_index=0:wrap_unicode=1"
+		"subtitles=filename='/tmp/input.mkv':stream_index=1"
 	);
 }
 
 #[test]
-fn filter_subtitles_force_style() {
-	let mut filter = Subtitles::new("/tmp/example.srt", "1920x1080", "/tmp/fonts/");
+fn filter_subtitles_filename_force_style() {
+	let mut filter = Subtitles::new_with_file("/tmp/example.srt");
 	filter
 		.force_style
 		.insert("Fontname".into(), "DejaVu Serif".into());
@@ -77,6 +91,6 @@ fn filter_subtitles_force_style() {
 
 	assert_eq!(
 		filter.to_string(),
-		"subtitles=filename=/tmp/example.srt:original_size=1920x1080:fontsdir=/tmp/fonts/:stream_index=0:force_style='Fontname=DejaVu Serif,PrimaryColour=&HCCFF0000':wrap_unicode=1"
+		"subtitles=filename='/tmp/example.srt':force_style='Fontname=DejaVu Serif,PrimaryColour=&HCCFF0000'"
 	);
 }

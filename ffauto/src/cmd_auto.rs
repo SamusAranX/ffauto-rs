@@ -11,7 +11,7 @@ use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
 use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
-use ffmpeg::filters::{Afade, Crop, Fade, FilterChain, Fps, Volume};
+use ffmpeg::filters::{Afade, Crop, Fade, FilterChain, Fps, Subtitles, Volume};
 use isolang::Language;
 
 fn fix_language_code(s: &str) -> &str {
@@ -27,6 +27,7 @@ enum StreamIndex {
 	Language(Language),
 }
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) -> Result<()> {
 	let probe = ffprobe_output(&args.input)?;
 
@@ -44,7 +45,6 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	let mut ffmpeg_args: Vec<String> = Vec::new();
 
 	let seek = args.parse_seek();
-	let duration = args.parse_duration();
 
 	if let Some(seek) = seek {
 		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
@@ -52,6 +52,17 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 	let input = args.input.as_os_str().to_str().unwrap();
 	ffmpeg_args.add_two("-i", input);
+
+	if args.burn_subtitle {
+		// we can't use fast seeking when we're burning subtitles.
+		// reverse the argument list here so the -i comes first.
+		// at this point, ffmpeg_args contains 4 entries so this
+		// chunk-based approach works just fine.
+		let (pairs, _) = ffmpeg_args.as_chunks_mut::<2>();
+		pairs.reverse();
+	}
+
+	let duration = args.parse_duration();
 	if let Some(duration) = duration {
 		ffmpeg_args.add_two("-t", format!("{}", duration.as_secs_f64()));
 	}
@@ -66,7 +77,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 	// region Stream Selection
 
-	let streams_and_types = [
+	let selected_streams_and_types = [
 		(&args.video_streams, StreamType::Video),
 		(&args.audio_streams, StreamType::Audio),
 		(&args.sub_streams, StreamType::Subtitle),
@@ -75,8 +86,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	// -metadata expects output stream indices, so keep track of those
 	let mut output_stream_idx: usize = 0;
 
+	// the index intended for use with --burn-subtitles
+	let mut burn_subtitle_idx: Option<usize> = None;
+
 	// select appropriate streams, default to the first one respectively if none were specified
-	for (streams, stream_type) in streams_and_types {
+	for (selected_streams, stream_type) in selected_streams_and_types {
 		match stream_type {
 			StreamType::Audio if !probe.has_audio_streams() => {
 				continue;
@@ -88,7 +102,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 		}
 
 		let mut used_indices: Vec<StreamIndex> = vec![];
-		for stream in streams {
+		for stream in selected_streams {
 			let stream = stream.trim();
 			if let Ok(i) = stream.parse::<usize>() {
 				// value is a numeric stream ID
@@ -99,14 +113,23 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 				ffmpeg_args.add_two("-map", format!("0:{}:{i}", stream_type.identifier()));
 				if let Some(Stream {
+					typed_index,
 					tags: Some(Tags { language: Some(lang), .. }),
 					..
 				}) = match stream_type {
-					StreamType::Video => probe.get_video_stream(i),
-					StreamType::Audio => probe.get_audio_stream(i),
-					StreamType::Subtitle => probe.get_subtitle_stream(i),
+					StreamType::Video => probe.get_video_stream_by_index(i),
+					StreamType::Audio => probe.get_audio_stream_by_index(i),
+					StreamType::Subtitle => probe.get_subtitle_stream_by_index(i),
 					_ => panic!("you shouldn't be here"),
 				} {
+					//
+					if stream_type == StreamType::Subtitle
+						&& args.burn_subtitle
+						&& burn_subtitle_idx.is_none()
+					{
+						burn_subtitle_idx = Some(*typed_index);
+					}
+
 					let lang = fix_language_code(lang);
 					ffmpeg_args.add_two(
 						format!("-metadata:s:{output_stream_idx}"),
@@ -120,6 +143,14 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 				let used_lang = StreamIndex::Language(lang);
 				if used_indices.contains(&used_lang) {
 					continue;
+				}
+
+				if stream_type == StreamType::Subtitle
+					&& args.burn_subtitle
+					&& burn_subtitle_idx.is_none()
+					&& let Some(stream) = probe.get_subtitle_stream_by_language(lang.to_string())
+				{
+					burn_subtitle_idx = Some(stream.typed_index);
 				}
 
 				ffmpeg_args.add_two(
@@ -366,6 +397,23 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 		if (args.tonemap || args.video_codec != VideoCodec::H265_10) && video_stream.is_hdr() {
 			let tonemap_chain = sdr_tonemap_chain();
 			video_filters.extend(tonemap_chain);
+		}
+
+		if args.burn_subtitle
+			&& let Some(mut subtitles) = args
+				.burn_subtitle_file
+				.as_ref()
+				.map(Subtitles::new_with_file)
+				.or_else(|| {
+					burn_subtitle_idx
+						.as_ref()
+						.map(|i| Subtitles::new_with_file_and_stream_index(&args.input, *i))
+				}) {
+			// macOS comes with Helvetica Neue. other platforms will presumably default to Arial.
+			#[cfg(target_os = "macos")]
+			subtitles.set_font("Helvetica Neue");
+
+			video_filters.push(subtitles);
 		}
 
 		if fade_in > 0.0 {

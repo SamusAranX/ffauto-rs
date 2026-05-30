@@ -60,50 +60,63 @@ impl FFProbeOutput {
 	}
 
 	#[must_use]
-	pub fn get_stream(&self, index: usize) -> Option<&Stream> {
+	pub fn get_stream_by_index(&self, index: usize) -> Option<&Stream> {
 		self.streams.get(index)
 	}
 
-	fn get_typed_stream(&self, index: usize, stream_type: &StreamType) -> Option<&Stream> {
-		self.streams
-			.iter()
-			.filter(|s| s.codec_type == *stream_type)
-			.nth(index)
+	fn get_typed_streams(&self, stream_type: &StreamType) -> impl Iterator<Item = &Stream> {
+		self.streams.iter().filter(|s| s.codec_type == *stream_type)
 	}
 
+	#[must_use]
+	fn get_typed_stream_by_index(&self, stream_type: &StreamType, index: usize) -> Option<&Stream> {
+		self.get_typed_streams(stream_type).nth(index)
+	}
+
+	#[must_use]
 	fn get_typed_stream_by_language<S: Into<String>>(
 		&self,
 		lang: S,
 		stream_type: &StreamType,
 	) -> Option<&Stream> {
 		let lang = lang.into();
-		self.streams.iter().find(|s| {
-			s.codec_type == *stream_type
-				&& s.tags
-					.as_ref()
-					.and_then(|t| t.language.as_ref())
-					.map(|l| l == &lang)
-					.is_some_and(|x| x)
+		self.get_typed_streams(stream_type).find(|s| {
+			s.tags
+				.as_ref()
+				.and_then(|t| t.language.as_ref())
+				.map(|l| l == &lang)
+				.is_some_and(|x| x)
 		})
 	}
 
 	#[must_use]
-	pub fn get_video_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, &StreamType::Video)
+	pub fn get_video_stream_by_index(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream_by_index(&StreamType::Video, index)
 	}
 
 	#[must_use]
-	pub fn get_audio_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, &StreamType::Audio)
+	pub fn get_audio_stream_by_index(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream_by_index(&StreamType::Audio, index)
 	}
 
 	#[must_use]
-	pub fn get_subtitle_stream(&self, index: usize) -> Option<&Stream> {
-		self.get_typed_stream(index, &StreamType::Subtitle)
+	pub fn get_subtitle_stream_by_index(&self, index: usize) -> Option<&Stream> {
+		self.get_typed_stream_by_index(&StreamType::Subtitle, index)
 	}
 
+	#[must_use]
 	pub fn get_video_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
 		self.get_typed_stream_by_language(lang, &StreamType::Video)
+	}
+
+	#[must_use]
+	pub fn get_audio_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
+		self.get_typed_stream_by_language(lang, &StreamType::Audio)
+	}
+
+	#[must_use]
+	pub fn get_subtitle_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
+		self.get_typed_stream_by_language(lang, &StreamType::Subtitle)
 	}
 
 	pub fn checked_get_video_stream_by_index_or_language(
@@ -119,7 +132,7 @@ impl FFProbeOutput {
 			(stream, format!("0:V:m:language:{language}"))
 		} else {
 			let stream = self
-				.get_video_stream(index)
+				.get_video_stream_by_index(index)
 				.context(format!("No stream with index {index} found"))?
 				.clone();
 			(stream, format!("0:V:{index}"))
@@ -134,33 +147,19 @@ impl FFProbeOutput {
 		Ok((video_stream, video_stream_id))
 	}
 
-	pub fn get_audio_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
-		self.get_typed_stream_by_language(lang, &StreamType::Audio)
-	}
-
-	pub fn get_subtitle_stream_by_language<S: Into<String>>(&self, lang: S) -> Option<&Stream> {
-		self.get_typed_stream_by_language(lang, &StreamType::Subtitle)
-	}
-
 	#[must_use]
 	pub fn get_first_video_stream(&self) -> Option<&Stream> {
-		self.streams
-			.iter()
-			.find(|s| s.codec_type == StreamType::Video)
+		self.get_typed_streams(&StreamType::Video).next()
 	}
 
 	#[must_use]
 	pub fn get_first_audio_stream(&self) -> Option<&Stream> {
-		self.streams
-			.iter()
-			.find(|s| s.codec_type == StreamType::Audio)
+		self.get_typed_streams(&StreamType::Audio).next()
 	}
 
 	#[must_use]
 	pub fn get_first_subtitle_stream(&self) -> Option<&Stream> {
-		self.streams
-			.iter()
-			.find(|s| s.codec_type == StreamType::Subtitle)
+		self.get_typed_streams(&StreamType::Subtitle).next()
 	}
 
 	#[must_use]
@@ -423,7 +422,9 @@ pub struct Format {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Stream {
-	pub index: u64,
+	pub index: usize,
+	#[serde(default)]
+	pub typed_index: usize, // filled in as part of ffprobe()
 	pub codec_name: Option<String>,
 	pub profile: Option<String>,
 	pub codec_type: StreamType,

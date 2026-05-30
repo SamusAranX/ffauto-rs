@@ -3,14 +3,24 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Expr, Type};
 
-/// Returns `true` if the type is a HashMap of some kind.
-pub(crate) fn is_hashmap_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.last()
-	{
-		return segment.ident == "HashMap";
+/// Returns `true` if `ty` is a path type whose first (or last, when `use_last`) segment matches `name`.
+fn is_type(ty: &Type, name: &str, use_last: bool) -> bool {
+	if let Type::Path(type_path) = ty {
+		let segment = if use_last {
+			type_path.path.segments.last()
+		} else {
+			type_path.path.segments.first()
+		};
+		if let Some(segment) = segment {
+			return segment.ident == name;
+		}
 	}
 	false
+}
+
+/// Returns `true` if the type is a HashMap of some kind.
+pub(crate) fn is_hashmap_type(ty: &Type) -> bool {
+	is_type(ty, "HashMap", true)
 }
 
 /// Adds `.to_string()` inside of the macro if `expr` is a string literal.
@@ -24,43 +34,27 @@ pub(crate) fn add_to_string_if_needed(expr: Expr) -> Expr {
 
 /// Returns `true` if the type is known to implement Display.
 pub(crate) fn is_display_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		let name = segment.ident.to_string();
-		return DISPLAY_TYPES.contains(&name.as_str());
-	}
-	false
+	DISPLAY_TYPES.iter().any(|name| is_type(ty, name, false))
+}
+
+/// Returns `true` if the type is `PathBuf`.
+pub(crate) fn is_pathbuf_type(ty: &Type) -> bool {
+	is_type(ty, "PathBuf", true)
 }
 
 /// Returns `true` if the type is bool.
 pub(crate) fn is_bool_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "bool";
-	}
-	false
+	is_type(ty, "bool", false)
 }
 
 /// Returns `true` if the type is a Vec of some kind.
 pub(crate) fn is_vec_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "Vec";
-	}
-	false
+	is_type(ty, "Vec", false)
 }
 
 /// Returns `true` if the type is an Option of some kind.
 pub(crate) fn is_option_type(ty: &Type) -> bool {
-	if let Type::Path(type_path) = ty
-		&& let Some(segment) = type_path.path.segments.first()
-	{
-		return segment.ident == "Option";
-	}
-	false
+	is_type(ty, "Option", false)
 }
 
 /// Extracts the inner type `T` from `Option<T>`.

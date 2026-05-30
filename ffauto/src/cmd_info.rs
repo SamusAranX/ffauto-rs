@@ -16,28 +16,17 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 		return Ok(());
 	}
 
-	let mut stream_type_index = 0;
-	let mut last_codec_type: Option<&StreamType> = None;
 	for stream in &probe.streams {
-		let index = &stream.index;
-		let codec_type = &stream.codec_type;
-
-		if last_codec_type == Some(codec_type) {
-			stream_type_index += 1;
-		} else {
-			last_codec_type = Some(codec_type);
-			stream_type_index = 0;
-		}
-
 		let language = stream.tags.as_ref().and_then(|t| t.language.as_ref());
 		let title = stream.tags.as_ref().and_then(|t| t.title.as_ref());
 		let default = stream.disposition.as_ref().is_some_and(|d| d.default);
 
+		let codec_type = &stream.codec_type;
 		let type_color = codec_type.color();
 		print!(
 			"[{}|{}] {}",
-			index,
-			stream_type_index,
+			&stream.index,
+			&stream.typed_index,
 			codec_type.to_string().color(type_color)
 		);
 

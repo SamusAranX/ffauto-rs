@@ -52,6 +52,8 @@ pub enum LogLevel {
 	Trace,
 }
 
+const PROGRESS_TIMEOUT: Duration = Duration::from_secs(5);
+
 pub fn ffmpeg(
 	in_args: &[String],
 	accelerator: Option<String>,
@@ -121,6 +123,7 @@ pub fn ffmpeg(
 
 		let mut pos = 0;
 		let mut last_progress = Instant::now();
+		let mut progress_file_started = false;
 
 		let mut frames_processed = None;
 		let mut frames_per_second = None;
@@ -136,22 +139,45 @@ pub fn ffmpeg(
 			#[allow(clippy::match_same_arms)]
 			match res {
 				Ok(0) => {
-					// stats_period defaults to 0.5 seconds, but sometimes heavy processing means output gets delayed
-					// within this window, assume that an EOF just means ffmpeg needs more time
-					if last_progress.elapsed() < Duration::from_secs(5) {
-						sleep(Duration::from_millis(200));
+					if !progress_file_started {
+						// if the file hasn't been written to yet,
+						// just sleep for a longer period and continue
+						sleep(Duration::from_millis(1000));
 
 						reader
 							.seek(SeekFrom::Start(pos))
 							.context("Failed to seek to resume point")?;
 
+						#[cfg(debug_assertions)]
+						eprintln!("waiting for first read…");
+
+						continue;
+					} else if last_progress.elapsed() < PROGRESS_TIMEOUT {
+						// stats_period defaults to 0.5 seconds, but sometimes heavy processing means output gets delayed
+						// within this window, assume that an EOF just means ffmpeg needs more time
+						sleep(Duration::from_millis(250));
+
+						reader
+							.seek(SeekFrom::Start(pos))
+							.context("Failed to seek to resume point")?;
+
+						// #[cfg(debug_assertions)]
+						// eprintln!("waiting for more input…");
+
 						continue;
 					}
+
+					#[cfg(debug_assertions)]
+					eprintln!(
+						"progress reader timed out after {}s of no input",
+						PROGRESS_TIMEOUT.as_secs_f64()
+					);
 
 					break;
 				}
 				Ok(len) => {
 					last_progress = Instant::now();
+					progress_file_started = true;
 					pos += len as u64;
 
 					let Some((key, value)) = line.trim().split_once('=') else {

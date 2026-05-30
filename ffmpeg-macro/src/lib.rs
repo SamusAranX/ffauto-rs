@@ -2,7 +2,7 @@ mod helpers;
 
 use crate::helpers::{
 	add_to_string_if_needed, extract_option_inner_type, field_name, hashmap_display_expr, is_bool_type,
-	is_display_type, is_hashmap_type, is_option_type, is_vec_type, vec_display_expr,
+	is_display_type, is_hashmap_type, is_option_type, is_pathbuf_type, is_vec_type, vec_display_expr,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -303,6 +303,8 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 					quote! { val.to_string() }
 				} else if is_bool_type(inner_ty) {
 					quote! { u8::from(*val).to_string() }
+				} else if is_pathbuf_type(inner_ty) {
+					quote! { format!("'{}'", val.clone().into_os_string().into_string().expect("Path contains invalid unicode data!")) }
 				} else {
 					quote! { val.to_string() }
 				};
@@ -327,6 +329,8 @@ fn filter_macro(args: TokenStream, input: TokenStream) -> syn::Result<TokenStrea
 			quote! { self.#ident.to_string() }
 		} else if is_bool_type(ty) {
 			quote! { u8::from(self.#ident).to_string() }
+		} else if is_pathbuf_type(ty) {
+			quote! { format!("'{}'", self.#ident.clone().into_os_string().into_string().expect("Path contains invalid unicode data!")) }
 		} else if is_vec_type(ty) {
 			// If this field has `default_from`, inject the source field's value (when non-default).
 			let default_from_extend = ffarg.default_from.as_ref().map(|source| {

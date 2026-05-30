@@ -67,9 +67,13 @@ pub(crate) struct AutoArgs {
 	#[arg(long, alias = "Ss")]
 	pub sub_streams: Vec<String>,
 
-	/// (WIP, currently nonfunctional) Burns the first specified subtitle stream into the output video stream. All further specified subtitle streams will be ignored.
+	/// Burns the first specified subtitle stream (or the file specified for --subtitle-file/--Bf) into the output video stream.
+	/// All further specified subtitle streams will be ignored.
 	#[arg(short = 'B', long)]
 	pub burn_subtitle: bool,
+	/// Specify a subtitle file here to use it instead of a subtitle stream.
+	#[arg(long = "subtitle-file", alias = "Bf")]
+	pub burn_subtitle_file: Option<PathBuf>,
 
 	/// The start time offset.
 	#[arg(short = 's', long)]
@@ -103,7 +107,7 @@ pub(crate) struct AutoArgs {
 	#[arg(long = "vS", group = "resize")]
 	pub size_fill: Option<String>,
 	/// Sets the scaling algorithm used.
-	#[arg(short = 'S', long, value_enum, default_value_t = ScaleAlgorithm::default())]
+	#[arg(long, value_enum, default_value_t = ScaleAlgorithm::default())]
 	pub scale_mode: ScaleAlgorithm,
 
 	/// Performs an HDR-to-SDR tonemap.
@@ -116,7 +120,7 @@ pub(crate) struct AutoArgs {
 	#[arg(short = 'H', long)]
 	pub hwaccel: bool,
 	/// Used with --hwaccel. Defaults to "videotoolbox" on macOS and "auto" everywhere else.
-	#[arg(short = 'a', long, default_value_t = default_accelerator())]
+	#[arg(long, default_value_t = default_accelerator())]
 	pub accelerator: String,
 
 	/// Removes the audio stream.
@@ -192,6 +196,7 @@ impl AutoArgs {
 			|| self.framerate.is_some()
 			|| self.tonemap
 			|| self.target_video_range.is_some()
+			|| self.burn_subtitle
 	}
 
 	pub(crate) fn optimize_settings(&mut self) {
