@@ -48,11 +48,37 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 
 		match codec_type {
 			StreamType::Video => {
-				let codec_name = stream.codec_name.as_ref().unwrap();
-				let codec_profile = stream.profile.as_ref().unwrap();
-				let pix_fmt = stream.pix_fmt.as_ref().unwrap();
+				let codec_name = &stream.codec_name;
+				let codec_profile = &stream.profile;
+				let pix_fmt = &stream.pix_fmt;
 
-				print!("{codec_name} ({codec_profile}), {pix_fmt} ");
+				match (codec_name, codec_profile, pix_fmt) {
+					(Some(codec_name), Some(codec_profile), Some(pix_fmt)) => {
+						print!("{codec_name} ({codec_profile}), {pix_fmt} ");
+					}
+					(Some(codec_name), Some(codec_profile), None) => {
+						print!("{codec_name} ({codec_profile}) ");
+					}
+					(Some(codec_name), None, Some(pix_fmt)) => {
+						print!("{codec_name}, {pix_fmt} ");
+					}
+					(Some(codec_name), None, None) => {
+						print!("{codec_name} ");
+					},
+
+					// these three should in theory never happen because codec_name should always be set for video streams
+					// but juuuust in case, we're gonna handle them anyway
+					(None, Some(codec_profile), Some(pix_fmt)) => {
+						print!("({codec_profile}), {pix_fmt} ");
+					},
+					(None, Some(codec_profile), None) => {
+						print!("({codec_profile}) ");
+					},
+					(None, None, Some(pix_fmt)) => {
+						print!("{pix_fmt} ");
+					},
+					_ => (),
+				}
 
 				let width = stream.width.unwrap_or(0);
 				let height = stream.height.unwrap_or(0);
