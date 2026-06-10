@@ -94,40 +94,44 @@ pub(crate) fn generate_scale_filter(
 	scale_mode: ScaleAlgorithm,
 	target_video_range: Option<&TargetVideoRange>,
 ) -> Option<Scale> {
+	let mut scale_filter = Scale::new(0, 0, scale_mode);
+	let mut default_scale_filter = false;
+
 	#[allow(clippy::cast_possible_truncation)]
-	let mut scale_filter = match (width, height, size_fit, size_fill) {
+	match (width, height, size_fit, size_fill) {
 		(_, _, Some(fit), _) => {
 			if let Ok(size_filter) =
 				Scale::from_size(fit.clone(), ScaleForceOriginalAspectRatio::Decrease, scale_mode)
 			{
-				return Some(size_filter);
+				scale_filter = size_filter;
 			}
-			None
 		}
 		(_, _, _, Some(fill)) => {
 			if let Ok(size_filter) =
 				Scale::from_size(fill.clone(), ScaleForceOriginalAspectRatio::Increase, scale_mode)
 			{
-				return Some(size_filter);
+				scale_filter = size_filter;
 			}
-			None
 		}
-		(Some(w), Some(h), _, _) => Some(Scale::new(w as i32, h as i32, scale_mode)),
-		(Some(w), None, _, _) => Some(Scale::preserve_aspect_ratio_width(w as i32, scale_mode)),
-		(None, Some(h), _, _) => Some(Scale::preserve_aspect_ratio_height(h as i32, scale_mode)),
-		_ => None,
+		(Some(w), Some(h), _, _) => scale_filter = Scale::new(w as i32, h as i32, scale_mode),
+		(Some(w), _, _, _) => scale_filter = Scale::preserve_aspect_ratio_width(w as i32, scale_mode),
+		(_, Some(h), _, _) => scale_filter = Scale::preserve_aspect_ratio_height(h as i32, scale_mode),
+		_ => default_scale_filter = true,
 	};
 
-	if let Some(scale_filter) = &mut scale_filter
-		&& let Some(target_video_range) = target_video_range
-	{
+	if let Some(target_video_range) = target_video_range {
 		scale_filter.out_range = Some(match target_video_range {
 			TargetVideoRange::Full => ScaleRange::Full,
 			TargetVideoRange::Limited => ScaleRange::Limited,
 		});
+		default_scale_filter = false;
 	}
 
-	scale_filter
+	if default_scale_filter {
+		return None;
+	}
+
+	Some(scale_filter)
 }
 
 pub(crate) fn generate_palette_filter(

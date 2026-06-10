@@ -536,7 +536,7 @@ dependencies = [
 
 [[package]]
 name = "ffauto"
-version = "1.12.1"
+version = "1.12.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -553,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "ffmpeg"
-version = "1.12.1"
+version = "1.12.2"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -571,7 +571,7 @@ dependencies = [
 
 [[package]]
 name = "ffmpeg-macro"
-version = "1.12.1"
+version = "1.12.2"
 dependencies = [
  "proc-macro2",
  "quote",

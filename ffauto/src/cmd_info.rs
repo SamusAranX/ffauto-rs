@@ -64,19 +64,19 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 					}
 					(Some(codec_name), None, None) => {
 						print!("{codec_name} ");
-					},
+					}
 
 					// these three should in theory never happen because codec_name should always be set for video streams
 					// but juuuust in case, we're gonna handle them anyway
 					(None, Some(codec_profile), Some(pix_fmt)) => {
 						print!("({codec_profile}), {pix_fmt} ");
-					},
+					}
 					(None, Some(codec_profile), None) => {
 						print!("({codec_profile}) ");
-					},
+					}
 					(None, None, Some(pix_fmt)) => {
 						print!("{pix_fmt} ");
-					},
+					}
 					_ => (),
 				}
 

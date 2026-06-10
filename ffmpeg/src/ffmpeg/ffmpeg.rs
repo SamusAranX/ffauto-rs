@@ -142,7 +142,7 @@ pub fn ffmpeg(
 					if !progress_file_started {
 						// if the file hasn't been written to yet,
 						// just sleep for a longer period and continue
-						sleep(Duration::from_millis(1000));
+						sleep(Duration::from_secs(1));
 
 						reader
 							.seek(SeekFrom::Start(pos))

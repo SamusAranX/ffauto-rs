@@ -297,14 +297,14 @@ pub struct Scale {
 	/// the input width is used for the output. If one and only one of w/h is -n with n >= 1, the
 	/// scale filter will use a value that maintains the aspect ratio of the input image, calculated
 	/// from the other specified dimension, divisible by n.
-	#[ffarg(name = "w")]
+	#[ffarg(name = "w", omit_default)]
 	pub width: i32,
 
 	/// The output video height expression. Default value is the input dimension. If the value is
 	/// 0, the input height is used for the output. If one and only one of w/h is -n with n >= 1,
 	/// the scale filter will use a value that maintains the aspect ratio of the input image,
 	/// calculated from the other specified dimension, divisible by n.
-	#[ffarg(name = "h")]
+	#[ffarg(name = "h", omit_default)]
 	pub height: i32,
 
 	/// Set the video scaling algorithm.

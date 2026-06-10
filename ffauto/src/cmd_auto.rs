@@ -400,7 +400,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 		}
 
 		if args.burn_subtitle
-			&& let Some(mut subtitles) = args
+			&& let Some(subtitles) = args
 				.burn_subtitle_file
 				.as_ref()
 				.map(Subtitles::new_with_file)
