@@ -40,7 +40,7 @@ pub(crate) fn sdr_tonemap_chain() -> FilterChain {
 	list.push(Zscale::new_primaries(ZscalePrimaries::Bt709));
 	list.push(Tonemap::new(TonemapAlgorithm::Hable, 0.0));
 	list.push(Zscale::new_transfer_and_matrix(
-		ZscaleTransfer::Linear,
+		ZscaleTransfer::Bt709,
 		ZscaleMatrix::Bt709,
 	));
 
