@@ -140,6 +140,16 @@ pub fn ffmpeg(
 			match res {
 				Ok(0) => {
 					if !progress_file_started {
+						// ffmpeg can fail before it ever writes progress output, e.g. when the
+						// arguments are malformed or an input can't be opened. in that case
+						// no amount of waiting will produce anything, so just exit here.
+						if matches!(process.try_wait(), Ok(Some(_))) {
+							#[cfg(debug_assertions)]
+							eprintln!("ffmpeg exited before writing any progress output");
+
+							break;
+						}
+
 						// if the file hasn't been written to yet,
 						// just sleep for a longer period and continue
 						sleep(Duration::from_secs(1));

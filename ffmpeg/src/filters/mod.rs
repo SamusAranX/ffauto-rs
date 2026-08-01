@@ -15,6 +15,7 @@ pub use filterchain::FilterChain;
 pub use filterchain_list::FilterChainList;
 
 pub use audio::afade::{Afade, Curve as AfadeCurve, Type as AfadeType};
+pub use audio::aformat::Aformat;
 pub use audio::asplit::Asplit;
 pub use audio::loudnorm::{Loudnorm, PrintFormat as LoudnormPrintFormat};
 pub use audio::volume::{Precision as VolumePrecision, ReplayGain as VolumeReplayGain, Volume};

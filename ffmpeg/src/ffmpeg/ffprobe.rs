@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -46,20 +47,17 @@ pub fn ffprobe<P: AsRef<Path>>(input: P, count_frames: bool) -> Result<FFProbeOu
 		}
 	};
 
-	// fill in typed stream indices, we're gonna need them later
-	let mut stream_type_index = 0;
-	let mut last_codec_type: Option<&StreamType> = None;
+	// fill in typed stream indices, we're gonna need them later.
+	// these count per codec type independently, because stream types can be
+	// interleaved in any order (e.g. video, audio, subtitle, audio).
+	let mut stream_type_indices: HashMap<StreamType, usize> = HashMap::new();
 	for stream in &mut probe_output.streams {
-		let codec_type = &stream.codec_type;
+		let stream_type_index = stream_type_indices
+			.entry(stream.codec_type.clone())
+			.or_insert(0);
 
-		if last_codec_type == Some(codec_type) {
-			stream_type_index += 1;
-		} else {
-			last_codec_type = Some(codec_type);
-			stream_type_index = 0;
-		}
-
-		stream.typed_index = stream_type_index;
+		stream.typed_index = *stream_type_index;
+		*stream_type_index += 1;
 	}
 
 	Ok(probe_output)

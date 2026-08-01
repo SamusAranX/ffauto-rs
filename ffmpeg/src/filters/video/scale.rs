@@ -459,7 +459,7 @@ fn filter_scale() {
 	let filter = Scale::default();
 	assert_eq!(
 		filter.to_string(),
-		"scale=w=0:h=0:flags=bicubic+accurate_rnd+full_chroma_int+full_chroma_inp"
+		"scale=flags=bicubic+accurate_rnd+full_chroma_int+full_chroma_inp"
 	);
 }
 

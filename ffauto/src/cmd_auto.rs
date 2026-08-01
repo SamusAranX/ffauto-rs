@@ -10,21 +10,42 @@ use clap::ArgMatches;
 use ffmpeg::ffmpeg::enums::{OptimizeTarget, VideoCodec};
 use ffmpeg::ffmpeg::ffmpeg::ffmpeg;
 use ffmpeg::ffmpeg::ffmpeg_cropdetect::ffmpeg_cropdetect;
-use ffmpeg::ffmpeg::ffprobe_struct::{Stream, StreamType, Tags};
-use ffmpeg::filters::{Afade, Crop, Fade, FilterChain, Fps, Subtitles, Volume};
+use ffmpeg::ffmpeg::ffprobe_struct::{StreamType, Tags, normalize_language_code};
+use ffmpeg::filters::{Afade, Aformat, Crop, Fade, FilterChain, Fps, Subtitles, Volume};
 use isolang::Language;
-
-fn fix_language_code(s: &str) -> &str {
-	Language::from_str(s)
-		.ok()
-		.or(Language::from_locale(&s.replace('-', "_")))
-		.map_or(s, |l| l.to_639_2b())
-}
 
 #[derive(PartialEq)]
 enum StreamIndex {
 	Index(usize),
 	Language(Language),
+}
+
+/// Splits a file path passed via `--sub-streams` into its path and an optional language code.
+/// Subtitle paths can be passed as either:
+/// * `subs.srt`
+/// * `subs.en.srt`
+/// * `subs.srt:eng`
+fn split_subtitle_path_and_language(entry: &str) -> (&Path, Option<&str>) {
+	// only the last path segment may carry the `:lang` suffix. colons earlier in the path
+	// (windows drive letters, volume names, etc) are part of the path itself.
+	let segment_start = entry.rfind(['/', '\\']).map_or(0, |i| i + 1);
+
+	if let Some(colon) = entry[segment_start..].find(':') {
+		let split_at = segment_start + colon;
+		let lang = &entry[split_at + 1..];
+		return (Path::new(&entry[..split_at]), (!lang.is_empty()).then_some(lang));
+	}
+
+	let path = Path::new(entry);
+
+	// `subs.eng.srt` -> the file stem is `subs.eng`, whose "extension" is the language
+	let lang = path
+		.file_stem()
+		.map(Path::new)
+		.and_then(Path::extension)
+		.and_then(|ext| ext.to_str());
+
+	(path, lang)
 }
 
 #[allow(clippy::too_many_lines)]
@@ -42,25 +63,27 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 	let video_duration = probe.duration()?;
 
+	// we'll maintain two lists of input and output options so we can properly add subtitle files
+	let mut input_args: Vec<String> = Vec::new();
 	let mut ffmpeg_args: Vec<String> = Vec::new();
+
+	// counts added subtitle files so stream indices stay accurate
+	let mut next_input_idx: usize = 0;
 
 	let seek = args.parse_seek();
 
 	if let Some(seek) = seek {
-		ffmpeg_args.add_two("-ss", format!("{}", seek.as_secs_f64()));
+		let seek = format!("{}", seek.as_secs_f64());
+		if args.burn_subtitle {
+			// we have to use slow seeking when burning subtitles, so this goes in the output args
+			ffmpeg_args.add_two("-ss", seek);
+		} else {
+			input_args.add_two("-ss", seek);
+		}
 	}
 
 	let input = args.input.as_os_str().to_str().unwrap();
-	ffmpeg_args.add_two("-i", input);
-
-	if args.burn_subtitle {
-		// we can't use fast seeking when we're burning subtitles.
-		// reverse the argument list here so the -i comes first.
-		// at this point, ffmpeg_args contains 4 entries so this
-		// chunk-based approach works just fine.
-		let (pairs, _) = ffmpeg_args.as_chunks_mut::<2>();
-		pairs.reverse();
-	}
+	input_args.add_two("-i", input);
 
 	let duration = args.parse_duration();
 	if let Some(duration) = duration {
@@ -68,7 +91,7 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	}
 
 	ffmpeg_args.add_two("-disposition", "0");
-	ffmpeg_args.add_two("-metadata:s", "handler_name=\"\"");
+	ffmpeg_args.add_two("-metadata:s", "handler_name=");
 	ffmpeg_args.add_two("-empty_hdlr_name", "1");
 
 	if args.faststart {
@@ -92,10 +115,10 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	// select appropriate streams, default to the first one respectively if none were specified
 	for (selected_streams, stream_type) in selected_streams_and_types {
 		match stream_type {
-			StreamType::Audio if !probe.has_audio_streams() => {
+			StreamType::Video if !probe.has_video_streams() => {
 				continue;
 			}
-			StreamType::Video if !probe.has_video_streams() => {
+			StreamType::Audio if !probe.has_audio_streams() => {
 				continue;
 			}
 			_ => (),
@@ -112,29 +135,26 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 				}
 
 				ffmpeg_args.add_two("-map", format!("0:{}:{i}", stream_type.identifier()));
-				if let Some(Stream {
-					typed_index,
-					tags: Some(Tags { language: Some(lang), .. }),
-					..
-				}) = match stream_type {
+				if let Some(selected_stream) = match stream_type {
 					StreamType::Video => probe.get_video_stream_by_index(i),
 					StreamType::Audio => probe.get_audio_stream_by_index(i),
 					StreamType::Subtitle => probe.get_subtitle_stream_by_index(i),
 					_ => panic!("you shouldn't be here"),
 				} {
-					//
 					if stream_type == StreamType::Subtitle
 						&& args.burn_subtitle
 						&& burn_subtitle_idx.is_none()
 					{
-						burn_subtitle_idx = Some(*typed_index);
+						burn_subtitle_idx = Some(selected_stream.typed_index);
 					}
 
-					let lang = fix_language_code(lang);
-					ffmpeg_args.add_two(
-						format!("-metadata:s:{output_stream_idx}"),
-						format!("language={lang}"),
-					);
+					if let Some(Tags { language: Some(lang), .. }) = &selected_stream.tags {
+						let lang = normalize_language_code(lang);
+						ffmpeg_args.add_two(
+							format!("-metadata:s:{output_stream_idx}"),
+							format!("language={lang}"),
+						);
+					}
 				}
 
 				used_indices.push(used_idx);
@@ -145,20 +165,31 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 					continue;
 				}
 
+				let selected_stream = match stream_type {
+					StreamType::Video => probe.get_video_stream_by_language(stream),
+					StreamType::Audio => probe.get_audio_stream_by_language(stream),
+					StreamType::Subtitle => probe.get_subtitle_stream_by_language(stream),
+					_ => None,
+				};
+
 				if stream_type == StreamType::Subtitle
 					&& args.burn_subtitle
 					&& burn_subtitle_idx.is_none()
-					&& let Some(stream) = probe.get_subtitle_stream_by_language(lang.to_string())
+					&& let Some(selected_stream) = selected_stream
 				{
-					burn_subtitle_idx = Some(stream.typed_index);
+					burn_subtitle_idx = Some(selected_stream.typed_index);
 				}
 
-				ffmpeg_args.add_two(
-					"-map",
-					format!("0:{}:m:language:{stream}", stream_type.identifier()),
-				);
+				// grab the selected stream's language tag because the
+				// supplied language might not work for ffmpeg
+				let tag = selected_stream
+					.and_then(|s| s.tags.as_ref())
+					.and_then(|t| t.language.as_deref())
+					.unwrap_or(stream);
 
-				let lang = fix_language_code(stream);
+				ffmpeg_args.add_two("-map", format!("0:{}:m:language:{tag}", stream_type.identifier()));
+
+				let lang = normalize_language_code(stream);
 				ffmpeg_args.add_two(
 					format!("-metadata:s:{output_stream_idx}"),
 					format!("language={lang}"),
@@ -166,32 +197,30 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 				used_indices.push(used_lang);
 			} else if stream_type == StreamType::Subtitle {
-				// TODO: allow adding subtitles by file here
-				let path;
-				let path_no_ext;
-				let lang;
-				if let Some((path_str, lang_explicit)) = stream.split_once(':') {
-					path = Path::new(path_str);
-					lang = lang_explicit;
-				} else {
-					path = Path::new(stream);
-					path_no_ext = path.with_extension("");
-					lang = match path_no_ext.extension().and_then(|ext| ext.to_str()) {
-						None => continue,
-						Some(ext) => ext,
-					};
-				}
+				// value is a path to an external subtitle file
+				let (path, lang) = split_subtitle_path_and_language(stream);
 
 				match path.canonicalize() {
 					Ok(canon) => {
-						ffmpeg_args.add_two("-i", canon.into_os_string().into_string().unwrap());
-						ffmpeg_args.add_two(
-							format!("-metadata:s:{output_stream_idx}"),
-							format!("language={}", fix_language_code(lang)),
-						);
+						next_input_idx += 1;
+						input_args.add_two("-i", canon.into_os_string().into_string().unwrap());
+						ffmpeg_args.add_two("-map", format!("{next_input_idx}:s:0"));
+
+						// files without a language part are still usable,
+						// they just don't get any language metadata.
+						if let Some(lang) = lang {
+							ffmpeg_args.add_two(
+								format!("-metadata:s:{output_stream_idx}"),
+								format!("language={}", normalize_language_code(lang)),
+							);
+						}
 					}
 					_ => continue,
 				}
+			} else {
+				// value is neither a stream index, a language code, nor (for subtitles) a file path.
+				// skip this one before output_stream_idx is incremented.
+				continue;
 			}
 
 			output_stream_idx += 1;
@@ -199,7 +228,14 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	}
 
 	// subtitle fixup
-	if args.sub_streams.is_empty() {
+	if args.burn_subtitle {
+		// if we're burning subtitles into a video, add -sn so no subtitle *streams* make it into the output file.
+		// this is because we have to use slow seeking during subtitle burning,
+		// and ffmpeg only rebases video and audio timestamps but *not* subtitle ones.
+		// tl;dr without -sn the output file would have desynced stream timestamps,
+		// causing playback problems in several players.
+		ffmpeg_args.add("-sn");
+	} else if args.sub_streams.is_empty() {
 		if probe
 			.streams
 			.iter()
@@ -209,9 +245,21 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 			// TODO: this might fail for files that have both usable subtitles and hdmv_pgs_subtitle subtitles
 			ffmpeg_args.add_two("-map", "0:s?");
 		} else {
-			// there are only hdmv_pgs_subtitle subtitles, so ignore them
+			// there are only hdmv_pgs_subtitle subtitles, ignore them
 			ffmpeg_args.add("-sn");
 		}
+	}
+
+	// this tool is currently mostly designed to output mp4 files and those only support mov_text subtitles
+	if probe.has_subtitle_streams() && !args.burn_subtitle {
+		ffmpeg_args.add_two("-c:s", "mov_text");
+	}
+
+	// if --burn-subtitle was specified but no subtitle was selected or supplied, print an error and exit
+	if args.burn_subtitle && args.burn_subtitle_file.is_none() && burn_subtitle_idx.is_none() {
+		anyhow::bail!(
+			"--burn-subtitle needs a subtitle stream selected with --sub-streams/--Ss, or a subtitle file given with --subtitle-file/--Bf"
+		)
 	}
 
 	// endregion
@@ -258,21 +306,25 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 				ffmpeg_args.add_two("-ac", audio_channels.clone());
 			}
 
-			if args.needs_audio_filter() {
-				let mut audio_filters = FilterChain::new();
+			let mut audio_filters = FilterChain::new();
 
-				#[allow(clippy::float_cmp)]
-				if args.audio_volume != 1.0 {
-					audio_filters.push(Volume::new(args.audio_volume));
-				}
+			// this tool is designed to always output aac audio, but aac does not support all possible channel layouts.
+			// this aformat filter is here to constrain input channel layouts to something aac can represent.
+			audio_filters.push(Aformat::aac_channel_layouts());
 
-				if fade_in > 0.0 {
-					audio_filters.push(Afade::r#in(0.0, fade_in));
-				}
-				if fade_out > 0.0 {
-					audio_filters.push(Afade::out(fade_out_start, fade_out));
-				}
+			#[allow(clippy::float_cmp)]
+			if args.audio_volume != 1.0 {
+				audio_filters.push(Volume::new(args.audio_volume));
+			}
 
+			if fade_in > 0.0 {
+				audio_filters.push(Afade::r#in(0.0, fade_in));
+			}
+			if fade_out > 0.0 {
+				audio_filters.push(Afade::out(fade_out_start, fade_out));
+			}
+
+			if !audio_filters.is_empty() {
 				ffmpeg_args.add_two("-af", audio_filters.to_string());
 			}
 		}
@@ -282,16 +334,13 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 	// region Video Filtering
 
-	// get order of crop and scale arguments so we can reorder the crop and scale filters below
-	let (crop_index, scale_index) = get_crop_and_scale_order(matches);
-
 	ffmpeg_args.add_two("-c:v", args.video_codec.video_codec());
 	ffmpeg_args.add_two(
 		"-crf",
-		format!("{}", &args.video_codec.crf_with_garbage(args.garbage)),
+		args.video_codec.crf_with_garbage(args.garbage).to_string(),
 	);
 	ffmpeg_args.add_two("-pix_fmt", args.video_codec.pix_fmt());
-	ffmpeg_args.add_two("-preset", "slower");
+	ffmpeg_args.add_two("-preset", args.preset.to_string());
 	ffmpeg_args.add("-tune");
 	match args.video_codec {
 		VideoCodec::H264 => {
@@ -303,9 +352,6 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 			ffmpeg_args.add("hvc1");
 		}
 	}
-
-	ffmpeg_args.add_two("-partitions", "all");
-	ffmpeg_args.add_two("-me_method", "tesa");
 
 	// add extra ffmpeg arguments that aren't handled by optimize_settings()
 	// TODO: test this on actual target devices
@@ -346,11 +392,37 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 	if args.needs_video_filter() {
 		let mut video_filters = FilterChain::new();
 
+		// the framerate everything downstream should assume. changed later by the framerate multiplier.
+		let mut effective_fps = video_stream.frame_rate();
+
+		// --framerate and --framerate-mult are mutually exclusive via clap's "framerates" group
+		if let Some(framerate) = args.framerate {
+			if framerate <= 0.0 {
+				anyhow::bail!("The frame rate must be greater than zero, got {framerate}")
+			}
+
+			video_filters.push(Fps::new(framerate));
+			effective_fps = Some(framerate);
+		} else if let Some(framerate_mult) = args.framerate_mult {
+			if framerate_mult <= 0.0 {
+				anyhow::bail!("The frame rate multiplier must be greater than zero, got {framerate_mult}")
+			}
+
+			let input_fps = video_stream
+				.frame_rate()
+				.context("The input video stream contains no frame rate information")?;
+
+			let target_fps = input_fps * framerate_mult;
+
+			video_filters.push(Fps::new(target_fps));
+			effective_fps = Some(target_fps);
+		}
+
 		#[allow(clippy::single_match)]
 		match args.optimize_target {
 			Some(OptimizeTarget::Ipod | OptimizeTarget::Ipod5) => {
 				// cap framerate at 30
-				if let Some(fps) = video_stream.frame_rate()
+				if let Some(fps) = effective_fps
 					&& fps > 30.0
 				{
 					video_filters.push(Fps::target(fps, 30.0));
@@ -387,9 +459,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 			crop_and_scale.push(scale_filter);
 		}
 
+		// get order of crop and scale arguments so we can reorder the crop and scale filters below
+		let (crop_index, scale_index) = get_crop_and_scale_order(matches);
+
 		if scale_index < crop_index {
-			// if the scale argument was provided before the crop argument,
-			// flip this list around
+			// if the scale argument was provided before the crop argument, flip this list around
 			crop_and_scale.reverse();
 		}
 		video_filters.extend(crop_and_scale);
@@ -411,7 +485,11 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 				}) {
 			// macOS comes with Helvetica Neue. other platforms will presumably default to Arial.
 			#[cfg(target_os = "macos")]
-			subtitles.set_font("Helvetica Neue");
+			let subtitles = {
+				let mut subtitles = subtitles;
+				subtitles.set_font("Helvetica Neue");
+				subtitles
+			};
 
 			video_filters.push(subtitles);
 		}
@@ -432,10 +510,66 @@ pub(crate) fn ffmpeg_auto(args: &AutoArgs, matches: &ArgMatches, debug: bool) ->
 
 	ffmpeg_args.push(args.output.to_str().unwrap().to_string());
 
+	// all inputs first, then everything that applies to the output
+	let ffmpeg_args = [input_args, ffmpeg_args].concat();
+
 	ffmpeg(
 		&ffmpeg_args,
 		args.hwaccel.then(|| args.accelerator.clone()),
 		true,
 		debug,
 	)
+}
+
+#[cfg(test)]
+mod tests {
+	use super::split_subtitle_path_and_language;
+
+	fn split(entry: &str) -> (String, Option<&str>) {
+		let (path, lang) = split_subtitle_path_and_language(entry);
+		(path.to_string_lossy().into_owned(), lang)
+	}
+
+	#[test]
+	fn parse_explicit_and_implicit_languages() {
+		// explicit language
+		assert_eq!(split("subs.srt:eng"), ("subs.srt".into(), Some("eng")));
+
+		// implicit language
+		assert_eq!(split("subs.eng.srt"), ("subs.eng.srt".into(), Some("eng")));
+
+		// a full path with implicit language
+		assert_eq!(
+			split("/tmp/Movie.en-US.ass"),
+			("/tmp/Movie.en-US.ass".into(), Some("en-US"))
+		);
+
+		// an explicit language wins over an implicit one
+		assert_eq!(split("subs.deu.srt:eng"), ("subs.deu.srt".into(), Some("eng")));
+
+		// a trailing colon with nothing after it is not a language
+		assert_eq!(split("subs.srt:"), ("subs.srt".into(), None));
+
+		// a trailing colon with nothing after it parses as a path with no language, despite the implicit one in the name
+		assert_eq!(split("subs.deu.srt:"), ("subs.deu.srt".into(), None));
+
+		// nonsense languages are passed through with no normalization or filtering
+		assert_eq!(split("subs.srt:bimp"), ("subs.srt".into(), Some("bimp")));
+	}
+
+	#[test]
+	fn colons_outside_the_last_path_segment_are_part_of_the_path() {
+		assert_eq!(
+			split("/Volumes/My:Disk/subs.srt"),
+			("/Volumes/My:Disk/subs.srt".into(), None)
+		);
+		assert_eq!(
+			split("/Volumes/My:Disk/subs.srt:eng"),
+			("/Volumes/My:Disk/subs.srt".into(), Some("eng"))
+		);
+		assert_eq!(
+			split(r"C:\subs\subs.eng.srt"),
+			(r"C:\subs\subs.eng.srt".into(), Some("eng"))
+		);
+	}
 }

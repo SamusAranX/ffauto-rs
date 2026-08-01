@@ -25,8 +25,8 @@ pub(crate) fn ffmpeg_info(args: &InfoArgs) -> Result<()> {
 		let type_color = codec_type.color();
 		print!(
 			"[{}|{}] {}",
-			&stream.index,
-			&stream.typed_index,
+			stream.index,
+			stream.typed_index,
 			codec_type.to_string().color(type_color)
 		);
 

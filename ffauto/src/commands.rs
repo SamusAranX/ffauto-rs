@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use crate::palettes_dynamic::DynamicPalette;
 use crate::palettes_static::StaticPalette;
-use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, TargetVideoRange, VideoCodec};
+use ffmpeg::ffmpeg::enums::{BarcodeMode, OptimizeTarget, Preset, TargetVideoRange, VideoCodec};
 use ffmpeg::filters::{PalettegenStatsMode, PaletteuseDither, ScaleAlgorithm};
 
 const GIT_HASH: &str = env!("GIT_HASH");
@@ -19,6 +19,9 @@ const GIT_VERSION: &str = env!("GIT_VERSION");
 const BUILD_DATE: &str = env!("BUILD_DATE");
 
 const CLAP_VERSION: &str = formatcp!("{GIT_VERSION} [{GIT_BRANCH}, {GIT_HASH}, {BUILD_DATE}]");
+
+/// These codecs can be passed through when encoding to .mp4/.mov files.
+const PASSTHROUGH_AUDIO_CODECS: &[&str] = &["aac", "alac", "ac3", "eac3"];
 
 #[derive(Parser, Debug, Clone)]
 #[command(version = CLAP_VERSION, about = "Wraps common ffmpeg workflows")]
@@ -56,10 +59,13 @@ pub(crate) struct AutoArgs {
 	#[arg()]
 	pub output: PathBuf,
 
+	/// Sets the encoder preset for x264 and x265.
+	#[arg(short, long, value_enum, default_value_t = Preset::default())]
+	pub preset: Preset,
+
 	/// Selects video streams by index or ISO 639-2 language code.
 	#[arg(long, alias = "Vs", default_values_t = ["0".to_string()])]
 	pub video_streams: Vec<String>,
-
 	/// Selects audio streams by index or ISO 639-2 language code.
 	#[arg(long, alias = "As", default_values_t = ["0".to_string()])]
 	pub audio_streams: Vec<String>,
@@ -169,18 +175,15 @@ pub(crate) struct AutoArgs {
 }
 
 impl AutoArgs {
+	/// Whether the input audio stream can be copied without re-encoding.
 	pub(crate) fn audio_copy_possible(&self, input_codec_name: Option<&str>) -> bool {
 		!self.mute
 			&& self.audio_channels.is_none()
-			&& input_codec_name == Some("aac")
+			&& input_codec_name.is_some_and(|codec| PASSTHROUGH_AUDIO_CODECS.contains(&codec))
 			&& self.audio_volume == 1.0
 			&& self.fade <= 0.0
 			&& self.fade_in <= 0.0
 			&& self.fade_out <= 0.0
-	}
-
-	pub(crate) fn needs_audio_filter(&self) -> bool {
-		self.audio_volume != 1.0 || self.fade > 0.0 || self.fade_in > 0.0 || self.fade_out > 0.0
 	}
 
 	pub(crate) fn needs_video_filter(&self) -> bool {
@@ -194,6 +197,7 @@ impl AutoArgs {
 			|| self.fade_out > 0.0
 			|| self.crop.is_some()
 			|| self.framerate.is_some()
+			|| self.framerate_mult.is_some()
 			|| self.tonemap
 			|| self.target_video_range.is_some()
 			|| self.burn_subtitle

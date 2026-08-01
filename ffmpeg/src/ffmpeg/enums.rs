@@ -35,6 +35,24 @@ pub enum BarcodeMode {
 	Colors,
 }
 
+/// Encoder speed/compression tradeoff. Shared by libx264 and libx265.
+/// ffmpeg's actual default is "medium" but we'll default to "slow" because "slower" is *too* slow.
+#[derive(clap::ValueEnum, Clone, Default, Debug, PartialEq, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "lowercase")]
+pub enum Preset {
+	UltraFast,
+	SuperFast,
+	VeryFast,
+	Faster,
+	Fast,
+	Medium,
+	#[default]
+	Slow,
+	Slower,
+	VerySlow,
+	Placebo,
+}
+
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, strum::Display, strum::EnumString)]
 pub enum TargetVideoRange {
 	#[strum(serialize = "full")]

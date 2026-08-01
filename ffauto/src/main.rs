@@ -23,6 +23,9 @@ mod palettes_dynamic;
 mod palettes_static;
 mod vec_push_ext;
 
+// https://dev.beandog.org/x264_preset_reference.html
+// https://x265.readthedocs.io/en/stable/presets.html
+
 fn main() -> ExitCode {
 	let (cli, sub_matches) = Cli::parse_with_matches();
 	let matches = sub_matches.unwrap_or_default();

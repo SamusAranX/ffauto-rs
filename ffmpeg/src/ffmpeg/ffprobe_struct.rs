@@ -2,9 +2,22 @@ use crate::ffmpeg::deserialize_bool_from_int;
 use crate::ffmpeg::timestamps::parse_ffmpeg_duration;
 use anyhow::{Context, Result, anyhow};
 use colored::Color;
+use isolang::Language;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 use std::time::Duration;
+
+/// Normalizes a language code to ISO 639-2/B, the form ffmpeg writes into `language` tags.
+/// Accepts 639-1 (`en`), 639-2/T (`deu`), 639-3 and locales (`en-US`). Anything that can't
+/// be recognized is returned unchanged.
+#[must_use]
+pub fn normalize_language_code(code: &str) -> &str {
+	Language::from_str(code)
+		.ok()
+		.or_else(|| Language::from_locale(&code.replace('-', "_")))
+		.map_or(code, |l| l.to_639_2b())
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FFProbeOutput {
@@ -79,13 +92,14 @@ impl FFProbeOutput {
 		lang: S,
 		stream_type: &StreamType,
 	) -> Option<&Stream> {
+		// both sides of the check are normalized, so "en", "eng" and "en-US" all match a stream tagged "eng"
 		let lang = lang.into();
+		let lang = normalize_language_code(&lang);
 		self.get_typed_streams(stream_type).find(|s| {
 			s.tags
 				.as_ref()
-				.and_then(|t| t.language.as_ref())
-				.map(|l| l == &lang)
-				.is_some_and(|x| x)
+				.and_then(|t| t.language.as_deref())
+				.is_some_and(|l| normalize_language_code(l) == lang)
 		})
 	}
 
@@ -129,7 +143,16 @@ impl FFProbeOutput {
 				.get_video_stream_by_language(language)
 				.context(format!("No stream with language \"{language}\" found"))?
 				.clone();
-			(stream, format!("0:V:m:language:{language}"))
+			// get the stream's actual language tag to build the m:language:{tag} selector
+			let stream_id = {
+				let tag = stream
+					.tags
+					.as_ref()
+					.and_then(|t| t.language.as_deref())
+					.unwrap_or(language);
+				format!("0:V:m:language:{tag}")
+			};
+			(stream, stream_id)
 		} else {
 			let stream = self
 				.get_video_stream_by_index(index)
@@ -178,7 +201,7 @@ impl FFProbeOutput {
 	}
 }
 
-#[derive(clap::ValueEnum, Clone, Debug, Eq, PartialEq, Deserialize)]
+#[derive(clap::ValueEnum, Clone, Debug, Eq, PartialEq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum StreamType {
 	Audio,
@@ -279,138 +302,52 @@ pub struct Disposition {
 }
 
 impl Disposition {
+	/// Every flag paired with its human readable name, in ffprobe's field order.
+	/// Single source of truth for [`Disposition::any_true`] and the [`Display`] impl.
+	fn flags(&self) -> [(bool, &'static str); 19] {
+		[
+			(self.default, "default"),
+			(self.dub, "dub"),
+			(self.original, "original"),
+			(self.comment, "comment"),
+			(self.lyrics, "lyrics"),
+			(self.karaoke, "karaoke"),
+			(self.forced, "forced"),
+			(self.hearing_impaired, "hearing impaired"),
+			(self.visual_impaired, "visual impaired"),
+			(self.clean_effects, "clean effects"),
+			(self.attached_pic, "attached pic"),
+			(self.timed_thumbnails, "timed thumbnails"),
+			(self.non_diegetic, "non diegetic"),
+			(self.captions, "captions"),
+			(self.descriptions, "descriptions"),
+			(self.metadata, "metadata"),
+			(self.dependent, "dependent"),
+			(self.still_image, "still image"),
+			(self.multilayer, "multilayer"),
+		]
+	}
+
 	#[must_use]
 	pub fn any_true(&self) -> bool {
-		if self.default {
-			return true;
-		}
-		if self.dub {
-			return true;
-		}
-		if self.original {
-			return true;
-		}
-		if self.comment {
-			return true;
-		}
-		if self.lyrics {
-			return true;
-		}
-		if self.karaoke {
-			return true;
-		}
-		if self.forced {
-			return true;
-		}
-		if self.hearing_impaired {
-			return true;
-		}
-		if self.visual_impaired {
-			return true;
-		}
-		if self.clean_effects {
-			return true;
-		}
-		if self.attached_pic {
-			return true;
-		}
-		if self.timed_thumbnails {
-			return true;
-		}
-		if self.non_diegetic {
-			return true;
-		}
-		if self.captions {
-			return true;
-		}
-		if self.descriptions {
-			return true;
-		}
-		if self.metadata {
-			return true;
-		}
-		if self.dependent {
-			return true;
-		}
-		if self.still_image {
-			return true;
-		}
-		if self.multilayer {
-			return true;
-		}
-
-		false
+		self.flags().into_iter().any(|(set, _)| set)
 	}
 }
 
 impl Display for Disposition {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		let mut disposition: Vec<String> = Vec::with_capacity(19);
-
-		if self.default {
-			disposition.push("default".into());
+		let mut first = true;
+		for (set, name) in self.flags() {
+			if !set {
+				continue;
+			}
+			if !first {
+				f.write_str(", ")?;
+			}
+			f.write_str(name)?;
+			first = false;
 		}
-		if self.dub {
-			disposition.push("dub".into());
-		}
-		if self.original {
-			disposition.push("original".into());
-		}
-		if self.comment {
-			disposition.push("comment".into());
-		}
-		if self.lyrics {
-			disposition.push("lyrics".into());
-		}
-		if self.karaoke {
-			disposition.push("karaoke".into());
-		}
-		if self.forced {
-			disposition.push("forced".into());
-		}
-		if self.hearing_impaired {
-			disposition.push("hearing impaired".into());
-		}
-		if self.visual_impaired {
-			disposition.push("visual impaired".into());
-		}
-		if self.clean_effects {
-			disposition.push("clean effects".into());
-		}
-		if self.attached_pic {
-			disposition.push("attached pic".into());
-		}
-		if self.timed_thumbnails {
-			disposition.push("timed thumbnails".into());
-		}
-		if self.non_diegetic {
-			disposition.push("non diegetic".into());
-		}
-		if self.captions {
-			disposition.push("captions".into());
-		}
-		if self.descriptions {
-			disposition.push("descriptions".into());
-		}
-		if self.metadata {
-			disposition.push("metadata".into());
-		}
-		if self.dependent {
-			disposition.push("dependent".into());
-		}
-		if self.still_image {
-			disposition.push("still image".into());
-		}
-		if self.multilayer {
-			disposition.push("multilayer".into());
-		}
-
-		if disposition.is_empty() {
-			write!(f, "")
-		} else {
-			let disposition_str = disposition.join(", ");
-			write!(f, "{disposition_str}")
-		}
+		Ok(())
 	}
 }
 
@@ -497,5 +434,31 @@ impl Stream {
 		}
 
 		None
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::normalize_language_code;
+
+	#[test]
+	fn language_codes_normalize_to_639_2b() {
+		// already 639-2/B, which is what ffmpeg wants
+		assert_eq!(normalize_language_code("eng"), "eng");
+		assert_eq!(normalize_language_code("ger"), "ger");
+
+		// 639-1
+		assert_eq!(normalize_language_code("en"), "eng");
+		assert_eq!(normalize_language_code("de"), "ger");
+
+		// 639-2/T, which differs from 639-2/B for some languages
+		assert_eq!(normalize_language_code("deu"), "ger");
+
+		// locales
+		assert_eq!(normalize_language_code("en-US"), "eng");
+
+		// unrecognized input is passed through untouched
+		assert_eq!(normalize_language_code("qqq"), "qqq");
+		assert_eq!(normalize_language_code(""), "");
 	}
 }

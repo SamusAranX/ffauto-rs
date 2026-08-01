@@ -42,7 +42,7 @@ impl Palette {
 				#[allow(clippy::cast_possible_truncation)]
 				return Err(PaletteError::InvalidBinaryData {
 					position: (f.stream_position().unwrap() - 2) as usize,
-					msg: format!("Invalid magic sequence {magic:#02X}"),
+					msg: format!("Invalid magic sequence {magic:#06X}"),
 				});
 			}
 
@@ -51,7 +51,7 @@ impl Palette {
 				#[allow(clippy::cast_possible_truncation)]
 				return Err(PaletteError::InvalidBinaryData {
 					position: (f.stream_position().unwrap() - 2) as usize,
-					msg: format!("Invalid version {version:#02X}"),
+					msg: format!("Invalid version {version:#06X}"),
 				});
 			}
 		}
